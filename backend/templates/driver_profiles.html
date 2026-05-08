@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Teilnehmerdatenbank</h2>
+
+    {% if active_event %}
+        <p>
+            Veranstaltung:
+            <strong>{{ active_event.event_number }} – {{ active_event.name }}</strong>
+        </p>
+    {% endif %}
+
+    <a class="button small-button" href="/ui/events/{{ active_event.id }}/participants">
+        Zur Teilnehmerliste
+    </a>
+</div>
+
+<div class="card">
+    <h3>Suchen / Filtern</h3>
+
+    <label>Suche</label>
+    <input
+        type="text"
+        id="driver_profile_search"
+        placeholder="Startnummer, Name, Verein, ADAC Mitgliedsnummer, Jugendausweisnummer"
+        oninput="filterDriverProfiles()"
+    >
+</div>
+
+<div class="card">
+    {% if driver_profiles|length > 0 %}
+        <table class="compact-runs-table" id="driver_profiles_table">
+            <thead>
+                <tr>
+                    <th>Startnr.</th>
+                    <th>Name</th>
+                    <th>Geburtsjahr</th>
+                    <th>Verein</th>
+                    <th>ADAC Mitgliedsnummer</th>
+                    <th>Jugendausweisnummer</th>
+                    <th>Aktion</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for driver_profile in driver_profiles %}
+                    <tr
+                        data-search="
+                            {{ driver_profile.default_start_number or '' }}
+                            {{ driver_profile.first_name }}
+                            {{ driver_profile.last_name }}
+                            {{ driver_profile.birth_year }}
+                            {{ driver_profile.club or '' }}
+                            {{ driver_profile.adac_number or '' }}
+                            {{ driver_profile.youth_license_number or '' }}
+                        "
+                    >
+                        <td>
+                            {% if driver_profile.default_start_number %}
+                                <strong>{{ driver_profile.default_start_number }}</strong>
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>
+                            {{ driver_profile.first_name }}
+                            {{ driver_profile.last_name }}
+                        </td>
+                        <td>{{ driver_profile.birth_year }}</td>
+                        <td>{{ driver_profile.club or "" }}</td>
+                        <td>{{ driver_profile.adac_number or "" }}</td>
+                        <td>
+                            {{ driver_profile.youth_license_number or "" }}
+
+                            {% if driver_profile.youth_card_checked %}
+                                <br>
+                                <small>geprüft</small>
+                            {% endif %}
+
+                            {% if driver_profile.youth_card_valid_until %}
+                                <br>
+                                <small>gültig bis {{ driver_profile.youth_card_valid_until }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a
+                                class="button small-button"
+                                href="/ui/events/{{ active_event.id }}/driver-profiles/{{ driver_profile.id }}/edit"
+                            >
+                                Bearbeiten
+                            </a>
+
+                            <form
+                                method="post"
+                                action="/ui/events/{{ active_event.id }}/driver-profiles/{{ driver_profile.id }}/delete"
+                                style="display:inline;"
+                            >
+                                <button
+                                    type="submit"
+                                    class="small-button red-button"
+                                    onclick="return confirm('Teilnehmer aus der Datenbank entfernen? Bestehende Nennungen bleiben erhalten.')"
+                                >
+                                    Löschen
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <p id="driver_profile_filter_info" style="margin-top: 10px;"></p>
+    {% else %}
+        <p>Noch keine Teilnehmer in der Datenbank vorhanden.</p>
+    {% endif %}
+</div>
+
+<script>
+    function normalizeDriverProfileText(value) {
+        return (value || "")
+            .toString()
+            .toLowerCase()
+            .trim();
+    }
+
+    function filterDriverProfiles() {
+        const searchInput = document.getElementById("driver_profile_search");
+        const searchValue = normalizeDriverProfileText(searchInput ? searchInput.value : "");
+        const rows = document.querySelectorAll("#driver_profiles_table tbody tr");
+        let visibleCount = 0;
+
+        rows.forEach(function(row) {
+            const rowSearch = normalizeDriverProfileText(row.dataset.search);
+            const matchesSearch = searchValue === "" || rowSearch.includes(searchValue);
+
+            if (matchesSearch) {
+                row.style.display = "";
+                visibleCount += 1;
+            } else {
+                row.style.display = "none";
+            }
+        });
+
+        const info = document.getElementById("driver_profile_filter_info");
+
+        if (info) {
+            info.innerText = visibleCount + " Teilnehmer angezeigt";
+        }
+    }
+
+    filterDriverProfiles();
+</script>
+{% endblock %}

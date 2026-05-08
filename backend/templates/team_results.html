@@ -37,7 +37,18 @@
 
     <form method="post" action="/ui/events/{{ active_event.id }}/teams/new">
         <label>Team</label>
-        <input type="text" name="team_name" placeholder="Teamname" required>
+        <input
+            type="text"
+            name="team_name"
+            list="team_name_suggestions"
+            placeholder="Teamname"
+            required
+        >
+        <datalist id="team_name_suggestions">
+            <option value="MSC Lägerdorf v. 1925 e.V."></option>
+            <option value="AC Kellinghusen e.V."></option>
+            <option value="Wühlmäuse Schleswig-Holstein e.V."></option>
+        </datalist>
 
         <div class="team-member-selects">
             {% for index in range(5) %}

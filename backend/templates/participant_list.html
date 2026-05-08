@@ -20,6 +20,10 @@
             Diese Veranstaltung ist geschlossen. Teilnehmer können nicht mehr geändert werden.
         </div>
     {% endif %}
+
+    <a class="button small-button" href="/ui/events/{{ active_event.id }}/driver-profiles">
+        Teilnehmerdatenbank
+    </a>
 </div>
 
 <div class="card">
@@ -29,7 +33,7 @@
     <input
         type="text"
         id="participant_search"
-        placeholder="Startnummer, Name, Verein, ADAC Nummer, Jugendausweisnummer"
+        placeholder="Startnummer, Name, Verein, ADAC Mitgliedsnummer, Jugendausweisnummer"
         oninput="filterParticipants()"
     >
 
@@ -62,7 +66,7 @@
                     <th>Klasse</th>
                     <th>Verein</th>
                     <th>Team</th>
-                    <th>ADAC Nummer</th>
+                    <th>ADAC Mitgliedsnummer</th>
                     <th>Jugendausweisnummer</th>
                     <th>Status</th>
                     <th>Fahrerstamm</th>
@@ -112,6 +116,16 @@
                             {{ participant.youth_license_number }}
                         {% else %}
                             <span class="error">fehlt</span>
+                        {% endif %}
+
+                        {% if participant.youth_card_checked %}
+                            <br>
+                            <small>geprüft</small>
+                        {% endif %}
+
+                        {% if participant.youth_card_valid_until %}
+                            <br>
+                            <small>gültig bis {{ participant.youth_card_valid_until }}</small>
                         {% endif %}
                     </td>
 

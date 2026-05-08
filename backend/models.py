@@ -58,6 +58,10 @@ class DriverProfile(Base):
 
     adac_number = Column(String, nullable=True)
     youth_license_number = Column(String, nullable=True)
+    youth_card_qr_url = Column(String, nullable=True)
+    youth_card_valid_until = Column(String, nullable=True)
+    youth_card_checked = Column(Boolean, default=False)
+    youth_card_checked_at = Column(String, nullable=True)
 
     active = Column(Boolean, default=True)
 
@@ -87,6 +91,10 @@ class Participant(Base):
 
     adac_number = Column(String, nullable=True)
     youth_license_number = Column(String, nullable=True)
+    youth_card_qr_url = Column(String, nullable=True)
+    youth_card_valid_until = Column(String, nullable=True)
+    youth_card_checked = Column(Boolean, default=False)
+    youth_card_checked_at = Column(String, nullable=True)
 
     # Ausscheiden während der Veranstaltung
     withdrawn = Column(Boolean, default=False)

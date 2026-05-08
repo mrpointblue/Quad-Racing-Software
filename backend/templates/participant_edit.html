@@ -22,6 +22,25 @@
         action="/ui/events/{{ active_event.id }}/participants/{{ participant.id }}/edit"
         onsubmit="return validateBeforeSubmit()"
     >
+        {% if youth_card_scan_enabled %}
+            <button type="button" onclick="startYouthCardScanner()">
+                Jugendkarte scannen
+            </button>
+
+            <div id="youth_card_scanner_box" class="compact-info" style="display:none;">
+                <video
+                    id="youth_card_video"
+                    autoplay
+                    playsinline
+                    style="width:100%; max-width:420px; background:#111827; border-radius:8px;"
+                ></video>
+                <div id="youth_card_scan_message" class="compact-info"></div>
+                <button type="button" class="red-button" onclick="stopYouthCardScanner()">
+                    Scanner schließen
+                </button>
+            </div>
+        {% endif %}
+
         <label>Startnummer</label>
         <input
             type="number"
@@ -98,19 +117,14 @@
             </option>
         </select>
 
-        <label>Mannschaft</label>
-        <input
-            type="text"
-            name="team"
-            value="{{ participant.team or '' }}"
-        >
+        <input type="hidden" name="team" value="{{ participant.team or '' }}">
 
-        <label>ADAC Nummer</label>
+        <label>ADAC Mitgliedsnummer</label>
         <input
             type="text"
             name="adac_number"
             value="{{ participant.adac_number or '' }}"
-            placeholder="ADAC Nummer"
+            placeholder="ADAC Mitgliedsnummer"
         >
 
         <label>Jugendausweisnummer</label>
@@ -120,6 +134,58 @@
             value="{{ participant.youth_license_number or '' }}"
             placeholder="Jugendausweisnummer"
         >
+
+        {% if youth_card_scan_enabled %}
+            <label>QR-/Prüflink</label>
+            <input
+                type="text"
+                name="youth_card_qr_url"
+                id="youth_card_qr_url"
+                value="{{ participant.youth_card_qr_url or '' }}"
+                placeholder="QR-/Prüflink der Jugendkarte"
+            >
+        {% else %}
+            <input
+                type="hidden"
+                name="youth_card_qr_url"
+                id="youth_card_qr_url"
+                value="{{ participant.youth_card_qr_url or '' }}"
+            >
+        {% endif %}
+
+        {% if youth_card_scan_enabled %}
+            <label>Gültig bis</label>
+            <input
+                type="text"
+                name="youth_card_valid_until"
+                id="youth_card_valid_until"
+                value="{{ participant.youth_card_valid_until or '' }}"
+                placeholder="z. B. 31.12.2026"
+            >
+        {% else %}
+            <input
+                type="hidden"
+                name="youth_card_valid_until"
+                id="youth_card_valid_until"
+                value="{{ participant.youth_card_valid_until or '' }}"
+            >
+        {% endif %}
+
+        <input
+            type="hidden"
+            name="youth_card_checked"
+            id="youth_card_checked"
+            value="{% if participant.youth_card_checked %}true{% else %}false{% endif %}"
+        >
+
+        {% if participant.youth_card_checked %}
+            <div class="success">
+                Jugendkarte geprüft
+                {% if participant.youth_card_checked_at %}
+                    · {{ participant.youth_card_checked_at }}
+                {% endif %}
+            </div>
+        {% endif %}
 
         <button type="submit" id="submit_button">Änderungen speichern</button>
 
@@ -250,6 +316,121 @@
         }
 
         return true;
+    }
+
+    let youthCardScannerStream = null;
+    let youthCardScannerTimer = null;
+    let youthCardBarcodeDetector = null;
+
+    function setYouthCardScanMessage(message, isError) {
+        const messageBox = document.getElementById("youth_card_scan_message");
+
+        if (!messageBox) {
+            return;
+        }
+
+        messageBox.innerHTML = message
+            ? "<div class='" + (isError ? "error" : "success") + "'>" + message + "</div>"
+            : "";
+    }
+
+    async function startYouthCardScanner() {
+        const scannerBox = document.getElementById("youth_card_scanner_box");
+        const video = document.getElementById("youth_card_video");
+
+        if (!("BarcodeDetector" in window)) {
+            if (scannerBox) {
+                scannerBox.style.display = "block";
+            }
+
+            setYouthCardScanMessage(
+                "QR-Scanner wird von diesem Browser nicht unterstützt. Bitte QR-Link manuell eintragen.",
+                true
+            );
+            return;
+        }
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            if (scannerBox) {
+                scannerBox.style.display = "block";
+            }
+
+            setYouthCardScanMessage(
+                "Kamera ist in diesem Browser nicht verfügbar. Bitte QR-Link manuell eintragen.",
+                true
+            );
+            return;
+        }
+
+        try {
+            youthCardBarcodeDetector = new BarcodeDetector({ formats: ["qr_code"] });
+            youthCardScannerStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "environment" }
+            });
+
+            video.srcObject = youthCardScannerStream;
+            scannerBox.style.display = "block";
+            setYouthCardScanMessage("Scanner aktiv. Bitte QR-Code vor die Kamera halten.", false);
+
+            youthCardScannerTimer = window.setInterval(async function () {
+                if (!video || video.readyState < 2 || !youthCardBarcodeDetector) {
+                    return;
+                }
+
+                const codes = await youthCardBarcodeDetector.detect(video);
+
+                if (codes && codes.length > 0) {
+                    handleYouthCardScan(codes[0].rawValue || "");
+                }
+            }, 300);
+        } catch (error) {
+            setYouthCardScanMessage(
+                "Kamera konnte nicht gestartet werden. Bitte QR-Link manuell eintragen.",
+                true
+            );
+            stopYouthCardScanner(false);
+        }
+    }
+
+    function stopYouthCardScanner(clearMessage) {
+        const scannerBox = document.getElementById("youth_card_scanner_box");
+        const video = document.getElementById("youth_card_video");
+
+        if (youthCardScannerTimer) {
+            window.clearInterval(youthCardScannerTimer);
+            youthCardScannerTimer = null;
+        }
+
+        if (youthCardScannerStream) {
+            youthCardScannerStream.getTracks().forEach(function (track) {
+                track.stop();
+            });
+            youthCardScannerStream = null;
+        }
+
+        if (video) {
+            video.srcObject = null;
+        }
+
+        if (scannerBox && clearMessage !== false) {
+            scannerBox.style.display = "none";
+        }
+    }
+
+    function handleYouthCardScan(value) {
+        const qrInput = document.getElementById("youth_card_qr_url");
+        const checkedInput = document.getElementById("youth_card_checked");
+
+        if (qrInput) {
+            qrInput.value = value || "";
+        }
+
+        if (checkedInput) {
+            checkedInput.value = "true";
+        }
+
+        setYouthCardScanMessage("Jugendkarte gescannt.", false);
+        stopYouthCardScanner(false);
     }
 
     updateRaceClass();

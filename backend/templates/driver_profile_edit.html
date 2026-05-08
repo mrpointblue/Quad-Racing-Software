@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Teilnehmerdaten bearbeiten</h2>
+
+    {% if active_event %}
+        <p>
+            Veranstaltung:
+            <strong>{{ active_event.event_number }} – {{ active_event.name }}</strong>
+        </p>
+    {% endif %}
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <form
+        method="post"
+        action="/ui/events/{{ active_event.id }}/driver-profiles/{{ driver_profile.id }}/edit"
+    >
+        <label>Startnummer</label>
+        <input
+            type="number"
+            name="default_start_number"
+            value="{{ driver_profile.default_start_number or '' }}"
+            min="1"
+        >
+
+        <label>Vorname</label>
+        <input
+            type="text"
+            name="first_name"
+            value="{{ driver_profile.first_name }}"
+            required
+        >
+
+        <label>Nachname</label>
+        <input
+            type="text"
+            name="last_name"
+            value="{{ driver_profile.last_name }}"
+            required
+        >
+
+        <label>Geburtsjahr</label>
+        <input
+            type="number"
+            name="birth_year"
+            value="{{ driver_profile.birth_year }}"
+            min="1900"
+            max="{{ event_year }}"
+            required
+        >
+
+        <label>Verein</label>
+        <select name="club">
+            <option value="">Bitte auswählen</option>
+
+            <option value="MSC Lägerdorf v. 1925 e.V."
+                {% if driver_profile.club == "MSC Lägerdorf v. 1925 e.V." %}selected{% endif %}
+            >
+                MSC Lägerdorf v. 1925 e.V.
+            </option>
+
+            <option value="AC Kellinghusen e.V."
+                {% if driver_profile.club == "AC Kellinghusen e.V." %}selected{% endif %}
+            >
+                AC Kellinghusen e.V.
+            </option>
+
+            <option value="Wühlmäuse Schleswig-Holstein e.V."
+                {% if driver_profile.club == "Wühlmäuse Schleswig-Holstein e.V." %}selected{% endif %}
+            >
+                Wühlmäuse Schleswig-Holstein e.V.
+            </option>
+
+            <option value="Gast"
+                {% if driver_profile.club == "Gast" %}selected{% endif %}
+            >
+                Gast
+            </option>
+        </select>
+
+        <label>ADAC Mitgliedsnummer</label>
+        <input
+            type="text"
+            name="adac_number"
+            value="{{ driver_profile.adac_number or '' }}"
+            placeholder="ADAC Mitgliedsnummer"
+        >
+
+        <label>Jugendausweisnummer</label>
+        <input
+            type="text"
+            name="youth_license_number"
+            value="{{ driver_profile.youth_license_number or '' }}"
+            placeholder="Jugendausweisnummer"
+        >
+
+        {% if youth_card_scan_enabled %}
+            <label>QR-/Prüflink</label>
+            <input
+                type="text"
+                name="youth_card_qr_url"
+                value="{{ driver_profile.youth_card_qr_url or '' }}"
+                placeholder="QR-/Prüflink der Jugendkarte"
+            >
+
+            <label>Gültig bis</label>
+            <input
+                type="text"
+                name="youth_card_valid_until"
+                value="{{ driver_profile.youth_card_valid_until or '' }}"
+                placeholder="z. B. 31.12.2026"
+            >
+        {% else %}
+            <input
+                type="hidden"
+                name="youth_card_qr_url"
+                value="{{ driver_profile.youth_card_qr_url or '' }}"
+            >
+            <input
+                type="hidden"
+                name="youth_card_valid_until"
+                value="{{ driver_profile.youth_card_valid_until or '' }}"
+            >
+        {% endif %}
+
+        <input
+            type="hidden"
+            name="youth_card_checked"
+            value="{% if driver_profile.youth_card_checked %}true{% else %}false{% endif %}"
+        >
+
+        {% if driver_profile.youth_card_checked %}
+            <div class="success">
+                Jugendkarte geprüft
+                {% if driver_profile.youth_card_checked_at %}
+                    · {{ driver_profile.youth_card_checked_at }}
+                {% endif %}
+            </div>
+        {% endif %}
+
+        <button type="submit">
+            Änderungen speichern
+        </button>
+
+        <a class="button" href="/ui/events/{{ active_event.id }}/driver-profiles">
+            Abbrechen
+        </a>
+    </form>
+</div>
+{% endblock %}

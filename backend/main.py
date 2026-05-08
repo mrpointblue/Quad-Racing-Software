@@ -45,7 +45,7 @@ EVENT_YEAR = datetime.now().year
 
 app = FastAPI(
     title="Quad Parallel Race",
-    version="1.0.0",
+    version="1.1.0",
 )
 
 Base.metadata.create_all(bind=engine)
@@ -74,6 +74,28 @@ ensure_schema_column(
     column_name="show_overall_results",
     column_definition="BOOLEAN DEFAULT 0",
 )
+
+for table_name in ["driver_profiles", "participants"]:
+    ensure_schema_column(
+        table_name=table_name,
+        column_name="youth_card_qr_url",
+        column_definition="VARCHAR",
+    )
+    ensure_schema_column(
+        table_name=table_name,
+        column_name="youth_card_valid_until",
+        column_definition="VARCHAR",
+    )
+    ensure_schema_column(
+        table_name=table_name,
+        column_name="youth_card_checked",
+        column_definition="BOOLEAN DEFAULT 0",
+    )
+    ensure_schema_column(
+        table_name=table_name,
+        column_name="youth_card_checked_at",
+        column_definition="VARCHAR",
+    )
 
 app.mount("/static", StaticFiles(directory="backend/static"), name="static")
 templates = Jinja2Templates(directory="backend/templates")
@@ -336,6 +358,10 @@ def find_or_create_driver_profile(
     team: str | None,
     adac_number: str | None,
     youth_license_number: str | None,
+    youth_card_qr_url: str | None = None,
+    youth_card_valid_until: str | None = None,
+    youth_card_checked: bool = False,
+    youth_card_checked_at: str | None = None,
 ) -> DriverProfile:
     first_name = first_name.strip()
     last_name = last_name.strip()
@@ -356,6 +382,10 @@ def find_or_create_driver_profile(
             team=team,
             adac_number=adac_number,
             youth_license_number=youth_license_number,
+            youth_card_qr_url=youth_card_qr_url,
+            youth_card_valid_until=youth_card_valid_until,
+            youth_card_checked=youth_card_checked,
+            youth_card_checked_at=youth_card_checked_at,
             active=True,
         )
         db.add(driver_profile)
@@ -367,11 +397,45 @@ def find_or_create_driver_profile(
     driver_profile.team = team
     driver_profile.adac_number = adac_number
     driver_profile.youth_license_number = youth_license_number
+    driver_profile.youth_card_qr_url = youth_card_qr_url
+    driver_profile.youth_card_valid_until = youth_card_valid_until
+    driver_profile.youth_card_checked = youth_card_checked
+
+    if youth_card_checked:
+        driver_profile.youth_card_checked_at = (
+            youth_card_checked_at
+            or driver_profile.youth_card_checked_at
+            or now_string()
+        )
+    else:
+        driver_profile.youth_card_checked_at = youth_card_checked_at
+
     driver_profile.active = True
 
     db.flush()
 
     return driver_profile
+
+
+def clean_optional_form_value(value: str | None) -> str | None:
+    if value is None:
+        return None
+
+    return value.strip() or None
+
+
+def parse_form_bool(value: str | None) -> bool:
+    return str(value or "").strip().lower() in ["1", "true", "yes", "on"]
+
+
+def get_youth_card_checked_at(
+    checked: bool,
+    existing_checked_at: str | None = None,
+) -> str | None:
+    if not checked:
+        return None
+
+    return existing_checked_at or now_string()
 
 
 def get_group_key_for_class(race_class: int) -> str:
@@ -1868,6 +1932,7 @@ def ui_event_new_participant(
     db: Session = Depends(get_db),
 ):
     active_event = require_event(event_id, db)
+    settings = get_app_settings(db)
 
     if active_event.closed:
         return RedirectResponse(
@@ -1883,6 +1948,7 @@ def ui_event_new_participant(
             "error": None,
             "success": None,
             "event_year": EVENT_YEAR,
+            "youth_card_scan_enabled": settings.get("youth_card_scan_enabled") == "true",
         },
     )
 
@@ -1900,6 +1966,9 @@ def ui_event_create_participant(
     team: str = Form(""),
     adac_number: str = Form(""),
     youth_license_number: str = Form(""),
+    youth_card_qr_url: str = Form(""),
+    youth_card_valid_until: str = Form(""),
+    youth_card_checked: str = Form("false"),
     db: Session = Depends(get_db),
 ):
     active_event = require_event(event_id, db)
@@ -1919,6 +1988,7 @@ def ui_event_create_participant(
                 "error": "Diese Startnummer ist bereits vergeben.",
                 "success": None,
                 "event_year": EVENT_YEAR,
+                "youth_card_scan_enabled": get_app_settings(db).get("youth_card_scan_enabled") == "true",
             },
         )
 
@@ -1937,6 +2007,7 @@ def ui_event_create_participant(
                     "error": "Dieser Fahrer ist für diese Veranstaltung bereits erfasst.",
                     "success": None,
                     "event_year": EVENT_YEAR,
+                    "youth_card_scan_enabled": get_app_settings(db).get("youth_card_scan_enabled") == "true",
                 },
             )
 
@@ -1951,6 +2022,7 @@ def ui_event_create_participant(
                 "error": str(error),
                 "success": None,
                 "event_year": EVENT_YEAR,
+                "youth_card_scan_enabled": get_app_settings(db).get("youth_card_scan_enabled") == "true",
             },
         )
 
@@ -1969,15 +2041,22 @@ def ui_event_create_participant(
                 "error": "Registrierung nach Nennschluss nicht möglich.",
                 "success": None,
                 "event_year": EVENT_YEAR,
+                "youth_card_scan_enabled": get_app_settings(db).get("youth_card_scan_enabled") == "true",
             },
         )
 
     clean_first_name = first_name.strip()
     clean_last_name = last_name.strip()
-    clean_club = club.strip() or None
-    clean_team = team.strip() or None
-    clean_adac_number = adac_number.strip() or None
-    clean_youth_license_number = youth_license_number.strip() or None
+    clean_club = clean_optional_form_value(club)
+    clean_team = clean_optional_form_value(team)
+    clean_adac_number = clean_optional_form_value(adac_number)
+    clean_youth_license_number = clean_optional_form_value(youth_license_number)
+    clean_youth_card_qr_url = clean_optional_form_value(youth_card_qr_url)
+    clean_youth_card_valid_until = clean_optional_form_value(youth_card_valid_until)
+    clean_youth_card_checked = parse_form_bool(youth_card_checked)
+    clean_youth_card_checked_at = get_youth_card_checked_at(
+        clean_youth_card_checked
+    )
 
     if driver_profile_id:
         driver_profile = db.query(DriverProfile).filter(
@@ -1994,6 +2073,7 @@ def ui_event_create_participant(
                     "error": "Ausgewählter Fahrer wurde nicht gefunden.",
                     "success": None,
                     "event_year": EVENT_YEAR,
+                    "youth_card_scan_enabled": get_app_settings(db).get("youth_card_scan_enabled") == "true",
                 },
             )
 
@@ -2005,6 +2085,13 @@ def ui_event_create_participant(
         driver_profile.team = clean_team
         driver_profile.adac_number = clean_adac_number
         driver_profile.youth_license_number = clean_youth_license_number
+        driver_profile.youth_card_qr_url = clean_youth_card_qr_url
+        driver_profile.youth_card_valid_until = clean_youth_card_valid_until
+        driver_profile.youth_card_checked = clean_youth_card_checked
+        driver_profile.youth_card_checked_at = get_youth_card_checked_at(
+            checked=clean_youth_card_checked,
+            existing_checked_at=driver_profile.youth_card_checked_at,
+        )
         db.flush()
     else:
         driver_profile = find_or_create_driver_profile(
@@ -2017,6 +2104,10 @@ def ui_event_create_participant(
             team=clean_team,
             adac_number=clean_adac_number,
             youth_license_number=clean_youth_license_number,
+            youth_card_qr_url=clean_youth_card_qr_url,
+            youth_card_valid_until=clean_youth_card_valid_until,
+            youth_card_checked=clean_youth_card_checked,
+            youth_card_checked_at=clean_youth_card_checked_at,
         )
 
     participant = Participant(
@@ -2031,6 +2122,10 @@ def ui_event_create_participant(
         team=clean_team,
         adac_number=clean_adac_number,
         youth_license_number=clean_youth_license_number,
+        youth_card_qr_url=clean_youth_card_qr_url,
+        youth_card_valid_until=clean_youth_card_valid_until,
+        youth_card_checked=clean_youth_card_checked,
+        youth_card_checked_at=clean_youth_card_checked_at,
         checked_in=False,
         withdrawn=False,
         withdrawn_reason=None,
@@ -2050,6 +2145,7 @@ def ui_event_create_participant(
             "error": None,
             "success": f"Teilnehmer wurde gespeichert und Klasse {race_class} zugeordnet.",
             "event_year": EVENT_YEAR,
+            "youth_card_scan_enabled": get_app_settings(db).get("youth_card_scan_enabled") == "true",
         },
     )
 
@@ -2066,6 +2162,9 @@ def ui_create_participant_legacy(
     team: str = Form(""),
     adac_number: str = Form(""),
     youth_license_number: str = Form(""),
+    youth_card_qr_url: str = Form(""),
+    youth_card_valid_until: str = Form(""),
+    youth_card_checked: str = Form("false"),
     db: Session = Depends(get_db),
 ):
     active_event = require_active_event(db)
@@ -2082,6 +2181,9 @@ def ui_create_participant_legacy(
         team=team,
         adac_number=adac_number,
         youth_license_number=youth_license_number,
+        youth_card_qr_url=youth_card_qr_url,
+        youth_card_valid_until=youth_card_valid_until,
+        youth_card_checked=youth_card_checked,
         db=db,
     )
 
@@ -2094,6 +2196,7 @@ def ui_event_edit_participant(
     db: Session = Depends(get_db),
 ):
     active_event = require_event(event_id, db)
+    settings = get_app_settings(db)
 
     if active_event.closed:
         return RedirectResponse(
@@ -2120,6 +2223,7 @@ def ui_event_edit_participant(
             "participant": participant,
             "event_year": EVENT_YEAR,
             "error": None,
+            "youth_card_scan_enabled": settings.get("youth_card_scan_enabled") == "true",
         },
     )
 
@@ -2137,6 +2241,9 @@ def ui_event_update_participant(
     team: str = Form(""),
     adac_number: str = Form(""),
     youth_license_number: str = Form(""),
+    youth_card_qr_url: str = Form(""),
+    youth_card_valid_until: str = Form(""),
+    youth_card_checked: str = Form("false"),
     db: Session = Depends(get_db),
 ):
     active_event = require_event(event_id, db)
@@ -2168,6 +2275,7 @@ def ui_event_update_participant(
                 "participant": participant,
                 "event_year": EVENT_YEAR,
                 "error": "Diese Startnummer ist bereits vergeben.",
+                "youth_card_scan_enabled": get_app_settings(db).get("youth_card_scan_enabled") == "true",
             },
         )
 
@@ -2182,6 +2290,7 @@ def ui_event_update_participant(
                 "participant": participant,
                 "event_year": EVENT_YEAR,
                 "error": str(error),
+                "youth_card_scan_enabled": get_app_settings(db).get("youth_card_scan_enabled") == "true",
             },
         )
 
@@ -2204,15 +2313,23 @@ def ui_event_update_participant(
                     "participant": participant,
                     "event_year": EVENT_YEAR,
                     "error": "Registrierung nach Nennschluss nicht möglich.",
+                    "youth_card_scan_enabled": get_app_settings(db).get("youth_card_scan_enabled") == "true",
                 },
             )
 
     clean_first_name = first_name.strip()
     clean_last_name = last_name.strip()
-    clean_club = club.strip() or None
-    clean_team = team.strip() or None
-    clean_adac_number = adac_number.strip() or None
-    clean_youth_license_number = youth_license_number.strip() or None
+    clean_club = clean_optional_form_value(club)
+    clean_team = clean_optional_form_value(team)
+    clean_adac_number = clean_optional_form_value(adac_number)
+    clean_youth_license_number = clean_optional_form_value(youth_license_number)
+    clean_youth_card_qr_url = clean_optional_form_value(youth_card_qr_url)
+    clean_youth_card_valid_until = clean_optional_form_value(youth_card_valid_until)
+    clean_youth_card_checked = parse_form_bool(youth_card_checked)
+    clean_youth_card_checked_at = get_youth_card_checked_at(
+        checked=clean_youth_card_checked,
+        existing_checked_at=participant.youth_card_checked_at,
+    )
 
     driver_profile = find_or_create_driver_profile(
         db=db,
@@ -2224,6 +2341,10 @@ def ui_event_update_participant(
         team=clean_team,
         adac_number=clean_adac_number,
         youth_license_number=clean_youth_license_number,
+        youth_card_qr_url=clean_youth_card_qr_url,
+        youth_card_valid_until=clean_youth_card_valid_until,
+        youth_card_checked=clean_youth_card_checked,
+        youth_card_checked_at=clean_youth_card_checked_at,
     )
 
     participant.driver_profile_id = driver_profile.id
@@ -2236,6 +2357,10 @@ def ui_event_update_participant(
     participant.team = clean_team
     participant.adac_number = clean_adac_number
     participant.youth_license_number = clean_youth_license_number
+    participant.youth_card_qr_url = clean_youth_card_qr_url
+    participant.youth_card_valid_until = clean_youth_card_valid_until
+    participant.youth_card_checked = clean_youth_card_checked
+    participant.youth_card_checked_at = clean_youth_card_checked_at
 
     db.commit()
 
@@ -2257,6 +2382,9 @@ def ui_update_participant_legacy(
     team: str = Form(""),
     adac_number: str = Form(""),
     youth_license_number: str = Form(""),
+    youth_card_qr_url: str = Form(""),
+    youth_card_valid_until: str = Form(""),
+    youth_card_checked: str = Form("false"),
     db: Session = Depends(get_db),
 ):
     active_event = require_active_event(db)
@@ -2273,6 +2401,9 @@ def ui_update_participant_legacy(
         team=team,
         adac_number=adac_number,
         youth_license_number=youth_license_number,
+        youth_card_qr_url=youth_card_qr_url,
+        youth_card_valid_until=youth_card_valid_until,
+        youth_card_checked=youth_card_checked,
         db=db,
     )
 
@@ -2316,6 +2447,170 @@ def ui_delete_participant_legacy(
         event_id=active_event.id,
         participant_id=participant_id,
         db=db,
+    )
+
+
+@app.get("/ui/driver-profiles")
+def ui_driver_profiles_redirect(
+    db: Session = Depends(get_db),
+):
+    return redirect_to_active_event_path(db, "/driver-profiles")
+
+
+@app.get("/ui/events/{event_id}/driver-profiles")
+def ui_event_driver_profiles(
+    event_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+
+    driver_profiles = db.query(DriverProfile).filter(
+        DriverProfile.active == True,
+    ).order_by(
+        DriverProfile.last_name,
+        DriverProfile.first_name,
+        DriverProfile.birth_year,
+    ).all()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="driver_profiles.html",
+        context={
+            "active_event": active_event,
+            "driver_profiles": driver_profiles,
+        },
+    )
+
+
+@app.get("/ui/events/{event_id}/driver-profiles/{driver_profile_id}/edit")
+def ui_event_edit_driver_profile(
+    event_id: int,
+    driver_profile_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+    driver_profile = db.query(DriverProfile).filter(
+        DriverProfile.id == driver_profile_id,
+        DriverProfile.active == True,
+    ).first()
+
+    if not driver_profile:
+        raise HTTPException(
+            status_code=404,
+            detail="Teilnehmerdatensatz nicht gefunden",
+        )
+
+    settings = get_app_settings(db)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="driver_profile_edit.html",
+        context={
+            "active_event": active_event,
+            "driver_profile": driver_profile,
+            "event_year": EVENT_YEAR,
+            "error": None,
+            "youth_card_scan_enabled": settings.get("youth_card_scan_enabled") == "true",
+        },
+    )
+
+
+@app.post("/ui/events/{event_id}/driver-profiles/{driver_profile_id}/edit")
+def ui_event_update_driver_profile(
+    event_id: int,
+    driver_profile_id: int,
+    request: Request,
+    default_start_number: str = Form(""),
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    birth_year: int = Form(...),
+    club: str = Form(""),
+    adac_number: str = Form(""),
+    youth_license_number: str = Form(""),
+    youth_card_qr_url: str = Form(""),
+    youth_card_valid_until: str = Form(""),
+    youth_card_checked: str = Form("false"),
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+    driver_profile = db.query(DriverProfile).filter(
+        DriverProfile.id == driver_profile_id,
+        DriverProfile.active == True,
+    ).first()
+
+    if not driver_profile:
+        raise HTTPException(
+            status_code=404,
+            detail="Teilnehmerdatensatz nicht gefunden",
+        )
+
+    try:
+        determine_race_class(birth_year)
+    except HTTPException as error:
+        return templates.TemplateResponse(
+            request=request,
+            name="driver_profile_edit.html",
+            context={
+                "active_event": active_event,
+                "driver_profile": driver_profile,
+                "event_year": EVENT_YEAR,
+                "error": str(error.detail),
+                "youth_card_scan_enabled": get_app_settings(db).get("youth_card_scan_enabled") == "true",
+            },
+        )
+
+    clean_default_start_number = clean_optional_form_value(default_start_number)
+
+    driver_profile.default_start_number = (
+        int(clean_default_start_number)
+        if clean_default_start_number
+        else None
+    )
+    driver_profile.first_name = first_name.strip()
+    driver_profile.last_name = last_name.strip()
+    driver_profile.birth_year = birth_year
+    driver_profile.club = clean_optional_form_value(club)
+    driver_profile.team = None
+    driver_profile.adac_number = clean_optional_form_value(adac_number)
+    driver_profile.youth_license_number = clean_optional_form_value(youth_license_number)
+    driver_profile.youth_card_qr_url = clean_optional_form_value(youth_card_qr_url)
+    driver_profile.youth_card_valid_until = clean_optional_form_value(youth_card_valid_until)
+    driver_profile.youth_card_checked = parse_form_bool(youth_card_checked)
+    driver_profile.youth_card_checked_at = get_youth_card_checked_at(
+        checked=driver_profile.youth_card_checked,
+        existing_checked_at=driver_profile.youth_card_checked_at,
+    )
+
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/ui/events/{active_event.id}/driver-profiles",
+        status_code=303,
+    )
+
+
+@app.post("/ui/events/{event_id}/driver-profiles/{driver_profile_id}/delete")
+def ui_event_delete_driver_profile(
+    event_id: int,
+    driver_profile_id: int,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+
+    driver_profile = db.query(DriverProfile).filter(
+        DriverProfile.id == driver_profile_id,
+        DriverProfile.active == True,
+    ).first()
+
+    if driver_profile:
+        driver_profile.active = False
+        db.commit()
+
+    return RedirectResponse(
+        url=f"/ui/events/{active_event.id}/driver-profiles",
+        status_code=303,
     )
 
 
@@ -3930,6 +4225,10 @@ def api_search_driver_profiles(
             "team": driver.team,
             "adac_number": driver.adac_number,
             "youth_license_number": driver.youth_license_number,
+            "youth_card_qr_url": driver.youth_card_qr_url,
+            "youth_card_valid_until": driver.youth_card_valid_until,
+            "youth_card_checked": driver.youth_card_checked,
+            "youth_card_checked_at": driver.youth_card_checked_at,
         }
         for driver in drivers
     ]
@@ -4291,6 +4590,10 @@ LOGO_DEFAULT_SETTINGS = {
     "logo_last_error": "",
 }
 
+YOUTH_CARD_DEFAULT_SETTINGS = {
+    "youth_card_scan_enabled": "false",
+}
+
 
 def get_setting(
     db: Session,
@@ -4334,6 +4637,19 @@ def get_logo_settings(db: Session) -> dict:
     settings = {}
 
     for key, default_value in LOGO_DEFAULT_SETTINGS.items():
+        settings[key] = get_setting(
+            db=db,
+            key=key,
+            default_value=default_value,
+        )
+
+    return settings
+
+
+def get_app_settings(db: Session) -> dict:
+    settings = get_logo_settings(db)
+
+    for key, default_value in YOUTH_CARD_DEFAULT_SETTINGS.items():
         settings[key] = get_setting(
             db=db,
             key=key,
@@ -4524,7 +4840,7 @@ def ui_settings(
     db: Session = Depends(get_db),
 ):
     active_event = get_active_event(db)
-    settings = get_logo_settings(db)
+    settings = get_app_settings(db)
     logo_status = build_logo_status(settings)
     system_status = get_system_status()
 
@@ -4587,6 +4903,24 @@ def ui_save_logo_connection(
 
     return RedirectResponse(
         url="/ui/settings?success=LOGO-Verbindung gespeichert",
+        status_code=303,
+    )
+
+
+@app.post("/ui/settings/youth-card")
+def ui_save_youth_card_settings(
+    youth_card_scan_enabled: str = Form("false"),
+    db: Session = Depends(get_db),
+):
+    set_setting(
+        db=db,
+        key="youth_card_scan_enabled",
+        value="true" if youth_card_scan_enabled == "true" else "false",
+    )
+    db.commit()
+
+    return RedirectResponse(
+        url="/ui/settings?success=Jugendkarten-Einstellung gespeichert",
         status_code=303,
     )
 

@@ -18,6 +18,25 @@
 </div>
 
 <div class="card">
+    <h3>ADAC Jugendkarte</h3>
+
+    <p>
+        Vorbereitung für die spätere Jugendkarten-Prüfung. Der QR-Link wird nur lokal gespeichert,
+        es erfolgt keine externe Abfrage.
+    </p>
+
+    <form method="post" action="/ui/settings/youth-card">
+        <label>Jugendkarte scannen aktivieren</label>
+        <select name="youth_card_scan_enabled">
+            <option value="false" {% if settings.youth_card_scan_enabled != "true" %}selected{% endif %}>Nein</option>
+            <option value="true" {% if settings.youth_card_scan_enabled == "true" %}selected{% endif %}>Ja</option>
+        </select>
+
+        <button type="submit">Jugendkarten-Einstellung speichern</button>
+    </form>
+</div>
+
+<div class="card">
     <h3>Siemens LOGO! Verbindung</h3>
 
     <form method="post" action="/ui/settings/logo">
