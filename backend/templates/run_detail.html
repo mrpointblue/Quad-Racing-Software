@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if race_run.round_name == "vorlauf" or race_run.round_name == "viertelfinale" %}
+    {% set round_number = 1 %}
+    {% set round_label = "Viertelfinale" %}
+{% elif race_run.round_name == "halbfinale" %}
+    {% set round_number = 2 %}
+    {% set round_label = "Halbfinale" %}
+{% elif race_run.round_name == "finale" %}
+    {% set round_number = 3 %}
+    {% set round_label = "Finale" %}
+{% else %}
+    {% set round_number = 0 %}
+    {% set round_label = race_run.round_name %}
+{% endif %}
+
+<div class="card compact-run-header">
+    <div class="run-title-row">
+        <div>
+            <h2>
+                {{ round_label }} · Paarung {{ pairing.pairing_number }} · Lauf {{ round_number }}.{{ race_run.run_number }}
+                – Klasse {{ race_run.race_class }}
+            </h2>
+
+            <p>
+                Status: <strong>{{ race_run.status }}</strong>
+                |
+                Wiederholungen: <strong>{{ race_run.reset_count or 0 }}</strong>
+            </p>
+
+            {% if race_run.last_reset_at %}
+                <p>
+                    Letzte Wiederholung/Reset:
+                    <strong>{{ race_run.last_reset_at }}</strong>
+                    durch
+                    <strong>{{ race_run.last_reset_by or "-" }}</strong>
+                </p>
+            {% endif %}
+
+            {% if active_event.closed %}
+                <div class="error">
+                    Diese Veranstaltung ist geschlossen. Änderungen sind nicht mehr möglich.
+                </div>
+            {% endif %}
+        </div>
+
+        <div>
+            <a class="button small-button" href="/ui/events/{{ active_event.id }}/classes">
+                Zur Laufübersicht
+            </a>
+
+            {% if next_unconfirmed_run and next_unconfirmed_run.id != race_run.id %}
+                <a class="button small-button" href="/ui/events/{{ active_event.id }}/timekeeper/run/{{ next_unconfirmed_run.id }}">
+                    Nächster Lauf
+                    · {{ next_unconfirmed_run.round_label }}
+                    · Klasse {{ next_unconfirmed_run.race_class }}
+                    · {{ next_unconfirmed_run.round_number }}.{{ next_unconfirmed_run.run_number }}
+                </a>
+            {% endif %}
+
+            <a class="button small-button" href="/ui/events/{{ active_event.id }}/timekeeper/class/{{ race_run.race_class }}">
+                Klasse {{ race_run.race_class }}
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if start_error == "not-next" %}
+    <div class="card">
+        <div class="error">
+            Dieser Lauf kann noch nicht gestartet werden. Bitte zuerst den nächsten vorgesehenen Lauf öffnen.
+        </div>
+    </div>
+{% endif %}
+
+<div class="run-control-grid">
+    <div class="card compact-control-card">
+        <h3>Ampel</h3>
+
+        <div class="traffic-light-box">
+            {% if race_run.traffic_light_status == "red" %}
+                🔴 ROT
+            {% elif race_run.traffic_light_status == "yellow" %}
+                🟡 GELB
+            {% elif race_run.traffic_light_status == "green" %}
+                🟢 GRÜN
+            {% else %}
+                ⚫ AUS
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card compact-control-card">
+        <h3>Fehlstart</h3>
+
+        <div class="false-start-box">
+            {% if race_run.false_start_lane == "none" %}
+                Kein Fehlstart
+            {% elif race_run.false_start_lane == "lane_a" %}
+                Fehlstart Bahn A
+            {% elif race_run.false_start_lane == "lane_b" %}
+                Fehlstart Bahn B
+            {% elif race_run.false_start_lane == "both" %}
+                Fehlstart beide Bahnen
+            {% endif %}
+        </div>
+
+        {% if not race_run.confirmed and not active_event.closed %}
+            <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/false-start">
+                <select name="false_start_lane">
+                    <option value="none" {% if race_run.false_start_lane == "none" %}selected{% endif %}>Kein Fehlstart</option>
+                    <option value="lane_a" {% if race_run.false_start_lane == "lane_a" %}selected{% endif %}>Bahn A</option>
+                    <option value="lane_b" {% if race_run.false_start_lane == "lane_b" %}selected{% endif %}>Bahn B</option>
+                    <option value="both" {% if race_run.false_start_lane == "both" %}selected{% endif %}>Beide</option>
+                </select>
+
+                <button type="submit" class="small-button">Speichern</button>
+            </form>
+        {% endif %}
+    </div>
+
+    <div class="card compact-control-card">
+        <h3>Steuerung</h3>
+
+        {% if active_event.closed %}
+            <div class="error">Gesperrt</div>
+        {% elif not race_run.confirmed and is_next_startable_run %}
+            <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/start" style="display:inline;">
+                <button type="submit" class="start-button">START</button>
+            </form>
+
+            <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/reset" style="display:inline;">
+                <button
+                    type="submit"
+                    class="reset-button"
+                    onclick="return confirm('Zeitmessanlage wirklich resetten? Zeiten und Fehlerpunkte bleiben erhalten.')"
+                >
+                    RESET
+                </button>
+            </form>
+        {% elif not race_run.confirmed %}
+            <div class="error">
+                Start gesperrt. Dieser Lauf ist noch nicht als nächster Lauf vorgesehen.
+            </div>
+
+            {% if next_unconfirmed_run %}
+                <a class="button small-button" href="/ui/events/{{ active_event.id }}/timekeeper/run/{{ next_unconfirmed_run.id }}">
+                    Zum nächsten Lauf
+                </a>
+            {% endif %}
+        {% else %}
+            <div class="success">Lauf bestätigt</div>
+        {% endif %}
+
+        {% if not active_event.closed %}
+            <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/repeat" style="margin-top:10px;">
+                <button
+                    type="submit"
+                    class="reset-button"
+                    onclick="return confirm('Lauf wirklich wiederholen? Alle Zeiten und Fehlerpunkte dieses Laufes werden gelöscht und der Lauf wird neu geöffnet.')"
+                >
+                    LAUF WIEDERHOLEN
+                </button>
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <h3>Zeitnahme und Fehlerpunkte</h3>
+
+    <p>
+        Die Zeit wird technisch in Millisekunden gespeichert, aber als <strong>MM:SS,HH</strong> angezeigt.
+        Fehlerpunkte können auch nach Bestätigung angepasst werden und werden in 5er-Schritten erfasst.
+    </p>
+
+    <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/save">
+        <table class="compact-runs-table">
+            <thead>
+                <tr>
+                    <th>Bahn</th>
+                    <th>Fahrer</th>
+                    <th>Zeit</th>
+
+                    {% for sector in sectors %}
+                        <th>S{{ sector }} Fehlerpunkte</th>
+                    {% endfor %}
+
+                    <th>Allgemeine Fehlerpunkte</th>
+                    <th>Summe Fehlerpunkte</th>
+                    <th>Gewertete Zeit</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for result in results %}
+                <tr>
+                    <td>
+                        <strong>
+                            {% if result.lane == "lane_a" %}
+                                Bahn A
+                            {% else %}
+                                Bahn B
+                            {% endif %}
+                        </strong>
+                    </td>
+
+                    <td>
+                        #{{ result.participant.start_number }}
+                        {{ result.participant.first_name }}
+                        {{ result.participant.last_name }}
+
+                        {% if result.participant.withdrawn %}
+                            <div class="withdrawn-note">
+                                Ausgeschieden
+                                {% if result.participant.withdrawn_reason %}
+                                    / {{ result.participant.withdrawn_reason }}
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        <input
+                            class="small-number-input time-ms-input"
+                            type="number"
+                            name="raw_time_ms_{{ result.id }}"
+                            value="{{ result.raw_time_ms or '' }}"
+                            placeholder="ms"
+                            min="0"
+                            oninput="updateTimeDisplays()"
+                            {% if race_run.confirmed or active_event.closed or result.participant.withdrawn %}disabled{% endif %}
+                        >
+                        <div class="time-display" id="time_display_{{ result.id }}">
+                            —
+                        </div>
+                    </td>
+
+                    {% for sector in sectors %}
+                        <td>
+                            <input
+                                class="tiny-number-input"
+                                type="number"
+                                name="sector_{{ sector }}_penalty_{{ result.id }}"
+                                value="{{ result.sector_penalties[sector] }}"
+                                min="0"
+                                step="5"
+                                {% if result.participant.withdrawn %}disabled{% endif %}
+                            >
+                        </td>
+                    {% endfor %}
+
+                    <td>
+                        <input
+                            class="tiny-number-input"
+                            type="number"
+                            name="general_penalty_{{ result.id }}"
+                            value="{{ result.general_penalty or 0 }}"
+                            min="0"
+                            step="5"
+                            {% if result.participant.withdrawn %}disabled{% endif %}
+                        >
+                    </td>
+
+                    <td>
+                        {% if result.participant.withdrawn %}
+                            —
+                        {% else %}
+                            <strong>{{ result.total_penalty_seconds }}</strong>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if result.participant.withdrawn %}
+                            —
+                        {% elif result.valued_time_ms is not none %}
+                            <strong>{{ result.valued_time_display }}</strong>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <button type="submit" class="small-button">
+            {% if race_run.confirmed or active_event.closed %}
+                Fehlerpunkte speichern
+            {% else %}
+                Speichern
+            {% endif %}
+        </button>
+    </form>
+</div>
+
+<div class="card compact-confirm-card">
+    {% if race_run.confirmed %}
+        <div class="success">Dieser Lauf ist bestätigt.</div>
+    {% elif active_event.closed %}
+        <div class="error">Diese Veranstaltung ist geschlossen. Lauf kann nicht bestätigt werden.</div>
+    {% else %}
+        <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/confirm">
+            <button type="submit" onclick="return confirm('Lauf wirklich bestätigen? Danach ist er abgeschlossen.')">
+                Lauf bestätigen
+            </button>
+        </form>
+    {% endif %}
+</div>
+
+<script>
+    function formatMilliseconds(ms) {
+        if (ms === null || ms === undefined || isNaN(ms) || ms < 0) {
+            return "—";
+        }
+
+        const totalCentiseconds = Math.round(ms / 10);
+        const minutes = Math.floor(totalCentiseconds / 6000);
+        const seconds = Math.floor((totalCentiseconds % 6000) / 100);
+        const hundredths = totalCentiseconds % 100;
+
+        return (
+            String(minutes).padStart(2, "0") +
+            ":" +
+            String(seconds).padStart(2, "0") +
+            "," +
+            String(hundredths).padStart(2, "0")
+        );
+    }
+
+    function updateTimeDisplays() {
+        const inputs = document.querySelectorAll(".time-ms-input");
+
+        inputs.forEach(function(input) {
+            const resultId = input.name.replace("raw_time_ms_", "");
+            const display = document.getElementById("time_display_" + resultId);
+
+            if (!display) {
+                return;
+            }
+
+            const value = input.value.trim();
+
+            if (value === "") {
+                display.innerText = "—";
+                return;
+            }
+
+            display.innerText = formatMilliseconds(parseInt(value));
+        });
+    }
+
+    updateTimeDisplays();
+</script>
+{% endblock %}

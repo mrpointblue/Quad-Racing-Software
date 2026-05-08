@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block title %}Monitor{% if active_event %} - {{ active_event.event_number }}{% endif %}{% endblock %}
+
+{% block body_class %}monitor-body monitor-{{ monitor_data.display_setting.display_orientation or 'landscape' }}{% endblock %}
+
+{% block content %}
+<div class="monitor-page">
+    <div class="monitor-topbar">
+        <div>
+            <h1>Monitor</h1>
+            <p id="monitor_event">—</p>
+        </div>
+        <div id="monitor_time" class="monitor-clock">—</div>
+    </div>
+
+    <div id="monitor_starter_grid" class="monitor-grid"{% if not monitor_data.current_run and monitor_data.next_runs|length == 0 %} hidden{% endif %}>
+        <section class="monitor-panel monitor-current">
+            <h2>Aktuelle Paarung</h2>
+            <div id="current_run_meta" class="monitor-meta">—</div>
+
+            <div class="monitor-lanes">
+                <div class="monitor-lane">
+                    <div class="monitor-lane-title">Bahn A</div>
+                    <div id="current_lane_a_driver" class="monitor-driver">—</div>
+                    <div class="monitor-values">
+                        <span>Zeit</span>
+                        <strong id="current_lane_a_time">—</strong>
+                        <span>Fehlerpunkte</span>
+                        <strong id="current_lane_a_penalty">—</strong>
+                        <span>Ergebnis</span>
+                        <strong id="current_lane_a_result">—</strong>
+                    </div>
+                </div>
+
+                <div class="monitor-lane">
+                    <div class="monitor-lane-title">Bahn B</div>
+                    <div id="current_lane_b_driver" class="monitor-driver">—</div>
+                    <div class="monitor-values">
+                        <span>Zeit</span>
+                        <strong id="current_lane_b_time">—</strong>
+                        <span>Fehlerpunkte</span>
+                        <strong id="current_lane_b_penalty">—</strong>
+                        <span>Ergebnis</span>
+                        <strong id="current_lane_b_result">—</strong>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="monitor-panel">
+            <h2>Nächste Starter</h2>
+            <div id="next_runs" class="monitor-next-list">—</div>
+        </section>
+    </div>
+
+    <section id="monitor_output_results" class="monitor-panel">
+        <h2>Monitor-Ausgabe</h2>
+        <div id="monitor_results" class="monitor-results">
+            {% if monitor_data.result_sections|length > 0 %}
+                {% for section in monitor_data.result_sections %}
+                    <h3>{{ section.title }}</h3>
+                    <table class="monitor-results-table monitor-race-results-table">
+                        <thead>
+                            <tr>
+                                <th>Kl.</th>
+                                <th>Pl.</th>
+                                <th>Fahrer</th>
+                                <th>Runde</th>
+                                <th>Zeit</th>
+                                <th>FP</th>
+                                <th>Ergebnis</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in section.rows %}
+                                <tr>
+                                    <td>{{ row.race_class }}</td>
+                                    <td><strong>{{ row.place }}</strong></td>
+                                    <td>{{ row.driver }}</td>
+                                    <td>{{ row.round_label }}</td>
+                                    <td>{{ row.raw_time }}</td>
+                                    <td>{{ row.penalty }}</td>
+                                    <td><strong>{{ row.valued_time }}</strong></td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endfor %}
+            {% endif %}
+
+            {% if monitor_data.team_results|length > 0 %}
+                <h3>Mannschaftswertung</h3>
+                <table class="monitor-results-table monitor-team-results-table">
+                    <thead>
+                        <tr>
+                            <th>Pl.</th>
+                            <th>Team</th>
+                            <th>Punkte</th>
+                            <th>Gewertet</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in monitor_data.team_results %}
+                            <tr>
+                                <td><strong>{{ row.place }}</strong></td>
+                                <td>{{ row.team_name }}</td>
+                                <td><strong>{{ row.points }}</strong></td>
+                                <td>
+                                    {% for member in row.members %}
+                                        {% if member.counted %}
+                                            #{{ member.start_number }} {{ member.driver }} · Kl. {{ member.race_class }} · {{ member.points }} Pkt.<br>
+                                        {% endif %}
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+
+            {% if monitor_data.result_sections|length == 0 and monitor_data.team_results|length == 0 %}
+                Keine Monitor-Ausgabe ausgewählt
+            {% endif %}
+        </div>
+    </section>
+</div>
+
+<script>
+    const monitorEventId = {{ active_event.id }};
+
+    function text(id, value) {
+        const element = document.getElementById(id);
+
+        if (element) {
+            element.textContent = value || "—";
+        }
+    }
+
+    function runLabel(run) {
+        return (
+            run.round_label +
+            " · Klasse " + run.race_class +
+            " · Paarung " + run.pairing_number +
+            " · Lauf " + run.round_number + "." + run.run_number
+        );
+    }
+
+    function cleanDriverName(driver) {
+        return String(driver || "—").replace("#", "");
+    }
+
+    function renderCurrentRun(run) {
+        if (!run) {
+            text("current_run_meta", "Kein aktiver Lauf");
+            text("current_lane_a_driver", "—");
+            text("current_lane_a_time", "—");
+            text("current_lane_a_penalty", "—");
+            text("current_lane_a_result", "—");
+            text("current_lane_b_driver", "—");
+            text("current_lane_b_time", "—");
+            text("current_lane_b_penalty", "—");
+            text("current_lane_b_result", "—");
+            return;
+        }
+
+        text("current_run_meta", runLabel(run) + " · Status: " + run.status);
+        text("current_lane_a_driver", run.lane_a.driver);
+        text("current_lane_a_time", run.lane_a.raw_time);
+        text("current_lane_a_penalty", String(run.lane_a.penalty));
+        text("current_lane_a_result", run.lane_a.valued_time);
+        text("current_lane_b_driver", run.lane_b.driver);
+        text("current_lane_b_time", run.lane_b.raw_time);
+        text("current_lane_b_penalty", String(run.lane_b.penalty));
+        text("current_lane_b_result", run.lane_b.valued_time);
+    }
+
+    function renderNextRuns(runs) {
+        const container = document.getElementById("next_runs");
+
+        if (!container) {
+            return;
+        }
+
+        container.innerHTML = "";
+
+        if (!runs || runs.length === 0) {
+            container.textContent = "Keine weiteren Starter";
+            return;
+        }
+
+        runs.forEach((run) => {
+            const item = document.createElement("div");
+            item.className = "monitor-next-item";
+            item.innerHTML =
+                "<div><strong>Bahn A: " + cleanDriverName(run.lane_a && run.lane_a.driver) + "</strong></div>" +
+                "<div><strong>Bahn B: " + cleanDriverName(run.lane_b && run.lane_b.driver) + "</strong></div>" +
+                "<div class='monitor-next-meta'>" + runLabel(run) + "</div>";
+            container.appendChild(item);
+        });
+    }
+
+    function renderResultSection(section) {
+        const wrapper = document.createElement("div");
+        const headline = document.createElement("h3");
+        headline.textContent = section.title;
+        wrapper.appendChild(headline);
+
+        const runs = section.rows || [];
+
+        const table = document.createElement("table");
+        table.className = "monitor-results-table monitor-race-results-table";
+        table.innerHTML =
+            "<thead>" +
+                "<tr>" +
+                    "<th>Kl.</th>" +
+                    "<th>Pl.</th>" +
+                    "<th>Fahrer</th>" +
+                    "<th>Runde</th>" +
+                    "<th>Zeit</th>" +
+                    "<th>FP</th>" +
+                    "<th>Ergebnis</th>" +
+                "</tr>" +
+            "</thead>";
+
+        const tbody = document.createElement("tbody");
+
+        runs.forEach((row) => {
+            const tr = document.createElement("tr");
+            tr.innerHTML =
+                "<td>" + row.race_class + "</td>" +
+                "<td><strong>" + row.place + "</strong></td>" +
+                "<td>" + row.driver + "</td>" +
+                "<td>" + row.round_label + "</td>" +
+                "<td>" + row.raw_time + "</td>" +
+                "<td>" + row.penalty + "</td>" +
+                "<td><strong>" + row.valued_time + "</strong></td>";
+            tbody.appendChild(tr);
+        });
+
+        table.appendChild(tbody);
+        wrapper.appendChild(table);
+
+        return wrapper;
+    }
+
+    function renderTeamResults(rows) {
+        const wrapper = document.createElement("div");
+        const headline = document.createElement("h3");
+        headline.textContent = "Mannschaftswertung";
+        wrapper.appendChild(headline);
+
+        const table = document.createElement("table");
+        table.className = "monitor-results-table monitor-team-results-table";
+        table.innerHTML =
+            "<thead>" +
+                "<tr>" +
+                    "<th>Pl.</th>" +
+                    "<th>Team</th>" +
+                    "<th>Punkte</th>" +
+                    "<th>Gewertet</th>" +
+                "</tr>" +
+            "</thead>";
+
+        const tbody = document.createElement("tbody");
+
+        rows.forEach((row) => {
+            const counted = (row.members || [])
+                .filter((member) => member.counted)
+                .map((member) => (
+                    "#" + member.start_number +
+                    " " + member.driver +
+                    " · Kl. " + member.race_class +
+                    " · " + member.points + " Pkt."
+                ))
+                .join("<br>");
+            const tr = document.createElement("tr");
+            tr.innerHTML =
+                "<td><strong>" + row.place + "</strong></td>" +
+                "<td>" + row.team_name + "</td>" +
+                "<td><strong>" + row.points + "</strong></td>" +
+                "<td>" + counted + "</td>";
+            tbody.appendChild(tr);
+        });
+
+        table.appendChild(tbody);
+        wrapper.appendChild(table);
+
+        return wrapper;
+    }
+
+    function renderMonitorResults(resultSections, teamResults) {
+        const container = document.getElementById("monitor_results");
+
+        if (!container) {
+            return;
+        }
+
+        container.innerHTML = "";
+
+        const sections = resultSections || [];
+        const teams = teamResults || [];
+
+        sections.forEach((section) => {
+            container.appendChild(renderResultSection(section));
+        });
+
+        if (teams.length > 0) {
+            container.appendChild(renderTeamResults(teams));
+        }
+
+        if (sections.length === 0 && teams.length === 0) {
+            container.textContent = "Keine Monitor-Ausgabe ausgewählt";
+        }
+    }
+
+    function updateStarterGrid(currentRun, nextRuns) {
+        const grid = document.getElementById("monitor_starter_grid");
+
+        if (!grid) {
+            return;
+        }
+
+        const hasCurrentRun = Boolean(currentRun);
+        const hasNextRuns = Boolean(nextRuns && nextRuns.length > 0);
+        grid.hidden = !hasCurrentRun && !hasNextRuns;
+    }
+
+    function pollMonitor() {
+        fetch("/api/events/" + monitorEventId + "/monitor")
+            .then((response) => response.json())
+            .then((data) => {
+                document.body.classList.toggle("monitor-portrait", data.display_setting.display_orientation === "portrait");
+                document.body.classList.toggle("monitor-landscape", data.display_setting.display_orientation !== "portrait");
+                text("monitor_event", data.event.event_number + " · " + data.event.name + " · " + data.event.organizer_club);
+                text("monitor_time", data.server_time);
+                updateStarterGrid(data.current_run, data.next_runs);
+                renderCurrentRun(data.current_run);
+                renderMonitorResults(data.result_sections, data.team_results);
+                renderNextRuns(data.next_runs);
+            })
+            .catch(() => {
+                text("monitor_results", "Monitor-Daten konnten nicht geladen werden.");
+            });
+    }
+
+    pollMonitor();
+    setInterval(pollMonitor, 2000);
+</script>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Gesamtwertung Klasse {{ race_class }}{% if active_event %} - {{ active_event.event_number }}{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Ergebnis – Klasse {{ race_class }}</h2>
+
+    {% if active_event %}
+        <p>
+            Veranstaltung:
+            <strong>{{ active_event.event_number }} – {{ active_event.name }}</strong>
+        </p>
+    {% endif %}
+
+    <a class="button small-button" href="/ui/events/{{ active_event.id }}/results">
+        Zurück zu Ergebnisse
+    </a>
+
+    <a class="button small-button" href="/ui/events/{{ active_event.id }}/export/class/{{ race_class }}/overall/xlsx">
+        Gesamtwertung Export
+    </a>
+
+    <button type="button" class="small-button print-button" onclick="window.print()">
+        Gesamtwertung Druck
+    </button>
+</div>
+
+<div class="card">
+    {% if result_rows|length > 0 %}
+        <table class="compact-runs-table">
+            <thead>
+                <tr>
+                    <th>Platz</th>
+                    <th>Startnr.</th>
+                    <th>Fahrer</th>
+                    <th>Verein</th>
+
+                    <th>Viertelfinale Zeit</th>
+                    <th>Viertelfinale FP</th>
+                    <th>Viertelfinale Ergebnis</th>
+
+                    <th>Halbfinale Zeit</th>
+                    <th>Halbfinale FP</th>
+                    <th>Halbfinale Ergebnis</th>
+
+                    <th>Finale Zeit</th>
+                    <th>Finale FP</th>
+                    <th>Finale Ergebnis</th>
+
+                    <th>Gesamt FP</th>
+                    <th>Gesamtzeit</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for row in result_rows %}
+                <tr>
+                    <td><strong>{{ row.place }}</strong></td>
+                    <td>{{ row.start_number }}</td>
+                    <td>{{ row.driver_name }}</td>
+                    <td>{{ row.club }}</td>
+
+                    <td>{{ row.preliminary.round_total_display }}</td>
+                    <td>{{ row.preliminary.round_penalty }}</td>
+                    <td><strong>{{ row.preliminary.round_total_display }}</strong></td>
+
+                    <td>{{ row.semifinal.round_total_display }}</td>
+                    <td>{{ row.semifinal.round_penalty }}</td>
+                    <td><strong>{{ row.semifinal.round_total_display }}</strong></td>
+
+                    <td>{{ row.final.round_total_display }}</td>
+                    <td>{{ row.final.round_penalty }}</td>
+                    <td><strong>{{ row.final.round_total_display }}</strong></td>
+
+                    <td><strong>{{ row.total_penalty }}</strong></td>
+                    <td><strong>{{ row.total_display }}</strong></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Noch keine Ergebnisdaten vorhanden.</p>
+    {% endif %}
+</div>
+{% endblock %}

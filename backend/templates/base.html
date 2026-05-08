@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Quad Parallel Race{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css?v=20260508-12">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+    <div class="header" style="position: relative;">
+        <a
+            href="/ui/settings"
+            title="Konfiguration"
+            style="
+                position: absolute;
+                top: 16px;
+                right: 20px;
+                color: white;
+                text-decoration: none;
+                font-size: 48px;
+                line-height: 1;
+            "
+        >
+            ⚙
+        </a>
+
+        <h1>
+            Quad Parallel Race
+            {% if active_event %}
+                &gt;&gt; {{ active_event.event_number }} – {{ active_event.name }}
+            {% endif %}
+        </h1>
+
+        {% if active_event %}
+            <div style="margin-top: 8px; font-size: 14px;">
+                Datum: <strong>{{ active_event.event_date or "-" }}</strong>
+                |
+                Uhrzeit: <strong>{{ current_time_string() }}</strong>
+                |
+                Ort: <strong>{{ active_event.location or "-" }}</strong>
+                |
+                Sektoren pro Bahn: <strong>{{ active_event.sectors_per_lane or 4 }}</strong>
+
+                {% if active_event.closed %}
+                    |
+                    <span style="color: #fecaca;">
+                        Veranstaltung geschlossen: {{ active_event.closed_reason or "-" }}
+                    </span>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="nav">
+        <a href="/ui/events">Veranstaltungen</a>
+
+        {% if active_event %}
+            <a href="/ui/events/{{ active_event.id }}/dashboard">Dashboard</a>
+            <a href="/ui/events/{{ active_event.id }}/participants/new">Teilnehmer erfassen</a>
+            <a href="/ui/events/{{ active_event.id }}/participants">Teilnehmerliste</a>
+            <a href="/ui/events/{{ active_event.id }}/registration">Nennfreigabe</a>
+            <a href="/ui/events/{{ active_event.id }}/classes">Läufe</a>
+            <a href="/ui/events/{{ active_event.id }}/results">Ergebnisse</a>
+            <a href="/ui/events/{{ active_event.id }}/teams">Mannschaftswertung</a>
+            <a href="/ui/events/{{ active_event.id }}/monitor-output">Ausgabe Monitor</a>
+            <a href="/ui/events/{{ active_event.id }}/monitor">Monitor</a>
+        {% endif %}
+    </div>
+
+    {% if active_event %}
+        <div
+            id="notification_bar"
+            class="notification-bar"
+            data-event-id="{{ active_event.id }}"
+            {% if not (pending_registration_notifications is defined and pending_registration_notifications) %}
+                style="display:none;"
+            {% endif %}
+        >
+            {% if pending_registration_notifications is defined and pending_registration_notifications %}
+                {% for notification in pending_registration_notifications %}
+                    <div class="notification-item registration-release-notification">
+                        <div class="notification-text">
+                            <strong>{{ notification.group_name }}</strong>
+                            <span>{{ notification.message }}</span>
+                            <small>{{ notification.created_at or "" }}</small>
+                        </div>
+
+                        <form method="post" action="/ui/notifications/{{ notification.id }}/acknowledge">
+                            <input type="hidden" name="acknowledged_by" value="Zeitnahme">
+                            <button type="submit" class="small-button">
+                                Bestätigen
+                            </button>
+                        </form>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    {% if active_event %}
+        <script>
+            function renderNotificationBar(notifications) {
+                const bar = document.getElementById("notification_bar");
+
+                if (!bar) {
+                    return;
+                }
+
+                bar.innerHTML = "";
+
+                if (!notifications || notifications.length === 0) {
+                    bar.style.display = "none";
+                    return;
+                }
+
+                notifications.forEach((notification) => {
+                    const item = document.createElement("div");
+                    item.className = "notification-item registration-release-notification";
+
+                    const textBlock = document.createElement("div");
+                    textBlock.className = "notification-text";
+
+                    const title = document.createElement("strong");
+                    title.textContent = notification.group_name;
+
+                    const message = document.createElement("span");
+                    message.textContent = notification.message;
+
+                    const createdAt = document.createElement("small");
+                    createdAt.textContent = notification.created_at || "";
+
+                    textBlock.appendChild(title);
+                    textBlock.appendChild(message);
+                    textBlock.appendChild(createdAt);
+
+                    const form = document.createElement("form");
+                    form.method = "post";
+                    form.action = "/ui/notifications/" + notification.id + "/acknowledge";
+
+                    const acknowledgedBy = document.createElement("input");
+                    acknowledgedBy.type = "hidden";
+                    acknowledgedBy.name = "acknowledged_by";
+                    acknowledgedBy.value = "Zeitnahme";
+
+                    const button = document.createElement("button");
+                    button.type = "submit";
+                    button.className = "small-button";
+                    button.textContent = "Bestätigen";
+
+                    form.appendChild(acknowledgedBy);
+                    form.appendChild(button);
+
+                    item.appendChild(textBlock);
+                    item.appendChild(form);
+                    bar.appendChild(item);
+                });
+
+                bar.style.display = "";
+            }
+
+            function pollRegistrationNotifications() {
+                const bar = document.getElementById("notification_bar");
+
+                if (!bar || !bar.dataset.eventId) {
+                    return;
+                }
+
+                fetch("/api/events/" + bar.dataset.eventId + "/notifications/pending")
+                    .then((response) => response.json())
+                    .then((data) => renderNotificationBar(data.notifications))
+                    .catch(() => {});
+            }
+
+            setInterval(pollRegistrationNotifications, 5000);
+        </script>
+    {% endif %}
+
+    <script>
+        if (new URLSearchParams(window.location.search).get("print") === "1") {
+            window.addEventListener("load", () => window.print());
+        }
+    </script>
+</body>
+</html>

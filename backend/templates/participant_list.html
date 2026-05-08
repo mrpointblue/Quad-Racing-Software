@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Teilnehmerliste</h2>
+
+    {% if active_event %}
+        <p>
+            Veranstaltung:
+            <strong>{{ active_event.event_number }} – {{ active_event.name }}</strong>
+        </p>
+    {% endif %}
+
+    {% if not active_event.closed %}
+        <a class="button small-button" href="/ui/events/{{ active_event.id }}/participants/new">
+            Teilnehmer erfassen
+        </a>
+    {% else %}
+        <div class="error">
+            Diese Veranstaltung ist geschlossen. Teilnehmer können nicht mehr geändert werden.
+        </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>Suchen / Filtern</h3>
+
+    <label>Suche</label>
+    <input
+        type="text"
+        id="participant_search"
+        placeholder="Startnummer, Name, Verein, ADAC Nummer, Jugendausweisnummer"
+        oninput="filterParticipants()"
+    >
+
+    <label>Klasse</label>
+    <select id="class_filter" onchange="filterParticipants()">
+        <option value="">Alle Klassen</option>
+        <option value="1">Klasse 1</option>
+        <option value="2">Klasse 2</option>
+        <option value="3">Klasse 3</option>
+        <option value="4">Klasse 4</option>
+        <option value="5">Klasse 5</option>
+    </select>
+
+    <label>Status</label>
+    <select id="status_filter" onchange="filterParticipants()">
+        <option value="">Alle</option>
+        <option value="aktiv">Aktiv</option>
+        <option value="ausgeschieden">Ausgeschieden</option>
+    </select>
+</div>
+
+<div class="card">
+    {% if participants|length > 0 %}
+        <table class="compact-runs-table" id="participants_table">
+            <thead>
+                <tr>
+                    <th>Startnr.</th>
+                    <th>Name</th>
+                    <th>Geburtsjahr</th>
+                    <th>Klasse</th>
+                    <th>Verein</th>
+                    <th>Team</th>
+                    <th>ADAC Nummer</th>
+                    <th>Jugendausweisnummer</th>
+                    <th>Status</th>
+                    <th>Fahrerstamm</th>
+                    <th>Aktion</th>
+                    <th>Ausscheiden</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for participant in participants %}
+                <tr
+                    data-search="
+                        {{ participant.start_number }}
+                        {{ participant.first_name }}
+                        {{ participant.last_name }}
+                        {{ participant.birth_year }}
+                        Klasse {{ participant.race_class }}
+                        {{ participant.club or '' }}
+                        {{ participant.team or '' }}
+                        {{ participant.adac_number or '' }}
+                        {{ participant.youth_license_number or '' }}
+                    "
+                    data-class="{{ participant.race_class }}"
+                    data-status="{% if participant.withdrawn %}ausgeschieden{% else %}aktiv{% endif %}"
+                >
+                    <td><strong>{{ participant.start_number }}</strong></td>
+
+                    <td>
+                        {{ participant.first_name }}
+                        {{ participant.last_name }}
+                    </td>
+
+                    <td>{{ participant.birth_year }}</td>
+                    <td>{{ participant.race_class }}</td>
+                    <td>{{ participant.club or "" }}</td>
+                    <td>{{ participant.team or "" }}</td>
+
+                    <td>
+                        {% if participant.adac_number %}
+                            {{ participant.adac_number }}
+                        {% else %}
+                            <span class="error">fehlt</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if participant.youth_license_number %}
+                            {{ participant.youth_license_number }}
+                        {% else %}
+                            <span class="error">fehlt</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if participant.withdrawn %}
+                            <span class="error">
+                                Ausgeschieden
+                                {% if participant.withdrawn_reason %}
+                                    – {{ participant.withdrawn_reason }}
+                                {% endif %}
+                            </span>
+                            {% if participant.withdrawn_at %}
+                                <br>
+                                <small>{{ participant.withdrawn_at }}</small>
+                            {% endif %}
+                        {% else %}
+                            <span class="success">Aktiv</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if participant.driver_profile_id %}
+                            <span class="success">Ja</span>
+                        {% else %}
+                            <span class="error">Nein</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if not active_event.closed %}
+                            <a
+                                class="button small-button"
+                                href="/ui/events/{{ active_event.id }}/participants/{{ participant.id }}/edit"
+                            >
+                                Bearbeiten
+                            </a>
+
+                            <form
+                                method="post"
+                                action="/ui/events/{{ active_event.id }}/participants/{{ participant.id }}/delete"
+                                style="display:inline;"
+                            >
+                                <button
+                                    type="submit"
+                                    class="small-button red-button"
+                                    onclick="return confirm('Teilnehmer wirklich löschen?')"
+                                >
+                                    Löschen
+                                </button>
+                            </form>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if not active_event.closed %}
+                            {% if participant.withdrawn %}
+                                <form
+                                    method="post"
+                                    action="/ui/events/{{ active_event.id }}/participants/{{ participant.id }}/withdraw/revoke"
+                                    style="display:inline;"
+                                >
+                                    <button
+                                        type="submit"
+                                        class="small-button"
+                                        onclick="return confirm('Ausscheiden wirklich zurücknehmen?')"
+                                    >
+                                        Zurücknehmen
+                                    </button>
+                                </form>
+                            {% else %}
+                                <form
+                                    method="post"
+                                    action="/ui/events/{{ active_event.id }}/participants/{{ participant.id }}/withdraw"
+                                >
+                                    <select name="withdrawn_reason" required>
+                                        <option value="">Grund</option>
+                                        <option value="Verletzung">Verletzung</option>
+                                        <option value="Disqualifizierung">Disqualifizierung</option>
+                                        <option value="Aufgabe">Aufgabe</option>
+                                        <option value="Entscheidung Rennleitung">Entscheidung Rennleitung</option>
+                                    </select>
+
+                                    <input
+                                        type="text"
+                                        name="withdrawn_by"
+                                        placeholder="durch"
+                                        required
+                                        style="max-width: 120px;"
+                                    >
+
+                                    <button
+                                        type="submit"
+                                        class="small-button red-button"
+                                        onclick="return confirm('Teilnehmer wirklich als ausgeschieden markieren?')"
+                                    >
+                                        Setzen
+                                    </button>
+                                </form>
+                            {% endif %}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <p id="participant_filter_info" style="margin-top: 10px;"></p>
+    {% else %}
+        <p>Noch keine Teilnehmer erfasst.</p>
+    {% endif %}
+</div>
+
+<script>
+    function normalizeText(value) {
+        return (value || "")
+            .toString()
+            .toLowerCase()
+            .trim();
+    }
+
+    function filterParticipants() {
+        const searchValue = normalizeText(document.getElementById("participant_search").value);
+        const classValue = document.getElementById("class_filter").value;
+        const statusValue = document.getElementById("status_filter").value;
+
+        const rows = document.querySelectorAll("#participants_table tbody tr");
+        let visibleCount = 0;
+
+        rows.forEach(function(row) {
+            const rowSearch = normalizeText(row.dataset.search);
+            const rowClass = row.dataset.class || "";
+            const rowStatus = row.dataset.status || "";
+
+            const matchesSearch = searchValue === "" || rowSearch.includes(searchValue);
+            const matchesClass = classValue === "" || rowClass === classValue;
+            const matchesStatus = statusValue === "" || rowStatus === statusValue;
+
+            if (matchesSearch && matchesClass && matchesStatus) {
+                row.style.display = "";
+                visibleCount += 1;
+            } else {
+                row.style.display = "none";
+            }
+        });
+
+        const info = document.getElementById("participant_filter_info");
+
+        if (info) {
+            info.innerText = visibleCount + " Teilnehmer angezeigt";
+        }
+    }
+
+    filterParticipants();
+</script>
+{% endblock %}

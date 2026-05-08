@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Teilnehmer bearbeiten</h2>
+
+    <p>Veranstaltungsjahr: <strong>{{ event_year }}</strong></p>
+
+    {% if active_event %}
+        <p>
+            Veranstaltung:
+            <strong>{{ active_event.event_number }} – {{ active_event.name }}</strong>
+        </p>
+    {% endif %}
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <form
+        method="post"
+        action="/ui/events/{{ active_event.id }}/participants/{{ participant.id }}/edit"
+        onsubmit="return validateBeforeSubmit()"
+    >
+        <label>Startnummer</label>
+        <input
+            type="number"
+            name="start_number"
+            id="start_number"
+            value="{{ participant.start_number }}"
+            required
+            oninput="checkStartNumber()"
+        >
+
+        <div id="start_number_warning" class="error" style="display:none;">
+            Diese Startnummer ist bereits vergeben.
+        </div>
+
+        <label>Vorname</label>
+        <input
+            type="text"
+            name="first_name"
+            value="{{ participant.first_name }}"
+            required
+        >
+
+        <label>Nachname</label>
+        <input
+            type="text"
+            name="last_name"
+            value="{{ participant.last_name }}"
+            required
+        >
+
+        <label>Geburtsjahr</label>
+        <input
+            type="number"
+            name="birth_year"
+            id="birth_year"
+            value="{{ participant.birth_year }}"
+            required
+            oninput="updateRaceClass()"
+        >
+
+        <label>Automatisch ermittelte Klasse</label>
+        <input
+            type="text"
+            id="race_class_display"
+            readonly
+        >
+
+        <label>Verein</label>
+        <select name="club" required>
+            <option value="">Bitte Verein auswählen</option>
+
+            <option value="MSC Lägerdorf v. 1925 e.V."
+                {% if participant.club == "MSC Lägerdorf v. 1925 e.V." %}selected{% endif %}
+            >
+                MSC Lägerdorf v. 1925 e.V.
+            </option>
+
+            <option value="AC Kellinghusen e.V."
+                {% if participant.club == "AC Kellinghusen e.V." %}selected{% endif %}
+            >
+                AC Kellinghusen e.V.
+            </option>
+
+            <option value="Wühlmäuse Schleswig-Holstein e.V."
+                {% if participant.club == "Wühlmäuse Schleswig-Holstein e.V." %}selected{% endif %}
+            >
+                Wühlmäuse Schleswig-Holstein e.V.
+            </option>
+
+            <option value="Gast"
+                {% if participant.club == "Gast" %}selected{% endif %}
+            >
+                Gast
+            </option>
+        </select>
+
+        <label>Mannschaft</label>
+        <input
+            type="text"
+            name="team"
+            value="{{ participant.team or '' }}"
+        >
+
+        <label>ADAC Nummer</label>
+        <input
+            type="text"
+            name="adac_number"
+            value="{{ participant.adac_number or '' }}"
+            placeholder="ADAC Nummer"
+        >
+
+        <label>Jugendausweisnummer</label>
+        <input
+            type="text"
+            name="youth_license_number"
+            value="{{ participant.youth_license_number or '' }}"
+            placeholder="Jugendausweisnummer"
+        >
+
+        <button type="submit" id="submit_button">Änderungen speichern</button>
+
+        <a class="button" href="/ui/events/{{ active_event.id }}/participants">
+            Abbrechen
+        </a>
+    </form>
+</div>
+
+<script>
+    const eventId = {{ active_event.id }};
+    const eventYear = {{ event_year }};
+    const participantId = {{ participant.id }};
+
+    let startNumberAlreadyExists = false;
+    let startNumberCheckTimeout = null;
+
+    function determineRaceClass(birthYear) {
+        const age = eventYear - birthYear;
+
+        if (age === 7 || age === 8) {
+            return "Klasse 1";
+        }
+
+        if (age >= 9 && age <= 11) {
+            return "Klasse 2";
+        }
+
+        if (age >= 12 && age <= 14) {
+            return "Klasse 3";
+        }
+
+        if (age >= 15 && age <= 18) {
+            return "Klasse 4";
+        }
+
+        if (age >= 19) {
+            return "Klasse 5";
+        }
+
+        return "Keine gültige Klasse";
+    }
+
+    function updateRaceClass() {
+        const birthYearInput = document.getElementById("birth_year");
+        const display = document.getElementById("race_class_display");
+
+        const birthYear = parseInt(birthYearInput.value);
+
+        if (!birthYear) {
+            display.value = "Bitte Geburtsjahr eingeben";
+            return;
+        }
+
+        display.value = determineRaceClass(birthYear);
+    }
+
+    function setStartNumberWarning(visible) {
+        const warning = document.getElementById("start_number_warning");
+        const submitButton = document.getElementById("submit_button");
+        const startNumberInput = document.getElementById("start_number");
+
+        startNumberAlreadyExists = visible;
+
+        if (visible) {
+            warning.style.display = "block";
+            submitButton.disabled = true;
+            submitButton.style.opacity = "0.5";
+            startNumberInput.style.borderColor = "#dc2626";
+        } else {
+            warning.style.display = "none";
+            submitButton.disabled = false;
+            submitButton.style.opacity = "1";
+            startNumberInput.style.borderColor = "#d1d5db";
+        }
+    }
+
+    function checkStartNumber() {
+        clearTimeout(startNumberCheckTimeout);
+
+        startNumberCheckTimeout = setTimeout(async function () {
+            const startNumberInput = document.getElementById("start_number");
+            const startNumber = parseInt(startNumberInput.value);
+
+            if (!startNumber) {
+                setStartNumberWarning(false);
+                return;
+            }
+
+            try {
+                const response = await fetch(
+                    "/api/events/" +
+                    encodeURIComponent(eventId) +
+                    "/participants/start-number/" +
+                    encodeURIComponent(startNumber) +
+                    "/exists?exclude_id=" +
+                    encodeURIComponent(participantId)
+                );
+
+                const data = await response.json();
+
+                setStartNumberWarning(data.exists === true);
+            } catch (error) {
+                console.error("Fehler bei Startnummer-Prüfung:", error);
+            }
+        }, 250);
+    }
+
+    function validateBeforeSubmit() {
+        if (startNumberAlreadyExists) {
+            alert("Diese Startnummer ist bereits vergeben.");
+            return false;
+        }
+
+        const birthYearInput = document.getElementById("birth_year");
+        const birthYear = parseInt(birthYearInput.value);
+
+        if (!isNaN(birthYear)) {
+            const age = eventYear - birthYear;
+
+            if (age >= 80) {
+                return confirm(
+                    "Das eingegebene Geburtsjahr ergibt ein Alter von " +
+                    age +
+                    " Jahren. Ist das korrekt?"
+                );
+            }
+        }
+
+        return true;
+    }
+
+    updateRaceClass();
+    checkStartNumber();
+</script>
+{% endblock %}

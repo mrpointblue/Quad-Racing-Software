@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Konfiguration</h2>
+
+    <p>
+        Globale Einstellungen für die Zeitmessanlage und Siemens LOGO!-Anbindung.
+    </p>
+
+    {% if success %}
+        <div class="success">{{ success }}</div>
+    {% endif %}
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>Siemens LOGO! Verbindung</h3>
+
+    <form method="post" action="/ui/settings/logo">
+        <label>Siemens LOGO! aktivieren</label>
+        <select name="logo_enabled">
+            <option value="false" {% if settings.logo_enabled != "true" %}selected{% endif %}>Nein</option>
+            <option value="true" {% if settings.logo_enabled == "true" %}selected{% endif %}>Ja</option>
+        </select>
+
+        <label>Simulationsmodus</label>
+        <select name="logo_simulation_mode">
+            <option value="true" {% if settings.logo_simulation_mode == "true" %}selected{% endif %}>Ja</option>
+            <option value="false" {% if settings.logo_simulation_mode != "true" %}selected{% endif %}>Nein</option>
+        </select>
+
+        <label>IP-Adresse</label>
+        <input
+            type="text"
+            name="logo_ip"
+            value="{{ settings.logo_ip }}"
+            placeholder="169.254.180.254"
+            required
+        >
+
+        <label>Port</label>
+        <input
+            type="number"
+            name="logo_port"
+            value="{{ settings.logo_port }}"
+            min="1"
+            max="65535"
+            required
+        >
+
+        <label>Timeout in ms</label>
+        <input
+            type="number"
+            name="logo_timeout_ms"
+            value="{{ settings.logo_timeout_ms }}"
+            min="100"
+            max="10000"
+            required
+        >
+
+        <label>Zugriffsart</label>
+        <select name="logo_access_mode">
+            <option value="logo_web" {% if settings.logo_access_mode == "logo_web" %}selected{% endif %}>LOGO Web / intern</option>
+            <option value="modbus_tcp" {% if settings.logo_access_mode == "modbus_tcp" %}selected{% endif %}>Modbus TCP</option>
+        </select>
+
+        <label>Passwort / optional</label>
+        <input
+            type="password"
+            name="logo_password"
+            value="{{ settings.logo_password }}"
+            placeholder="optional"
+        >
+
+        <button type="submit">Speichern</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Signal-Mapping</h3>
+
+    <form method="post" action="/ui/settings/logo-mapping">
+        <table class="compact-runs-table">
+            <thead>
+                <tr>
+                    <th>Signal</th>
+                    <th>Range</th>
+                    <th>Address</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Start Button</td>
+                    <td><input type="number" name="logo_start_range" value="{{ settings.logo_start_range }}" required></td>
+                    <td><input type="number" name="logo_start_address" value="{{ settings.logo_start_address }}" required></td>
+                </tr>
+
+                <tr>
+                    <td>Reset Button</td>
+                    <td><input type="number" name="logo_reset_range" value="{{ settings.logo_reset_range }}" required></td>
+                    <td><input type="number" name="logo_reset_address" value="{{ settings.logo_reset_address }}" required></td>
+                </tr>
+
+                <tr>
+                    <td>Zeit Bahn 1</td>
+                    <td><input type="number" name="logo_time_lane_1_range" value="{{ settings.logo_time_lane_1_range }}" required></td>
+                    <td><input type="number" name="logo_time_lane_1_address" value="{{ settings.logo_time_lane_1_address }}" required></td>
+                </tr>
+
+                <tr>
+                    <td>Zeit Bahn 2</td>
+                    <td><input type="number" name="logo_time_lane_2_range" value="{{ settings.logo_time_lane_2_range }}" required></td>
+                    <td><input type="number" name="logo_time_lane_2_address" value="{{ settings.logo_time_lane_2_address }}" required></td>
+                </tr>
+
+                <tr>
+                    <td>Ready</td>
+                    <td><input type="number" name="logo_ready_range" value="{{ settings.logo_ready_range }}" required></td>
+                    <td><input type="number" name="logo_ready_address" value="{{ settings.logo_ready_address }}" required></td>
+                </tr>
+
+                <tr>
+                    <td>Go</td>
+                    <td><input type="number" name="logo_go_range" value="{{ settings.logo_go_range }}" required></td>
+                    <td><input type="number" name="logo_go_address" value="{{ settings.logo_go_address }}" required></td>
+                </tr>
+
+                <tr>
+                    <td>Achtung</td>
+                    <td><input type="number" name="logo_attention_range" value="{{ settings.logo_attention_range }}" required></td>
+                    <td><input type="number" name="logo_attention_address" value="{{ settings.logo_attention_address }}" required></td>
+                </tr>
+
+                <tr>
+                    <td>Lichtschranke Bahn 1</td>
+                    <td><input type="number" name="logo_light_barrier_1_range" value="{{ settings.logo_light_barrier_1_range }}" required></td>
+                    <td><input type="number" name="logo_light_barrier_1_address" value="{{ settings.logo_light_barrier_1_address }}" required></td>
+                </tr>
+
+                <tr>
+                    <td>Lichtschranke Bahn 2</td>
+                    <td><input type="number" name="logo_light_barrier_2_range" value="{{ settings.logo_light_barrier_2_range }}" required></td>
+                    <td><input type="number" name="logo_light_barrier_2_address" value="{{ settings.logo_light_barrier_2_address }}" required></td>
+                </tr>
+
+                <tr>
+                    <td>Fehler / Blockierung</td>
+                    <td><input type="number" name="logo_error_range" value="{{ settings.logo_error_range }}" required></td>
+                    <td><input type="number" name="logo_error_address" value="{{ settings.logo_error_address }}" required></td>
+                </tr>
+
+                <tr>
+                    <td>Fehlstart Bahn 1</td>
+                    <td><input type="number" name="logo_false_start_1_range" value="{{ settings.logo_false_start_1_range }}" required></td>
+                    <td><input type="number" name="logo_false_start_1_address" value="{{ settings.logo_false_start_1_address }}" required></td>
+                </tr>
+
+                <tr>
+                    <td>Fehlstart Bahn 2</td>
+                    <td><input type="number" name="logo_false_start_2_range" value="{{ settings.logo_false_start_2_range }}" required></td>
+                    <td><input type="number" name="logo_false_start_2_address" value="{{ settings.logo_false_start_2_address }}" required></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <button type="submit">Mapping speichern</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Status / Diagnose</h3>
+
+    <p>
+        Systemdaten:
+        <strong>Raspberry Pi</strong>
+    </p>
+
+    <p>
+        Konfiguration vollständig:
+        <strong>{{ logo_status.configuration_complete }}</strong>
+    </p>
+
+    <p>
+        Betriebsart:
+        <strong>{{ logo_status.mode }}</strong>
+    </p>
+
+    <p>
+        Letzter Check:
+        <strong>{{ settings.logo_last_check_at or "-" }}</strong>
+    </p>
+
+    <p>
+        Letzter Fehler:
+        <strong>{{ settings.logo_last_error or "-" }}</strong>
+    </p>
+
+    <hr>
+
+    <p>
+        CPU-Auslastung:
+        <strong>
+            {% if system_status.cpu_usage_percent is none %}
+                -
+            {% else %}
+                {{ system_status.cpu_usage_percent }}%
+            {% endif %}
+        </strong>
+    </p>
+
+    <p>
+        CPU-Temperatur:
+        <strong>{{ system_status.cpu_temperature }}</strong>
+    </p>
+
+    <p>
+        RAM frei:
+        <strong>{{ system_status.memory.free }}</strong>
+        von
+        <strong>{{ system_status.memory.total }}</strong>
+    </p>
+
+    <p>
+        RAM belegt:
+        <strong>{{ system_status.memory.used }}</strong>
+        (<strong>{{ system_status.memory.used_percent }}%</strong>)
+    </p>
+
+    <p>
+        Speicher frei:
+        <strong>{{ system_status.storage.free }}</strong>
+        von
+        <strong>{{ system_status.storage.total }}</strong>
+    </p>
+
+    <p>
+        Speicher belegt:
+        <strong>{{ system_status.storage.used }}</strong>
+        (<strong>{{ system_status.storage.used_percent }}%</strong>)
+    </p>
+
+    <form method="post" action="/ui/settings/logo/check" style="display:inline;">
+        <button type="submit" class="small-button">
+            Verbindung testen
+        </button>
+    </form>
+
+    <form method="post" action="/ui/settings/logo/reset-status" style="display:inline;">
+        <button type="submit" class="small-button">
+            Status zurücksetzen
+        </button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Hinweis</h3>
+
+    <p>
+        Diese Seite bereitet die Siemens LOGO!-Anbindung vor. Die echte Kommunikation mit der Anlage wird separat aktiviert.
+    </p>
+
+    <p>
+        Solange der Simulationsmodus aktiv ist, bleibt der Rennbetrieb softwareseitig nutzbar.
+    </p>
+</div>
+{% endblock %}

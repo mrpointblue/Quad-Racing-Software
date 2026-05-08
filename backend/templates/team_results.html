@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block title %}Mannschaftswertung{% if active_event %} - {{ active_event.event_number }}{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Mannschaftswertung</h2>
+
+    {% if active_event %}
+        <p>
+            Veranstaltung:
+            <strong>{{ active_event.event_number }} – {{ active_event.name }}</strong>
+        </p>
+    {% endif %}
+
+    <p>
+        Gewertet werden die 3 besten Fahrer pro Team nach ADAC Wertungstabelle C.
+        Maximal 5 Fahrer pro Team möglich.
+    </p>
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <a class="button small-button" href="/ui/events/{{ active_event.id }}/export/teams/xlsx">
+        Mannschaftswertung Export
+    </a>
+
+    <button type="button" class="small-button print-button" onclick="window.print()">
+        Mannschaftswertung Druck
+    </button>
+</div>
+
+{% if not active_event.closed %}
+<div class="card">
+    <h2>Team anlegen</h2>
+
+    <form method="post" action="/ui/events/{{ active_event.id }}/teams/new">
+        <label>Team</label>
+        <input type="text" name="team_name" placeholder="Teamname" required>
+
+        <div class="team-member-selects">
+            {% for index in range(5) %}
+                <div class="team-member-select">
+                    <label>Fahrer {{ index + 1 }}</label>
+                    <input
+                        type="text"
+                        class="team-member-search"
+                        placeholder="Fahrer suchen"
+                        oninput="filterTeamMemberSelect(this)"
+                    >
+                    <select name="participant_ids" onchange="refreshTeamMemberSelects()">
+                        <option value="">Bitte Fahrer auswählen</option>
+                        {% for participant in available_participants %}
+                            <option
+                                value="{{ participant.id }}"
+                                data-search="#{{ participant.start_number }} klasse {{ participant.race_class }} {{ participant.first_name }} {{ participant.last_name }} {{ participant.club or '' }}"
+                                data-label="#{{ participant.start_number }} · Klasse {{ participant.race_class }} · {{ participant.first_name }} {{ participant.last_name }} · {{ participant.club or '-' }}"
+                            >
+                                #{{ participant.start_number }} · Klasse {{ participant.race_class }} · {{ participant.first_name }} {{ participant.last_name }} · {{ participant.club or "-" }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="compact-info">
+            <button type="submit" class="small-button">
+                Team speichern
+            </button>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>Wertung</h2>
+
+    {% if standings|length > 0 %}
+        <table class="compact-runs-table">
+            <thead>
+                <tr>
+                    <th>Platz</th>
+                    <th>Team</th>
+                    <th>Punkte</th>
+                    <th>Gewertet</th>
+                    <th>Streichergebnis</th>
+                    <th>Aktion</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in standings %}
+                    <tr>
+                        <td><strong>{{ row.place }}</strong></td>
+                        <td><strong>{{ row.team.name }}</strong></td>
+                        <td><strong>{{ row.points }}</strong></td>
+                        <td>
+                            {% if row.counted_members|length > 0 %}
+                                {% for member in row.counted_members %}
+                                    <div>
+                                        #{{ member.start_number }}
+                                        {{ member.driver_name }}
+                                        · Kl. {{ member.race_class }} - Pl. {{ member.place or "-" }}
+                                        · {{ member.points }} Punkte
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if row.dropped_members|length > 0 %}
+                                {% for member in row.dropped_members %}
+                                    <div>
+                                        #{{ member.start_number }}
+                                        {{ member.driver_name }}
+                                        · Kl. {{ member.race_class }} - Pl. {{ member.place or "-" }}
+                                        · {{ member.points }} Punkte
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if not active_event.closed %}
+                                <form method="post" action="/ui/events/{{ active_event.id }}/teams/{{ row.team.id }}/delete">
+                                    <button
+                                        type="submit"
+                                        class="small-button red-button"
+                                        onclick="return confirm('Team wirklich löschen?')"
+                                    >
+                                        Löschen
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Noch keine Teams vorhanden.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>Wertungstabelle C</h3>
+    <p>
+        Platz 1: 25 · 2: 22 · 3: 20 · 4: 18 · 5: 16 · 6: 15 · 7: 14 · 8: 13 · 9: 12 · 10: 11 ·
+        11: 10 · 12: 9 · 13: 8 · 14: 7 · 15: 6 · 16: 5 · 17: 4 · 18: 3 · 19: 2 · 20: 1 · i.W.: 1
+    </p>
+</div>
+
+<script>
+    function normalizeTeamSearch(value) {
+        return value.toLowerCase().trim();
+    }
+
+    function getTeamMemberOptions(select) {
+        if (!select.dataset.optionsReady) {
+            select.teamMemberOptions = Array.from(select.options)
+                .filter((option) => option.value)
+                .map((option) => ({
+                    value: option.value,
+                    label: option.dataset.label || option.textContent.trim(),
+                    search: option.dataset.search || option.textContent.trim(),
+                }));
+            select.dataset.optionsReady = "true";
+        }
+
+        return select.teamMemberOptions || [];
+    }
+
+    function renderTeamMemberOptions(select, options, selectedValue) {
+        select.innerHTML = "";
+
+        const emptyOption = document.createElement("option");
+        emptyOption.value = "";
+        emptyOption.textContent = "Bitte Fahrer auswählen";
+        select.appendChild(emptyOption);
+
+        options.forEach((item) => {
+            const option = document.createElement("option");
+            option.value = item.value;
+            option.textContent = item.label;
+            option.dataset.search = item.search;
+            option.dataset.label = item.label;
+            select.appendChild(option);
+        });
+
+        if (selectedValue && options.some((item) => item.value === selectedValue)) {
+            select.value = selectedValue;
+        }
+    }
+
+    function getSelectedTeamMemberIds(currentSelect) {
+        return Array.from(document.querySelectorAll(".team-member-select select"))
+            .filter((select) => select !== currentSelect)
+            .map((select) => select.value)
+            .filter((value) => value !== "");
+    }
+
+    function updateTeamMemberSelect(select) {
+        const wrapper = select.closest(".team-member-select");
+
+        if (!wrapper) {
+            return;
+        }
+
+        const searchInput = wrapper.querySelector(".team-member-search");
+        const searchValue = normalizeTeamSearch(searchInput ? searchInput.value : "");
+        const selectedValue = select.value;
+        const selectedElsewhere = getSelectedTeamMemberIds(select);
+        const allOptions = getTeamMemberOptions(select);
+        const filteredOptions = allOptions.filter((item) => {
+            if (selectedElsewhere.includes(item.value)) {
+                return false;
+            }
+
+            if (searchValue === "") {
+                return true;
+            }
+
+            return normalizeTeamSearch(item.search).includes(searchValue);
+        });
+
+        renderTeamMemberOptions(select, filteredOptions, selectedValue);
+    }
+
+    function refreshTeamMemberSelects() {
+        document.querySelectorAll(".team-member-select select").forEach((select) => {
+            updateTeamMemberSelect(select);
+        });
+    }
+
+    function filterTeamMemberSelect(searchInput) {
+        const wrapper = searchInput.closest(".team-member-select");
+
+        if (!wrapper) {
+            return;
+        }
+
+        const select = wrapper.querySelector("select");
+        const searchValue = normalizeTeamSearch(searchInput.value);
+
+        if (!select) {
+            return;
+        }
+
+        updateTeamMemberSelect(select);
+    }
+
+    document.querySelectorAll(".team-member-select select").forEach((select) => {
+        getTeamMemberOptions(select);
+    });
+
+    refreshTeamMemberSelects();
+</script>
+{% endblock %}

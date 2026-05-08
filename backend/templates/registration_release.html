@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Nennfreigabe</h2>
+
+    {% if active_event %}
+        <p>
+            Veranstaltung:
+            <strong>{{ active_event.event_number }} – {{ active_event.name }}</strong>
+        </p>
+    {% endif %}
+
+    <p>
+        Jede Startgruppe hat einen eigenen Nennungsschluss und muss separat freigegeben werden.
+    </p>
+
+    {% if active_event.closed %}
+        <div class="error">
+            Diese Veranstaltung ist geschlossen. Änderungen sind nicht mehr möglich.
+        </div>
+    {% endif %}
+</div>
+
+<div class="grid">
+    {% for group in registration_groups %}
+    {% set group_status = registration_group_status.get(group.group_key, {}) %}
+    <div class="card">
+        <h3>{{ group.name }}</h3>
+
+        <p>
+            Klassen:
+            <strong>{{ group.classes }}</strong>
+        </p>
+
+        {% if group.released %}
+            <div class="success">
+                Nennung freigegeben.<br>
+                Rennbetrieb für diese Gruppe möglich.
+            </div>
+
+            <p>
+                Freigegeben am:<br>
+                <strong>{{ group.released_at or "-" }}</strong>
+            </p>
+
+            <p>
+                Freigegeben durch:<br>
+                <strong>{{ group.released_by or "-" }}</strong>
+            </p>
+
+            {% if group_status.race_started %}
+                <div class="success">
+                    Zurückziehen der Nennung nicht mehr möglich.<br>
+                    Rennbetrieb gestartet.
+                </div>
+            {% elif not active_event.closed %}
+                <form method="post" action="/ui/events/{{ active_event.id }}/registration/{{ group.group_key }}/revoke">
+                    <label>Zurückgenommen durch</label>
+                    <input
+                        type="text"
+                        name="revoked_by"
+                        placeholder="Name Zeitnehmer / Rennleitung"
+                        required
+                    >
+
+                    <label>Grund</label>
+                    <input
+                        type="text"
+                        name="revoked_reason"
+                        placeholder="optional"
+                    >
+
+                    <button
+                        type="submit"
+                        class="red-button"
+                        onclick="return confirm('Nennfreigabe wirklich zurücknehmen?')"
+                    >
+                        Freigabe zurücknehmen
+                    </button>
+                </form>
+            {% endif %}
+        {% else %}
+            <div class="error">
+                Nennung noch nicht freigegeben.<br>
+                Rennbetrieb für diese Gruppe gesperrt.
+            </div>
+
+            {% if group.release_revoked %}
+                <p>
+                    Zuletzt zurückgenommen am:<br>
+                    <strong>{{ group.release_revoked_at or "-" }}</strong>
+                </p>
+
+                <p>
+                    Zurückgenommen durch:<br>
+                    <strong>{{ group.release_revoked_by or "-" }}</strong>
+                </p>
+
+                <p>
+                    Grund:<br>
+                    <strong>{{ group.release_revoked_reason or "-" }}</strong>
+                </p>
+            {% endif %}
+
+            {% if not active_event.closed %}
+                <form method="post" action="/ui/events/{{ active_event.id }}/registration/{{ group.group_key }}/release">
+                    <label>Freigegeben durch</label>
+                    <input
+                        type="text"
+                        name="released_by"
+                        placeholder="Name Zeitnehmer / Rennleitung"
+                        required
+                    >
+
+                    <button type="submit">
+                        {{ group.name }} freigeben
+                    </button>
+                </form>
+            {% endif %}
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+<div class="card">
+    <h3>Hinweis</h3>
+    <p>
+        Die Zeitnahme kann eine Klasse erst starten, wenn die zugehörige Nennfreigabe erteilt wurde.
+    </p>
+
+    <p>
+        Zuordnung:
+    </p>
+
+    <ul>
+        <li>Klasse 1 &amp; 2 → gemeinsame Nennfreigabe</li>
+        <li>Klasse 3 &amp; 4 → gemeinsame Nennfreigabe</li>
+        <li>Klasse 5 → eigene Nennfreigabe</li>
+    </ul>
+</div>
+{% endblock %}

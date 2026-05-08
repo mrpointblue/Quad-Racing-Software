@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Ausgabe Monitor{% if active_event %} - {{ active_event.event_number }}{% endif %}{% endblock %}
+
+{% block content %}
+<form method="post" action="/ui/events/{{ active_event.id }}/monitor-output">
+    <div class="card monitor-output-header">
+        <div>
+            <h2>Ausgabe Monitor</h2>
+            <p>Steuerung der Inhalte auf dem externen Monitor.</p>
+            {% if setting.updated_at %}
+                <p class="muted-text">Letzte Änderung: {{ setting.updated_at }}</p>
+            {% endif %}
+        </div>
+
+        <div class="monitor-header-controls">
+            <div class="selection-label">Format</div>
+            <div class="pill-grid monitor-format-picker">
+                <label class="select-pill">
+                    <input
+                        type="radio"
+                        name="display_orientation"
+                        value="landscape"
+                        {% if setting.display_orientation != "portrait" %}checked{% endif %}
+                    >
+                    <span>Normal</span>
+                </label>
+
+                <label class="select-pill">
+                    <input
+                        type="radio"
+                        name="display_orientation"
+                        value="portrait"
+                        {% if setting.display_orientation == "portrait" %}checked{% endif %}
+                    >
+                    <span>Gedreht 90°</span>
+                </label>
+            </div>
+
+            <a class="button small-button" href="/ui/events/{{ active_event.id }}/monitor">Monitor öffnen</a>
+        </div>
+    </div>
+
+    <div class="monitor-output-summary">
+        <div class="summary-tile">
+            <span>Rennbetrieb</span>
+            <strong>{% if setting.show_race_control %}Aktiv{% else %}Aus{% endif %}</strong>
+        </div>
+
+        <div class="summary-tile">
+            <span>Klassen</span>
+            <strong>
+                {% if selected_classes %}
+                    {{ selected_classes|join(", ") }}
+                {% else %}
+                    Keine
+                {% endif %}
+            </strong>
+        </div>
+
+        <div class="summary-tile">
+            <span>Runden</span>
+            <strong>
+                {% if selected_rounds %}
+                    {{ selected_rounds|length }} ausgewählt
+                {% else %}
+                    Keine
+                {% endif %}
+            </strong>
+        </div>
+
+        <div class="summary-tile">
+            <span>Mannschaft</span>
+            <strong>{% if setting.show_team_results %}Aktiv{% else %}Aus{% endif %}</strong>
+        </div>
+    </div>
+
+    <div class="monitor-output-layout">
+        <section class="card monitor-output-section">
+            <div class="section-heading">
+                <h3>Rennbetrieb</h3>
+                <span>Live-Anzeige</span>
+            </div>
+
+            <label class="choice-row">
+                <input
+                    type="checkbox"
+                    name="show_race_control"
+                    value="1"
+                    {% if setting.show_race_control %}checked{% endif %}
+                >
+                <span>
+                    <strong>Aktuelle Paarung und nächste Starter</strong>
+                    <small>Zeigt Zeitnahme, Fahrer und Vorbereitungsliste.</small>
+                </span>
+            </label>
+        </section>
+
+        <section class="card monitor-output-section monitor-output-results-section">
+            <div class="section-heading">
+                <h3>Ergebnisse</h3>
+                <span>{{ monitor_data.result_sections|length }} Blöcke · {{ monitor_data.team_results|length }} Teams</span>
+            </div>
+
+            <div class="selection-group">
+                <div class="selection-label">Klassen</div>
+                <div class="pill-grid">
+                    {% for race_class in [1, 2, 3, 4, 5] %}
+                        <label class="select-pill">
+                            <input
+                                type="checkbox"
+                                name="class_{{ race_class }}"
+                                value="1"
+                                {% if race_class in selected_classes %}checked{% endif %}
+                            >
+                            <span>Klasse {{ race_class }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="selection-group">
+                <div class="selection-label">Runden</div>
+                <div class="pill-grid">
+                    {% for option in round_options %}
+                        <label class="select-pill">
+                            <input
+                                type="checkbox"
+                                name="round_{{ option.key }}"
+                                value="1"
+                                {% if option.key in selected_rounds %}checked{% endif %}
+                            >
+                            <span>{{ option.label }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="selection-group">
+                <div class="selection-label">Mannschaftswertung</div>
+                <div class="pill-grid">
+                    <label class="select-pill">
+                        <input
+                            type="checkbox"
+                            name="show_team_results"
+                            value="1"
+                            {% if setting.show_team_results %}checked{% endif %}
+                        >
+                        <span>Anzeigen</span>
+                    </label>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <div class="card monitor-output-savebar">
+        <button type="submit">Monitor-Ausgabe speichern</button>
+    </div>
+</form>
+{% endblock %}

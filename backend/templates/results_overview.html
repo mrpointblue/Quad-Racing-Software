@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+
+{% block title %}ADAC-Gesamtliste Export{% if active_event %} - {{ active_event.event_number }}{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card screen-only">
+    <h2>Ergebnisse</h2>
+
+    {% if active_event %}
+        <p>
+            Veranstaltung:
+            <strong>{{ active_event.event_number }} – {{ active_event.name }}</strong>
+        </p>
+    {% endif %}
+
+    {% if active_event %}
+        <p>
+            <a class="button" href="/ui/events/{{ active_event.id }}/export/overall/xlsx">
+                ADAC-Gesamtliste Export
+            </a>
+
+            <button type="button" class="print-button" onclick="window.print()">
+                ADAC-Gesamtliste Druck
+            </button>
+        </p>
+    {% endif %}
+</div>
+
+<div class="card print-only">
+    <h2>ADAC-Gesamtliste</h2>
+
+    {% if active_event %}
+        <p>
+            Veranstaltung:
+            <strong>{{ active_event.event_number }} – {{ active_event.name }}</strong>
+            |
+            Datum:
+            <strong>{{ active_event.event_date or "-" }}</strong>
+            |
+            Ort:
+            <strong>{{ active_event.location or "-" }}</strong>
+        </p>
+    {% endif %}
+
+    {% if adac_overall_rows|length > 0 %}
+        {% for race_class in [1, 2, 3, 4, 5] %}
+            {% set class_rows = adac_overall_rows_by_class.get(race_class, []) %}
+            <div class="print-page">
+                <h2>Klasse {{ race_class }}</h2>
+
+                {% if class_rows|length > 0 %}
+                    <table class="compact-runs-table">
+                        <thead>
+                            <tr>
+                                <th>Platz</th>
+                                <th>Startnr.</th>
+                                <th>Fahrer</th>
+                                <th>Verein</th>
+                                <th>Status</th>
+                                <th>Viertelfinale</th>
+                                <th>FP VF</th>
+                                <th>Halbfinale</th>
+                                <th>FP HF</th>
+                                <th>Finale</th>
+                                <th>FP F</th>
+                                <th>Gesamt FP</th>
+                                <th>Gesamtzeit</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in class_rows %}
+                                <tr>
+                                    <td><strong>{{ row.place }}</strong></td>
+                                    <td>{{ row.start_number }}</td>
+                                    <td>{{ row.driver_name }}</td>
+                                    <td>{{ row.club }}</td>
+                                    <td>{{ row.status }}</td>
+                                    <td>{{ row.quarterfinal_display }}</td>
+                                    <td>{{ row.quarterfinal_penalty }}</td>
+                                    <td>{{ row.semifinal_display }}</td>
+                                    <td>{{ row.semifinal_penalty }}</td>
+                                    <td>{{ row.final_display }}</td>
+                                    <td>{{ row.final_penalty }}</td>
+                                    <td><strong>{{ row.total_penalty }}</strong></td>
+                                    <td><strong>{{ row.total_display }}</strong></td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p>Noch keine Wertung für Klasse {{ race_class }} vorhanden.</p>
+                {% endif %}
+            </div>
+        {% endfor %}
+
+        <div class="print-page">
+            <h2>Mannschaftswertung</h2>
+
+            {% if team_standings|length > 0 %}
+                <table class="compact-runs-table">
+                    <thead>
+                        <tr>
+                            <th>Platz</th>
+                            <th>Team</th>
+                            <th>Punkte</th>
+                            <th>Gewertet</th>
+                            <th>Streichergebnis</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in team_standings %}
+                            <tr>
+                                <td><strong>{{ row.place }}</strong></td>
+                                <td><strong>{{ row.team.name }}</strong></td>
+                                <td><strong>{{ row.points }}</strong></td>
+                                <td>
+                                    {% for member in row.counted_members %}
+                                        <div>
+                                            #{{ member.start_number }}
+                                            {{ member.driver_name }}
+                                            · Kl. {{ member.race_class }} - Pl. {{ member.place or "-" }}
+                                            · {{ member.points }} Punkte
+                                        </div>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    {% if row.dropped_members|length > 0 %}
+                                        {% for member in row.dropped_members %}
+                                            <div>
+                                                #{{ member.start_number }}
+                                                {{ member.driver_name }}
+                                                · Kl. {{ member.race_class }} - Pl. {{ member.place or "-" }}
+                                                · {{ member.points }} Punkte
+                                            </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>Noch keine Mannschaftswertung vorhanden.</p>
+            {% endif %}
+        </div>
+    {% else %}
+        <p>Noch keine ADAC-Gesamtliste vorhanden.</p>
+    {% endif %}
+</div>
+
+<div class="card screen-only">
+    <h2>Klassenwertung</h2>
+
+    <table class="compact-runs-table">
+        <thead>
+            <tr>
+                <th>Klasse</th>
+                <th>Teilnehmer</th>
+                <th>Paarungen / Läufe vorhanden</th>
+                <th>VF</th>
+                <th>HF</th>
+                <th>F</th>
+                <th>Aktionen</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for item in classes %}
+            <tr>
+                <td><strong>Klasse {{ item.race_class }}</strong></td>
+
+                <td>{{ item.participants_count }}</td>
+
+                <td>
+                    {% if item.pairings_count > 0 %}
+                        Ja
+                    {% else %}
+                        Nein
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if item.quarterfinal_status == "Fertig" %}
+                        <span class="success">Fertig</span>
+                    {% else %}
+                        <span class="error">Offen</span>
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if item.semifinal_status == "Fertig" %}
+                        <span class="success">Fertig</span>
+                    {% else %}
+                        <span class="error">Offen</span>
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if item.final_status == "Fertig" %}
+                        <span class="success">Fertig</span>
+                    {% else %}
+                        <span class="error">Offen</span>
+                    {% endif %}
+                </td>
+
+                <td>
+                    <a class="button small-button" href="/ui/events/{{ active_event.id }}/results/class/{{ item.race_class }}">
+                        Ergebnis anzeigen
+                    </a>
+
+                    <a class="button small-button" href="/ui/events/{{ active_event.id }}/export/class/{{ item.race_class }}/overall/xlsx">
+                        Gesamtwertung Export
+                    </a>
+
+                    <a class="button small-button print-link" href="/ui/events/{{ active_event.id }}/results/class/{{ item.race_class }}?print=1">
+                        Gesamtwertung Druck
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card screen-only">
+    <h2>Mannschaftswertung</h2>
+
+    {% if team_standings|length > 0 %}
+        <table class="compact-runs-table">
+            <thead>
+                <tr>
+                    <th>Platz</th>
+                    <th>Team</th>
+                    <th>Punkte</th>
+                    <th>Gewertet</th>
+                    <th>Streichergebnis</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in team_standings %}
+                    <tr>
+                        <td><strong>{{ row.place }}</strong></td>
+                        <td><strong>{{ row.team.name }}</strong></td>
+                        <td><strong>{{ row.points }}</strong></td>
+                        <td>
+                            {% for member in row.counted_members %}
+                                <div>
+                                    #{{ member.start_number }}
+                                    {{ member.driver_name }}
+                                    · Kl. {{ member.race_class }} - Pl. {{ member.place or "-" }}
+                                    · {{ member.points }} Punkte
+                                </div>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% if row.dropped_members|length > 0 %}
+                                {% for member in row.dropped_members %}
+                                    <div>
+                                        #{{ member.start_number }}
+                                        {{ member.driver_name }}
+                                        · Kl. {{ member.race_class }} - Pl. {{ member.place or "-" }}
+                                        · {{ member.points }} Punkte
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Noch keine Mannschaftswertung vorhanden.</p>
+    {% endif %}
+
+    <a class="button small-button" href="/ui/events/{{ active_event.id }}/teams">
+        Mannschaftswertung öffnen
+    </a>
+
+    <a class="button small-button" href="/ui/events/{{ active_event.id }}/export/teams/xlsx">
+        Mannschaftswertung Export
+    </a>
+
+    <a class="button small-button print-link" href="/ui/events/{{ active_event.id }}/teams?print=1">
+        Mannschaftswertung Druck
+    </a>
+</div>
+
+<div class="card screen-only">
+    <h2>Statistik</h2>
+
+    <div class="result-stats-grid">
+        <div class="result-stat-tile">
+            <span>Bester Fahrer</span>
+            {% if result_statistics.best_driver %}
+                <strong>{{ result_statistics.best_driver.driver }}</strong>
+                <small>
+                    Kl. {{ result_statistics.best_driver.race_class }}
+                    · {{ result_statistics.best_driver.detail }}
+                    · {{ result_statistics.best_driver.value }}
+                </small>
+            {% else %}
+                <strong>—</strong>
+            {% endif %}
+        </div>
+
+        <div class="result-stat-tile">
+            <span>Schnellste Zeit Bahn 1</span>
+            {% if result_statistics.fastest_lane_1 %}
+                <strong>{{ result_statistics.fastest_lane_1.value }}</strong>
+                <small>
+                    {{ result_statistics.fastest_lane_1.driver }}
+                    · {{ result_statistics.fastest_lane_1.detail }}
+                </small>
+            {% else %}
+                <strong>—</strong>
+            {% endif %}
+        </div>
+
+        <div class="result-stat-tile">
+            <span>Schnellste Zeit Bahn 2</span>
+            {% if result_statistics.fastest_lane_2 %}
+                <strong>{{ result_statistics.fastest_lane_2.value }}</strong>
+                <small>
+                    {{ result_statistics.fastest_lane_2.driver }}
+                    · {{ result_statistics.fastest_lane_2.detail }}
+                </small>
+            {% else %}
+                <strong>—</strong>
+            {% endif %}
+        </div>
+
+        <div class="result-stat-tile">
+            <span>Meiste Fehlerpunkte</span>
+            {% if result_statistics.most_penalties %}
+                <strong>{{ result_statistics.most_penalties.value }}</strong>
+                <small>
+                    {{ result_statistics.most_penalties.driver }}
+                    · {{ result_statistics.most_penalties.detail }}
+                </small>
+            {% else %}
+                <strong>—</strong>
+            {% endif %}
+        </div>
+
+        <div class="result-stat-tile">
+            <span>Wenigste Fehlerpunkte</span>
+            {% if result_statistics.fewest_penalties %}
+                <strong>{{ result_statistics.fewest_penalties.value }}</strong>
+                <small>
+                    {{ result_statistics.fewest_penalties.driver }}
+                    · {{ result_statistics.fewest_penalties.detail }}
+                </small>
+            {% else %}
+                <strong>—</strong>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

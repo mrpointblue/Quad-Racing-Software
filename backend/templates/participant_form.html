@@ -1,0 +1,377 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Teilnehmer erfassen</h2>
+
+    {% if active_event %}
+        <p>
+            Veranstaltung:
+            <strong>{{ active_event.event_number }} – {{ active_event.name }}</strong>
+        </p>
+    {% endif %}
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+        <div class="success">{{ success }}</div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>Vorhandenen Fahrer suchen</h3>
+
+    <label>Fahrer suchen</label>
+    <input
+        type="text"
+        id="driver_search"
+        placeholder="Name, Verein, ADAC Nummer oder Jugendausweisnummer"
+        autocomplete="off"
+    >
+
+    <div id="driver_results" style="margin-top: 10px;"></div>
+</div>
+
+<div class="card">
+    <h3>Teilnehmerdaten</h3>
+
+    <form
+        method="post"
+        action="/ui/events/{{ active_event.id }}/participants/new"
+        onsubmit="return validateBeforeSubmit();"
+    >
+        <input type="hidden" name="driver_profile_id" id="driver_profile_id" value="">
+
+        <label>Startnummer</label>
+        <input
+            type="number"
+            name="start_number"
+            id="start_number"
+            required
+            min="1"
+            oninput="checkStartNumber()"
+        >
+        <div id="start_number_message"></div>
+
+        <label>Vorname</label>
+        <input
+            type="text"
+            name="first_name"
+            id="first_name"
+            required
+        >
+
+        <label>Nachname</label>
+        <input
+            type="text"
+            name="last_name"
+            id="last_name"
+            required
+        >
+
+        <label>Geburtsjahr</label>
+        <input
+            type="number"
+            name="birth_year"
+            id="birth_year"
+            required
+            min="1900"
+            max="{{ event_year }}"
+            oninput="checkRegistrationOpen()"
+        >
+        <div id="birth_year_message"></div>
+
+        <label>Verein</label>
+        <select name="club" id="club">
+            <option value="">Bitte auswählen</option>
+            <option value="MSC Lägerdorf v. 1925 e.V.">MSC Lägerdorf v. 1925 e.V.</option>
+            <option value="AC Kellinghusen e.V.">AC Kellinghusen e.V.</option>
+            <option value="Wühlmäuse Schleswig-Holstein e.V.">Wühlmäuse Schleswig-Holstein e.V.</option>
+            <option value="Gast">Gast</option>
+        </select>
+
+        <label>Mannschaft / Team</label>
+        <input
+            type="text"
+            name="team"
+            id="team"
+            placeholder="optional"
+        >
+
+        <label>ADAC Nummer</label>
+        <input
+            type="text"
+            name="adac_number"
+            id="adac_number"
+            placeholder="ADAC Nummer"
+        >
+
+        <label>Jugendausweisnummer</label>
+        <input
+            type="text"
+            name="youth_license_number"
+            id="youth_license_number"
+            placeholder="Jugendausweisnummer"
+        >
+
+        <button type="submit" id="save_button">
+            Teilnehmer speichern
+        </button>
+    </form>
+</div>
+
+<script>
+    const eventId = {{ active_event.id }};
+    const eventYear = {{ event_year }};
+
+    let startNumberBlocked = false;
+    let registrationBlocked = false;
+
+    function setSaveButtonState() {
+        const saveButton = document.getElementById("save_button");
+
+        if (!saveButton) {
+            return;
+        }
+
+        saveButton.disabled = startNumberBlocked || registrationBlocked;
+    }
+
+    function setClubValue(value) {
+        const clubSelect = document.getElementById("club");
+
+        if (!clubSelect) {
+            return;
+        }
+
+        const normalizedValue = value || "";
+
+        for (let i = 0; i < clubSelect.options.length; i++) {
+            if (clubSelect.options[i].value === normalizedValue) {
+                clubSelect.value = normalizedValue;
+                return;
+            }
+        }
+
+        if (normalizedValue) {
+            clubSelect.value = "Gast";
+        }
+    }
+
+    function selectDriver(driver) {
+        document.getElementById("driver_profile_id").value = driver.id || "";
+        document.getElementById("first_name").value = driver.first_name || "";
+        document.getElementById("last_name").value = driver.last_name || "";
+        document.getElementById("birth_year").value = driver.birth_year || "";
+
+        if (driver.default_start_number) {
+            document.getElementById("start_number").value = driver.default_start_number;
+        }
+
+        setClubValue(driver.club);
+        document.getElementById("team").value = driver.team || "";
+        document.getElementById("adac_number").value = driver.adac_number || "";
+        document.getElementById("youth_license_number").value = driver.youth_license_number || "";
+
+        document.getElementById("driver_results").innerHTML = "";
+
+        checkStartNumber();
+        checkRegistrationOpen();
+        checkDriverAlreadyRegistered();
+    }
+
+    async function checkDriverAlreadyRegistered() {
+        const driverProfileInput = document.getElementById("driver_profile_id");
+        const message = document.getElementById("driver_results");
+
+        const driverProfileId = driverProfileInput.value.trim();
+
+        if (!driverProfileId) {
+            return;
+        }
+
+        const response = await fetch(
+            "/api/events/" +
+            encodeURIComponent(eventId) +
+            "/participants/driver-profile/" +
+            encodeURIComponent(driverProfileId) +
+            "/exists"
+        );
+
+        const data = await response.json();
+
+        if (data.exists) {
+            registrationBlocked = true;
+            message.innerHTML = "<div class='error'>Dieser Fahrer ist für diese Veranstaltung bereits erfasst.</div>";
+        } else {
+            registrationBlocked = false;
+        }
+
+        setSaveButtonState();
+    }
+
+    async function searchDrivers() {
+        const searchInput = document.getElementById("driver_search");
+        const resultsBox = document.getElementById("driver_results");
+
+        const query = searchInput.value.trim();
+
+        if (query.length < 2) {
+            resultsBox.innerHTML = "";
+            return;
+        }
+
+        const response = await fetch("/api/drivers/search?q=" + encodeURIComponent(query));
+        const drivers = await response.json();
+
+        if (!drivers.length) {
+            resultsBox.innerHTML = "<p>Keine Fahrer gefunden.</p>";
+            return;
+        }
+
+        let html = "<table class='compact-runs-table'>";
+        html += "<thead>";
+        html += "<tr>";
+        html += "<th>Startnr.</th>";
+        html += "<th>Name</th>";
+        html += "<th>Geburtsjahr</th>";
+        html += "<th>Verein</th>";
+        html += "<th>ADAC</th>";
+        html += "<th>Jugendausweis</th>";
+        html += "<th>Aktion</th>";
+        html += "</tr>";
+        html += "</thead>";
+        html += "<tbody>";
+
+        drivers.forEach(function(driver, index) {
+            window["driver_result_" + index] = driver;
+
+            html += "<tr>";
+            html += "<td>" + (driver.default_start_number || "") + "</td>";
+            html += "<td>" + driver.first_name + " " + driver.last_name + "</td>";
+            html += "<td>" + driver.birth_year + "</td>";
+            html += "<td>" + (driver.club || "") + "</td>";
+            html += "<td>" + (driver.adac_number || "") + "</td>";
+            html += "<td>" + (driver.youth_license_number || "") + "</td>";
+            html += "<td>";
+            html += "<button type='button' class='small-button' onclick='selectDriver(window[\"driver_result_" + index + "\"])'>";
+            html += "Übernehmen";
+            html += "</button>";
+            html += "</td>";
+            html += "</tr>";
+        });
+
+        html += "</tbody>";
+        html += "</table>";
+
+        resultsBox.innerHTML = html;
+    }
+
+    async function checkStartNumber() {
+        const input = document.getElementById("start_number");
+        const message = document.getElementById("start_number_message");
+
+        const value = input.value.trim();
+
+        if (!value) {
+            startNumberBlocked = false;
+            message.innerHTML = "";
+            setSaveButtonState();
+            return;
+        }
+
+        const response = await fetch(
+            "/api/events/" +
+            encodeURIComponent(eventId) +
+            "/participants/start-number/" +
+            encodeURIComponent(value) +
+            "/exists"
+        );
+
+        const data = await response.json();
+
+        if (data.exists) {
+            startNumberBlocked = true;
+            message.innerHTML = "<div class='error'>Diese Startnummer ist bereits vergeben.</div>";
+        } else {
+            startNumberBlocked = false;
+            message.innerHTML = "<div class='success'>Startnummer ist frei.</div>";
+        }
+
+        setSaveButtonState();
+    }
+
+    async function checkRegistrationOpen() {
+        const input = document.getElementById("birth_year");
+        const message = document.getElementById("birth_year_message");
+
+        const value = input.value.trim();
+
+        if (!value) {
+            registrationBlocked = false;
+            message.innerHTML = "";
+            setSaveButtonState();
+            return;
+        }
+
+        const response = await fetch(
+            "/api/events/" +
+            encodeURIComponent(eventId) +
+            "/participants/birth-year/" +
+            encodeURIComponent(value) +
+            "/registration-open"
+        );
+
+        const data = await response.json();
+
+        if (!data.registration_open) {
+            registrationBlocked = true;
+            message.innerHTML = "<div class='error'>" + data.message + "</div>";
+        } else {
+            registrationBlocked = false;
+            message.innerHTML = "<div class='success'>Klasse " + data.race_class + " – Registrierung möglich.</div>";
+        }
+
+        setSaveButtonState();
+    }
+
+    function validateBeforeSubmit() {
+        if (startNumberBlocked) {
+            alert("Diese Startnummer ist bereits vergeben.");
+            return false;
+        }
+
+        if (registrationBlocked) {
+            alert("Diese Registrierung ist aktuell nicht möglich.");
+            return false;
+        }
+
+        const birthYearInput = document.getElementById("birth_year");
+        const birthYear = parseInt(birthYearInput.value);
+
+        if (!isNaN(birthYear)) {
+            const age = eventYear - birthYear;
+
+            if (age >= 80) {
+                return confirm(
+                    "Das eingegebene Geburtsjahr ergibt ein Alter von " +
+                    age +
+                    " Jahren. Ist das korrekt?"
+                );
+            }
+        }
+
+        return true;
+    }
+
+    document.getElementById("driver_search").addEventListener("input", function() {
+        clearTimeout(window.driverSearchTimer);
+
+        window.driverSearchTimer = setTimeout(function() {
+            searchDrivers();
+        }, 250);
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Veranstaltung bearbeiten</h2>
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="/ui/events/{{ event.id }}/edit">
+        <label>Veranstaltungsnummer</label>
+        <input type="text" name="event_number" value="{{ event.event_number }}" required>
+
+        <label>Name der Veranstaltung</label>
+        <input type="text" name="name" value="{{ event.name }}" required>
+
+        <label>Datum</label>
+        <input type="text" name="event_date" value="{{ event.event_date or '' }}" placeholder="z. B. 25.04.2026">
+
+        <label>Ort</label>
+        <input type="text" name="location" value="{{ event.location or '' }}" placeholder="z. B. Itzehoe">
+
+        <label>Ortsclub / Veranstalter</label>
+        <select name="organizer_club" required>
+            <option value="">Bitte Ortsclub / Veranstalter auswählen</option>
+
+            <option value="MSC Lägerdorf v. 1925 e.V."
+                {% if event.organizer_club == "MSC Lägerdorf v. 1925 e.V." %}selected{% endif %}
+            >
+                MSC Lägerdorf v. 1925 e.V.
+            </option>
+
+            <option value="AC Kellinghusen e.V."
+                {% if event.organizer_club == "AC Kellinghusen e.V." %}selected{% endif %}
+            >
+                AC Kellinghusen e.V.
+            </option>
+
+            <option value="Wühlmäuse Schleswig-Holstein e.V."
+                {% if event.organizer_club == "Wühlmäuse Schleswig-Holstein e.V." %}selected{% endif %}
+            >
+                Wühlmäuse Schleswig-Holstein e.V.
+            </option>
+        </select>
+
+        <label>Sektoren pro Bahn</label>
+        <input
+            type="number"
+            name="sectors_per_lane"
+            value="{{ event.sectors_per_lane or 4 }}"
+            min="1"
+            max="10"
+            required
+        >
+
+        <button type="submit">Änderungen speichern</button>
+        <a class="button" href="/ui/events">Abbrechen</a>
+    </form>
+</div>
+{% endblock %}

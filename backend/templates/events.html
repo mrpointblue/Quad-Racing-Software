@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Veranstaltungen</h2>
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if active_event %}
+        <p>
+            Aktive Veranstaltung:
+            <strong>{{ active_event.event_number }} – {{ active_event.name }}</strong>
+        </p>
+    {% else %}
+        <p>Keine aktive Veranstaltung ausgewählt.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>Offene / zukünftige Veranstaltungen</h2>
+
+    {% if open_events|length > 0 %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Aktiv</th>
+                    <th>Nr.</th>
+                    <th>Name</th>
+                    <th>Datum</th>
+                    <th>Ort</th>
+                    <th>Ortsclub / Veranstalter</th>
+                    <th>Sektoren</th>
+                    <th>Aktionen</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in open_events %}
+                <tr>
+                    <td>
+                        {% if event.active %}
+                            Ja
+                        {% else %}
+                            Nein
+                        {% endif %}
+                    </td>
+
+                    <td>{{ event.event_number }}</td>
+                    <td>{{ event.name }}</td>
+                    <td>{{ event.event_date or "" }}</td>
+                    <td>{{ event.location or "" }}</td>
+                    <td>{{ event.organizer_club or "" }}</td>
+                    <td>{{ event.sectors_per_lane or 4 }}</td>
+
+                    <td class="event-actions-cell">
+                        <div class="event-actions">
+                            <div class="event-primary-actions">
+                                <a class="button small-button" href="/ui/events/{{ event.id }}/dashboard">
+                                    Öffnen
+                                </a>
+
+                                {% if not event.active %}
+                                    <form method="post" action="/ui/events/{{ event.id }}/activate">
+                                        <button type="submit" class="small-button">Aktiv setzen</button>
+                                    </form>
+
+                                    <a class="button small-button" href="/ui/events/{{ event.id }}/edit">
+                                        Bearbeiten
+                                    </a>
+                                {% else %}
+                                    <span class="event-active-badge">Aktiv</span>
+                                {% endif %}
+
+                                <form method="post" action="/ui/events/{{ event.id }}/delete">
+                                    <button
+                                        type="submit"
+                                        class="small-button red-button"
+                                        onclick="return confirm('Veranstaltung wirklich löschen? Alle Teilnehmer, Läufe und Ergebnisse dieser Veranstaltung werden gelöscht.')"
+                                    >
+                                        Löschen
+                                    </button>
+                                </form>
+                            </div>
+
+                            <form method="post" action="/ui/events/{{ event.id }}/close" class="event-close-form">
+                                <div class="event-close-grid">
+                                    <div>
+                                        <label>Geschlossen durch</label>
+                                        <input type="text" name="closed_by" placeholder="Name" required>
+                                    </div>
+
+                                    <div>
+                                        <label>Grund</label>
+                                        <select name="closed_reason" required>
+                                            <option value="">Bitte auswählen</option>
+                                            <option value="beendet">Beendet</option>
+                                            <option value="abgesagt">Abgesagt</option>
+                                            <option value="abgebrochen">Abgebrochen</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="event-close-button">
+                                        <button
+                                            type="submit"
+                                            class="small-button"
+                                            onclick="return confirm('Veranstaltung wirklich schließen? Danach sind keine Änderungen mehr möglich.')"
+                                        >
+                                            Schließen
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Keine offenen Veranstaltungen vorhanden.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div
+        class="class-header"
+        style="cursor:pointer;"
+        onclick="toggleEventBlock('new_event')"
+    >
+        <div>
+            <h2>
+                <span id="event_toggle_icon_new_event">▶</span>
+                Neue Veranstaltung anlegen
+            </h2>
+        </div>
+    </div>
+
+    <div id="event_body_new_event" style="display:none;">
+        <form method="post" action="/ui/events/new">
+            <label>Veranstaltungsnummer</label>
+            <input type="text" name="event_number" placeholder="z. B. 2026-01" required>
+
+            <label>Name der Veranstaltung</label>
+            <input type="text" name="name" placeholder="z. B. ADAC Quad Parallel Race" required>
+
+            <label>Datum</label>
+            <input type="text" name="event_date" placeholder="z. B. 25.04.2026">
+
+            <label>Ort</label>
+            <input type="text" name="location" placeholder="z. B. Itzehoe">
+
+            <label>Ortsclub / Veranstalter</label>
+            <select name="organizer_club" required>
+                <option value="">Bitte Ortsclub / Veranstalter auswählen</option>
+                <option value="MSC Lägerdorf v. 1925 e.V.">MSC Lägerdorf v. 1925 e.V.</option>
+                <option value="AC Kellinghusen e.V.">AC Kellinghusen e.V.</option>
+                <option value="Wühlmäuse Schleswig-Holstein e.V.">Wühlmäuse Schleswig-Holstein e.V.</option>
+            </select>
+
+            <label>Sektoren pro Bahn</label>
+            <input
+                type="number"
+                name="sectors_per_lane"
+                value="4"
+                min="1"
+                max="10"
+                required
+            >
+
+            <button type="submit">Veranstaltung anlegen</button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div
+        class="class-header"
+        style="cursor:pointer;"
+        onclick="toggleEventBlock('closed_events')"
+    >
+        <div>
+            <h2>
+                <span id="event_toggle_icon_closed_events">▶</span>
+                Geschlossene Veranstaltungen
+            </h2>
+        </div>
+    </div>
+
+    <div id="event_body_closed_events" style="display:none;">
+        {% if closed_events|length > 0 %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nr.</th>
+                        <th>Name</th>
+                        <th>Datum</th>
+                        <th>Ort</th>
+                        <th>Ortsclub / Veranstalter</th>
+                        <th>Grund</th>
+                        <th>Geschlossen am</th>
+                        <th>Geschlossen durch</th>
+                        <th>Aktion</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in closed_events %}
+                    <tr>
+                        <td>{{ event.event_number }}</td>
+                        <td>{{ event.name }}</td>
+                        <td>{{ event.event_date or "" }}</td>
+                        <td>{{ event.location or "" }}</td>
+                        <td>{{ event.organizer_club or "" }}</td>
+                        <td>{{ event.closed_reason or "" }}</td>
+                        <td>{{ event.closed_at or "" }}</td>
+                        <td>{{ event.closed_by or "" }}</td>
+                        <td>
+                            <a class="button" href="/ui/events/{{ event.id }}/dashboard">
+                                Veranstaltung öffnen
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>Keine geschlossenen Veranstaltungen vorhanden.</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    function toggleEventBlock(blockId) {
+        const body = document.getElementById("event_body_" + blockId);
+        const icon = document.getElementById("event_toggle_icon_" + blockId);
+
+        if (!body || !icon) {
+            return;
+        }
+
+        if (body.style.display === "none") {
+            body.style.display = "";
+            icon.innerText = "▼";
+        } else {
+            body.style.display = "none";
+            icon.innerText = "▶";
+        }
+    }
+</script>
+{% endblock %}

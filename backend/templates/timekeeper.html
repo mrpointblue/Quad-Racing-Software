@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Zeitnehmer – Klasse {{ race_class }}</h2>
+
+    {% if active_event %}
+        <p>
+            Veranstaltung:
+            <strong>{{ active_event.event_number }} – {{ active_event.name }}</strong>
+        </p>
+    {% endif %}
+
+    <p>
+        Übersicht aller Läufe dieser Klasse. Von hier kann direkt in jeden Lauf gesprungen werden.
+    </p>
+
+    <a class="button" href="/ui/classes">Zurück zu Klassen</a>
+</div>
+
+<div class="card">
+    <h3>Läufe</h3>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Lauf</th>
+                <th>Durchgang</th>
+                <th>Bahn A</th>
+                <th>Bahn B</th>
+                <th>Status</th>
+                <th>Aktion</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pairing in pairings %}
+                {% for run in pairing.runs %}
+                    {% set ns = namespace(lane_a_result=None, lane_b_result=None) %}
+
+                    {% for result in run.results %}
+                        {% if result.lane == "lane_a" %}
+                            {% set ns.lane_a_result = result %}
+                        {% endif %}
+
+                        {% if result.lane == "lane_b" %}
+                            {% set ns.lane_b_result = result %}
+                        {% endif %}
+                    {% endfor %}
+
+                    <tr>
+                        <td>
+                            <strong>{{ pairing.pairing_number }}.{{ run.run_number }}</strong>
+                        </td>
+
+                        <td>{{ run.round_name }}</td>
+
+                        <td>
+                            {% if ns.lane_a_result %}
+                                #{{ ns.lane_a_result.participant.start_number }}
+                                {{ ns.lane_a_result.participant.first_name }}
+                                {{ ns.lane_a_result.participant.last_name }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {% if ns.lane_b_result %}
+                                #{{ ns.lane_b_result.participant.start_number }}
+                                {{ ns.lane_b_result.participant.first_name }}
+                                {{ ns.lane_b_result.participant.last_name }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {% if run.confirmed %}
+                                <span class="error">Abgeschlossen</span>
+                            {% elif run.status == "running" %}
+                                <span class="success">Läuft</span>
+                            {% elif run.status == "finished" %}
+                                <span class="success">Zeiten gespeichert</span>
+                            {% else %}
+                                {{ run.status }}
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {% if run.confirmed %}
+                                <a
+                                    class="button"
+                                    href="/ui/timekeeper/run/{{ run.id }}"
+                                    style="background:#dc2626;"
+                                >
+                                    Abgeschlossenen Lauf öffnen
+                                </a>
+                            {% else %}
+                                <a class="button" href="/ui/timekeeper/run/{{ run.id }}">
+                                    Lauf öffnen
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

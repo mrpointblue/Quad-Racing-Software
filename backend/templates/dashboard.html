@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Dashboard</h2>
+    <p>Übersicht der Veranstaltung</p>
+    <p>Veranstaltungsjahr: <strong>{{ event_year }}</strong></p>
+    <p>Aktuelle Uhrzeit: <strong>{{ current_time }}</strong></p>
+</div>
+
+<div class="grid">
+    <div class="card">
+        <h3>Teilnehmer gesamt</h3>
+        <div class="stat">{{ total_participants }}</div>
+    </div>
+
+    {% for race_class, count in class_counts.items() %}
+    <div class="card">
+        <h3>Klasse {{ race_class }}</h3>
+        <div class="stat">{{ count }}</div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="card">
+    <h2>Nennfreigabe</h2>
+    <p>Status je Startgruppe</p>
+</div>
+
+<div class="grid">
+    {% for group in registration_groups %}
+    <div class="card">
+        <h3>{{ group.name }}</h3>
+
+        <p>
+            Klassen:
+            <strong>{{ group.classes }}</strong>
+        </p>
+
+        {% if group.released %}
+            <div class="success">
+                Freigegeben
+            </div>
+
+            <p>
+                Freigegeben am:<br>
+                <strong>{{ group.released_at or "-" }}</strong>
+            </p>
+
+            <p>
+                Freigegeben durch:<br>
+                <strong>{{ group.released_by or "-" }}</strong>
+            </p>
+        {% else %}
+            <div class="error">
+                Noch nicht freigegeben
+            </div>
+
+            <p>
+                Rennbetrieb für diese Gruppe ist gesperrt.
+            </p>
+
+            <a class="button" href="/ui/registration">
+                Zur Nennfreigabe
+            </a>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

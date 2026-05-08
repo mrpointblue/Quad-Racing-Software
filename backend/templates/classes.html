@@ -1,0 +1,460 @@
+{% extends "base.html" %}
+
+{% block title %}Läufe{% if active_event %} - {{ active_event.event_number }}{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Läufe / Rennbetrieb</h2>
+
+    {% if active_event %}
+        <p>
+            Veranstaltung:
+            <strong>{{ active_event.event_number }} – {{ active_event.name }}</strong>
+        </p>
+
+        <p>
+            Veranstaltungsdatum:
+            <strong>{{ active_event.event_date or "-" }}</strong>
+        </p>
+
+        {% if not event_date_reached %}
+            <div class="error">
+                Rennbetrieb erst ab Veranstaltungsdatum möglich.<br>
+                Die Teilnehmererfassung bleibt weiterhin möglich.
+            </div>
+        {% endif %}
+
+        {% if active_event.closed %}
+            <div class="error">
+                Diese Veranstaltung ist geschlossen. Änderungen sind nicht mehr möglich.
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+
+{% for item in class_data %}
+<div class="card compact-class-card">
+    <div
+        class="class-header"
+        style="cursor:pointer;"
+        onclick="toggleClassBlock('{{ item.race_class }}')"
+    >
+        <div>
+            <h2>
+                <span id="class_toggle_icon_{{ item.race_class }}">
+                    {% if item.final_complete %}
+                        ▶
+                    {% else %}
+                        ▼
+                    {% endif %}
+                </span>
+                Klasse {{ item.race_class }}
+            </h2>
+
+            <p>
+                Teilnehmer: <strong>{{ item.participants_count }}</strong>
+                |
+                Nennfreigabe:
+                <strong>{{ item.registration_group_name }}</strong>
+                |
+                Status:
+                {% if item.final_complete %}
+                    <span class="success">Klasse abgeschlossen</span>
+                {% elif item.next_action_available is defined and item.next_action_available %}
+                    <span class="success">Aktion erforderlich</span>
+                {% elif item.preliminary_created or item.semifinal_created or item.final_created %}
+                    <span class="success">Rennbetrieb aktiv</span>
+                {% else %}
+                    <span>Offen</span>
+                {% endif %}
+            </p>
+        </div>
+
+        <div>
+            {% if item.registration_released %}
+                <span class="success">Nennung freigegeben</span>
+            {% else %}
+                <span class="error">Nicht freigegeben</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div
+        id="class_body_{{ item.race_class }}"
+        {% if item.final_complete %}
+            style="display:none;"
+        {% endif %}
+    >
+        <div class="compact-info">
+            <a class="button small-button" href="/ui/events/{{ active_event.id }}/export/class/{{ item.race_class }}/round/quarterfinal/xlsx">
+                Viertelfinale Export
+            </a>
+
+            <a class="button small-button" href="/ui/events/{{ active_event.id }}/export/class/{{ item.race_class }}/round/semifinal/xlsx">
+                Halbfinale Export
+            </a>
+
+            <a class="button small-button" href="/ui/events/{{ active_event.id }}/export/class/{{ item.race_class }}/round/final/xlsx">
+                Finale Export
+            </a>
+
+            <button type="button" class="small-button print-button" onclick="window.print()">
+                Läufe Druck
+            </button>
+
+            <a class="button small-button" href="/ui/events/{{ active_event.id }}/results/class/{{ item.race_class }}">
+                Ergebnis anzeigen
+            </a>
+        </div>
+
+        {% if item.current_round_label %}
+            <p class="success compact-info">
+                {{ item.current_round_label }} erzeugt · Paarungen: {{ item.current_round_count }}
+            </p>
+        {% else %}
+            <div class="compact-info">
+                {% if item.participants_count == 0 %}
+                    <p>Keine Teilnehmer in dieser Klasse.</p>
+                {% elif not item.registration_released %}
+                    <p>Klasse kann erst nach Nennfreigabe gestartet werden.</p>
+                    <a class="button small-button" href="/ui/events/{{ active_event.id }}/registration">Zur Nennfreigabe</a>
+                {% elif not event_date_reached %}
+                    <p>Klasse kann erst am Veranstaltungstag gestartet werden.</p>
+                {% elif item.event_closed %}
+                    <p>Veranstaltung ist geschlossen.</p>
+                {% else %}
+                    <form method="post" action="/ui/events/{{ active_event.id }}/classes/{{ item.race_class }}/start">
+                        <button type="submit" class="small-button">
+                            Viertelfinale erzeugen
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        {% if item.preliminary_complete and not item.semifinal_created %}
+            <div class="success compact-info">
+                Alle Viertelfinal-Läufe sind abgeschlossen.
+            </div>
+
+            {% if not active_event.closed %}
+                <form method="post" action="/ui/events/{{ active_event.id }}/classes/{{ item.race_class }}/semifinal/start">
+                    <button type="submit" class="small-button">
+                        Halbfinale erzeugen
+                    </button>
+                </form>
+            {% endif %}
+        {% endif %}
+
+        {% if item.semifinal_complete and not item.final_created %}
+            <div class="success compact-info">
+                Alle Halbfinal-Läufe sind abgeschlossen.
+            </div>
+
+            {% if not active_event.closed %}
+                <form method="post" action="/ui/events/{{ active_event.id }}/classes/{{ item.race_class }}/final/start">
+                    <button type="submit" class="small-button">
+                        Finale erzeugen
+                    </button>
+                </form>
+            {% endif %}
+        {% endif %}
+
+        {% if item.final_complete %}
+            <div class="success compact-info">
+                Finale abgeschlossen. Ergebnis kann erzeugt werden.
+            </div>
+        {% endif %}
+
+        {% set class_runs = runs_by_class.get(item.race_class, []) %}
+
+        {% if class_runs|length > 0 %}
+            <table class="compact-runs-table">
+                <thead>
+                    <tr>
+                        <th>Runde</th>
+                        <th>Paarung</th>
+                        <th>Lauf</th>
+                        <th>Bahn A</th>
+                        <th>Zeit A</th>
+                        <th>FP A</th>
+                        <th>Ergebnis A</th>
+                        <th>Bahn B</th>
+                        <th>Zeit B</th>
+                        <th>FP B</th>
+                        <th>Ergebnis B</th>
+                        <th>Status</th>
+                        <th>Aktion</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for run_item in class_runs %}
+                        {% set run = run_item.run %}
+                        {% set pairing = run_item.pairing %}
+                        {% set lane_a = run_item.lane_a %}
+                        {% set lane_b = run_item.lane_b %}
+
+                        {% if run_item.round_number is defined %}
+                            {% set round_number = run_item.round_number %}
+                            {% set round_label = run_item.round_label %}
+                        {% elif run.round_name == "vorlauf" or run.round_name == "viertelfinale" %}
+                            {% set round_number = 1 %}
+                            {% set round_label = "Viertelfinale" %}
+                        {% elif run.round_name == "halbfinale" %}
+                            {% set round_number = 2 %}
+                            {% set round_label = "Halbfinale" %}
+                        {% elif run.round_name == "finale" %}
+                            {% set round_number = 3 %}
+                            {% set round_label = "Finale" %}
+                        {% else %}
+                            {% set round_number = 0 %}
+                            {% set round_label = run.round_name %}
+                        {% endif %}
+
+                        <tr>
+                            <td>{{ round_label }}</td>
+
+                            <td>Paarung {{ pairing.pairing_number }}</td>
+
+                            <td>
+                                <strong>{{ round_number }}.{{ run.run_number }}</strong>
+                            </td>
+
+                            <td>
+                                {% if lane_a %}
+                                    {% if lane_a.participant.withdrawn %}
+                                        <span class="error">
+                                            #{{ lane_a.participant.start_number }}
+                                            {{ lane_a.participant.first_name }}
+                                            {{ lane_a.participant.last_name }}
+                                            – Ausgeschieden
+                                            {% if lane_a.participant.withdrawn_reason %}
+                                                / {{ lane_a.participant.withdrawn_reason }}
+                                            {% endif %}
+                                        </span>
+                                    {% else %}
+                                        #{{ lane_a.participant.start_number }}
+                                        {{ lane_a.participant.first_name }}
+                                        {{ lane_a.participant.last_name }}
+                                    {% endif %}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+
+                            {% if lane_a %}
+                                {% set ns_a = namespace(penalty=0) %}
+                                {% set ns_a.penalty = ns_a.penalty + (lane_a.sector_1_penalty or 0) %}
+                                {% set ns_a.penalty = ns_a.penalty + (lane_a.sector_2_penalty or 0) %}
+                                {% set ns_a.penalty = ns_a.penalty + (lane_a.sector_3_penalty or 0) %}
+                                {% set ns_a.penalty = ns_a.penalty + (lane_a.sector_4_penalty or 0) %}
+                                {% set ns_a.penalty = ns_a.penalty + (lane_a.sector_5_penalty or 0) %}
+                                {% set ns_a.penalty = ns_a.penalty + (lane_a.sector_6_penalty or 0) %}
+                                {% set ns_a.penalty = ns_a.penalty + (lane_a.sector_7_penalty or 0) %}
+                                {% set ns_a.penalty = ns_a.penalty + (lane_a.sector_8_penalty or 0) %}
+                                {% set ns_a.penalty = ns_a.penalty + (lane_a.sector_9_penalty or 0) %}
+                                {% set ns_a.penalty = ns_a.penalty + (lane_a.sector_10_penalty or 0) %}
+                                {% set ns_a.penalty = ns_a.penalty + (lane_a.general_penalty or 0) %}
+
+                                <td>
+                                    {% if lane_a.participant.withdrawn %}
+                                        —
+                                    {% elif lane_a.raw_time_ms is not none %}
+                                        <span class="time-ms-display" data-ms="{{ lane_a.raw_time_ms }}">—</span>
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    {% if lane_a.participant.withdrawn %}
+                                        —
+                                    {% elif lane_a.raw_time_ms is not none or run.confirmed or run.status == "finished" %}
+                                        <strong>{{ ns_a.penalty }}</strong>
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    {% if lane_a.participant.withdrawn %}
+                                        —
+                                    {% elif lane_a.raw_time_ms is not none %}
+                                        <span
+                                            class="time-ms-display"
+                                            data-ms="{{ lane_a.raw_time_ms + (ns_a.penalty * 1000) }}"
+                                        >—</span>
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            {% else %}
+                                <td>—</td>
+                                <td>—</td>
+                                <td>—</td>
+                            {% endif %}
+
+                            <td>
+                                {% if lane_b %}
+                                    {% if lane_b.participant.withdrawn %}
+                                        <span class="error">
+                                            #{{ lane_b.participant.start_number }}
+                                            {{ lane_b.participant.first_name }}
+                                            {{ lane_b.participant.last_name }}
+                                            – Ausgeschieden
+                                            {% if lane_b.participant.withdrawn_reason %}
+                                                / {{ lane_b.participant.withdrawn_reason }}
+                                            {% endif %}
+                                        </span>
+                                    {% else %}
+                                        #{{ lane_b.participant.start_number }}
+                                        {{ lane_b.participant.first_name }}
+                                        {{ lane_b.participant.last_name }}
+                                    {% endif %}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+
+                            {% if lane_b %}
+                                {% set ns_b = namespace(penalty=0) %}
+                                {% set ns_b.penalty = ns_b.penalty + (lane_b.sector_1_penalty or 0) %}
+                                {% set ns_b.penalty = ns_b.penalty + (lane_b.sector_2_penalty or 0) %}
+                                {% set ns_b.penalty = ns_b.penalty + (lane_b.sector_3_penalty or 0) %}
+                                {% set ns_b.penalty = ns_b.penalty + (lane_b.sector_4_penalty or 0) %}
+                                {% set ns_b.penalty = ns_b.penalty + (lane_b.sector_5_penalty or 0) %}
+                                {% set ns_b.penalty = ns_b.penalty + (lane_b.sector_6_penalty or 0) %}
+                                {% set ns_b.penalty = ns_b.penalty + (lane_b.sector_7_penalty or 0) %}
+                                {% set ns_b.penalty = ns_b.penalty + (lane_b.sector_8_penalty or 0) %}
+                                {% set ns_b.penalty = ns_b.penalty + (lane_b.sector_9_penalty or 0) %}
+                                {% set ns_b.penalty = ns_b.penalty + (lane_b.sector_10_penalty or 0) %}
+                                {% set ns_b.penalty = ns_b.penalty + (lane_b.general_penalty or 0) %}
+
+                                <td>
+                                    {% if lane_b.participant.withdrawn %}
+                                        —
+                                    {% elif lane_b.raw_time_ms is not none %}
+                                        <span class="time-ms-display" data-ms="{{ lane_b.raw_time_ms }}">—</span>
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    {% if lane_b.participant.withdrawn %}
+                                        —
+                                    {% elif lane_b.raw_time_ms is not none or run.confirmed or run.status == "finished" %}
+                                        <strong>{{ ns_b.penalty }}</strong>
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    {% if lane_b.participant.withdrawn %}
+                                        —
+                                    {% elif lane_b.raw_time_ms is not none %}
+                                        <span
+                                            class="time-ms-display"
+                                            data-ms="{{ lane_b.raw_time_ms + (ns_b.penalty * 1000) }}"
+                                        >—</span>
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            {% else %}
+                                <td>—</td>
+                                <td>—</td>
+                                <td>—</td>
+                            {% endif %}
+
+                            <td>
+                                {% if run.confirmed %}
+                                    <span class="error">Abgeschlossen</span>
+                                {% elif run.status == "running" %}
+                                    <span class="success">Läuft</span>
+                                {% elif run.status == "finished" %}
+                                    <span class="success">Gespeichert</span>
+                                {% else %}
+                                    {{ run.status }}
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {% if run.confirmed %}
+                                    <a class="button small-button red-button" href="/ui/events/{{ active_event.id }}/timekeeper/run/{{ run.id }}">
+                                        Öffnen
+                                    </a>
+                                {% else %}
+                                    <a class="button small-button" href="/ui/events/{{ active_event.id }}/timekeeper/run/{{ run.id }}">
+                                        Öffnen
+                                    </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            {% if item.preliminary_created %}
+                <p class="error">
+                    Paarungen gefunden, aber keine Läufe erzeugt.
+                </p>
+            {% else %}
+                <p>Noch keine Läufe vorhanden.</p>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+
+<script>
+    function toggleClassBlock(raceClass) {
+        const body = document.getElementById("class_body_" + raceClass);
+        const icon = document.getElementById("class_toggle_icon_" + raceClass);
+
+        if (!body || !icon) {
+            return;
+        }
+
+        if (body.style.display === "none") {
+            body.style.display = "";
+            icon.innerText = "▼";
+        } else {
+            body.style.display = "none";
+            icon.innerText = "▶";
+        }
+    }
+
+    function formatMilliseconds(ms) {
+        if (ms === null || ms === undefined || isNaN(ms) || ms < 0) {
+            return "—";
+        }
+
+        const totalCentiseconds = Math.round(ms / 10);
+        const minutes = Math.floor(totalCentiseconds / 6000);
+        const seconds = Math.floor((totalCentiseconds % 6000) / 100);
+        const hundredths = totalCentiseconds % 100;
+
+        return (
+            String(minutes).padStart(2, "0") +
+            ":" +
+            String(seconds).padStart(2, "0") +
+            "," +
+            String(hundredths).padStart(2, "0")
+        );
+    }
+
+    function updateOverviewTimes() {
+        const fields = document.querySelectorAll(".time-ms-display");
+
+        fields.forEach(function(field) {
+            const ms = parseInt(field.dataset.ms);
+            field.innerText = formatMilliseconds(ms);
+        });
+    }
+
+    updateOverviewTimes();
+</script>
+{% endblock %}
