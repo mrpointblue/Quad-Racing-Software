@@ -89,6 +89,40 @@
                 {% endfor %}
             {% endif %}
 
+            {% if monitor_data.overall_sections|length > 0 %}
+                {% for section in monitor_data.overall_sections %}
+                    <h3>{{ section.title }}</h3>
+                    <table class="monitor-results-table monitor-overall-results-table">
+                        <thead>
+                            <tr>
+                                <th>Pl.</th>
+                                <th>Kl.</th>
+                                <th>Fahrer</th>
+                                <th>VF</th>
+                                <th>HF</th>
+                                <th>F</th>
+                                <th>FP</th>
+                                <th>Gesamt</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in section.rows %}
+                                <tr>
+                                    <td><strong>{{ row.place }}</strong></td>
+                                    <td>{{ row.race_class }}</td>
+                                    <td>#{{ row.start_number }} {{ row.driver }}</td>
+                                    <td>{{ row.quarterfinal }}</td>
+                                    <td>{{ row.semifinal }}</td>
+                                    <td>{{ row.final }}</td>
+                                    <td>{{ row.total_penalty }}</td>
+                                    <td><strong>{{ row.total }}</strong></td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endfor %}
+            {% endif %}
+
             {% if monitor_data.team_results|length > 0 %}
                 <h3>Mannschaftswertung</h3>
                 <table class="monitor-results-table monitor-team-results-table">
@@ -119,7 +153,7 @@
                 </table>
             {% endif %}
 
-            {% if monitor_data.result_sections|length == 0 and monitor_data.team_results|length == 0 %}
+            {% if monitor_data.result_sections|length == 0 and monitor_data.overall_sections|length == 0 and monitor_data.team_results|length == 0 %}
                 Keine Monitor-Ausgabe ausgewählt
             {% endif %}
         </div>
@@ -289,7 +323,51 @@
         return wrapper;
     }
 
-    function renderMonitorResults(resultSections, teamResults) {
+    function renderOverallSection(section) {
+        const wrapper = document.createElement("div");
+        const headline = document.createElement("h3");
+        headline.textContent = section.title;
+        wrapper.appendChild(headline);
+
+        const table = document.createElement("table");
+        table.className = "monitor-results-table monitor-overall-results-table";
+        table.innerHTML =
+            "<thead>" +
+                "<tr>" +
+                    "<th>Pl.</th>" +
+                    "<th>Kl.</th>" +
+                    "<th>Fahrer</th>" +
+                    "<th>VF</th>" +
+                    "<th>HF</th>" +
+                    "<th>F</th>" +
+                    "<th>FP</th>" +
+                    "<th>Gesamt</th>" +
+                "</tr>" +
+            "</thead>";
+
+        const tbody = document.createElement("tbody");
+
+        (section.rows || []).forEach((row) => {
+            const tr = document.createElement("tr");
+            tr.innerHTML =
+                "<td><strong>" + row.place + "</strong></td>" +
+                "<td>" + row.race_class + "</td>" +
+                "<td>#" + row.start_number + " " + row.driver + "</td>" +
+                "<td>" + row.quarterfinal + "</td>" +
+                "<td>" + row.semifinal + "</td>" +
+                "<td>" + row.final + "</td>" +
+                "<td>" + row.total_penalty + "</td>" +
+                "<td><strong>" + row.total + "</strong></td>";
+            tbody.appendChild(tr);
+        });
+
+        table.appendChild(tbody);
+        wrapper.appendChild(table);
+
+        return wrapper;
+    }
+
+    function renderMonitorResults(resultSections, overallSections, teamResults) {
         const container = document.getElementById("monitor_results");
 
         if (!container) {
@@ -299,17 +377,22 @@
         container.innerHTML = "";
 
         const sections = resultSections || [];
+        const overalls = overallSections || [];
         const teams = teamResults || [];
 
         sections.forEach((section) => {
             container.appendChild(renderResultSection(section));
         });
 
+        overalls.forEach((section) => {
+            container.appendChild(renderOverallSection(section));
+        });
+
         if (teams.length > 0) {
             container.appendChild(renderTeamResults(teams));
         }
 
-        if (sections.length === 0 && teams.length === 0) {
+        if (sections.length === 0 && overalls.length === 0 && teams.length === 0) {
             container.textContent = "Keine Monitor-Ausgabe ausgewählt";
         }
     }
@@ -336,7 +419,7 @@
                 text("monitor_time", data.server_time);
                 updateStarterGrid(data.current_run, data.next_runs);
                 renderCurrentRun(data.current_run);
-                renderMonitorResults(data.result_sections, data.team_results);
+                renderMonitorResults(data.result_sections, data.overall_sections, data.team_results);
                 renderNextRuns(data.next_runs);
             })
             .catch(() => {

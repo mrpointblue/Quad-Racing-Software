@@ -37,6 +37,7 @@ from backend.round_logic import (
     create_final_pairings,
 )
 from backend.results_logic import build_class_results
+from backend.export_logic import build_class_export_rows, build_overall_rows
 
 
 EVENT_YEAR = datetime.now().year
@@ -66,6 +67,12 @@ ensure_schema_column(
     table_name="monitor_display_settings",
     column_name="display_orientation",
     column_definition="VARCHAR DEFAULT 'landscape'",
+)
+
+ensure_schema_column(
+    table_name="monitor_display_settings",
+    column_name="show_overall_results",
+    column_definition="BOOLEAN DEFAULT 0",
 )
 
 app.mount("/static", StaticFiles(directory="backend/static"), name="static")
@@ -1121,6 +1128,7 @@ def get_or_create_monitor_display_setting(
         show_race_control=True,
         display_classes="",
         display_rounds="",
+        show_overall_results=False,
         show_team_results=False,
         display_orientation="landscape",
         updated_at=now_string(),
@@ -1141,6 +1149,7 @@ def monitor_display_setting_payload(setting: MonitorDisplaySetting) -> dict:
             if item.isdigit()
         ],
         "display_rounds": parse_monitor_csv(setting.display_rounds),
+        "show_overall_results": bool(setting.show_overall_results),
         "show_team_results": bool(setting.show_team_results),
         "display_orientation": setting.display_orientation or "landscape",
     }
@@ -1296,6 +1305,59 @@ def build_monitor_team_rows(
     ]
 
 
+def build_monitor_overall_sections(
+    event: Event,
+    db: Session,
+    setting: MonitorDisplaySetting,
+) -> list[dict]:
+    if not setting.show_overall_results:
+        return []
+
+    selected_classes = [
+        int(item)
+        for item in parse_monitor_csv(setting.display_classes)
+        if item.isdigit() and int(item) in [1, 2, 3, 4, 5]
+    ]
+    sections = []
+
+    for race_class in selected_classes:
+        pairings = db.query(Pairing).filter(
+            Pairing.event_id == event.id,
+            Pairing.race_class == race_class,
+        ).all()
+        rows_by_round = build_class_export_rows(pairings)
+        overall_rows = [
+            row
+            for row in build_overall_rows(rows_by_round)
+            if row.get("place") not in ["", None]
+        ]
+
+        if not overall_rows:
+            continue
+
+        sections.append(
+            {
+                "title": f"Gesamtwertung Klasse {race_class}",
+                "rows": [
+                    {
+                        "place": row["place"],
+                        "race_class": race_class,
+                        "start_number": row["start_number"],
+                        "driver": row["driver_name"],
+                        "quarterfinal": row["quarterfinal_display"] or "-",
+                        "semifinal": row["semifinal_display"] or "-",
+                        "final": row["final_display"] or "-",
+                        "total_penalty": row["total_penalty"],
+                        "total": row["total_display"] or "-",
+                    }
+                    for row in overall_rows
+                ],
+            }
+        )
+
+    return sections
+
+
 def build_monitor_output_payload(
     event: Event,
     db: Session,
@@ -1309,6 +1371,11 @@ def build_monitor_output_payload(
 
     race_payload["display_setting"] = monitor_display_setting_payload(setting)
     race_payload["result_sections"] = build_monitor_result_sections(
+        event=event,
+        db=db,
+        setting=setting,
+    )
+    race_payload["overall_sections"] = build_monitor_overall_sections(
         event=event,
         db=db,
         setting=setting,
@@ -3240,6 +3307,7 @@ async def ui_event_update_monitor_output(
     setting.show_race_control = form.get("show_race_control") == "1"
     setting.display_classes = ",".join(selected_classes)
     setting.display_rounds = ",".join(selected_rounds)
+    setting.show_overall_results = form.get("show_overall_results") == "1"
     setting.show_team_results = form.get("show_team_results") == "1"
     setting.display_orientation = (
         "portrait"

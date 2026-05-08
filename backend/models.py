@@ -246,6 +246,7 @@ class MonitorDisplaySetting(Base):
     show_race_control = Column(Boolean, default=True)
     display_classes = Column(String, default="")
     display_rounds = Column(String, default="")
+    show_overall_results = Column(Boolean, default=False)
     show_team_results = Column(Boolean, default=False)
     display_orientation = Column(String, default="landscape")
 

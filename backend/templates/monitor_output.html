@@ -73,6 +73,11 @@
             <span>Mannschaft</span>
             <strong>{% if setting.show_team_results %}Aktiv{% else %}Aus{% endif %}</strong>
         </div>
+
+        <div class="summary-tile">
+            <span>Gesamtwertung</span>
+            <strong>{% if setting.show_overall_results %}Aktiv{% else %}Aus{% endif %}</strong>
+        </div>
     </div>
 
     <div class="monitor-output-layout">
@@ -99,7 +104,7 @@
         <section class="card monitor-output-section monitor-output-results-section">
             <div class="section-heading">
                 <h3>Ergebnisse</h3>
-                <span>{{ monitor_data.result_sections|length }} Blöcke · {{ monitor_data.team_results|length }} Teams</span>
+                <span>{{ monitor_data.result_sections|length + monitor_data.overall_sections|length }} Blöcke · {{ monitor_data.team_results|length }} Teams</span>
             </div>
 
             <div class="selection-group">
@@ -137,8 +142,18 @@
             </div>
 
             <div class="selection-group">
-                <div class="selection-label">Mannschaftswertung</div>
+                <div class="selection-label">Zusätzliche Wertungen</div>
                 <div class="pill-grid">
+                    <label class="select-pill">
+                        <input
+                            type="checkbox"
+                            name="show_overall_results"
+                            value="1"
+                            {% if setting.show_overall_results %}checked{% endif %}
+                        >
+                        <span>Gesamtwertung</span>
+                    </label>
+
                     <label class="select-pill">
                         <input
                             type="checkbox"
@@ -146,7 +161,7 @@
                             value="1"
                             {% if setting.show_team_results %}checked{% endif %}
                         >
-                        <span>Anzeigen</span>
+                        <span>Mannschaft</span>
                     </label>
                 </div>
             </div>

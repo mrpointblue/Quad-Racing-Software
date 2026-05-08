@@ -843,6 +843,45 @@ select {
     width: 50%;
 }
 
+.monitor-overall-results-table th:nth-child(1),
+.monitor-overall-results-table td:nth-child(1) {
+    width: 7%;
+    white-space: nowrap;
+}
+
+.monitor-overall-results-table th:nth-child(2),
+.monitor-overall-results-table td:nth-child(2) {
+    width: 7%;
+    white-space: nowrap;
+}
+
+.monitor-overall-results-table th:nth-child(3),
+.monitor-overall-results-table td:nth-child(3) {
+    width: 28%;
+}
+
+.monitor-overall-results-table th:nth-child(4),
+.monitor-overall-results-table td:nth-child(4),
+.monitor-overall-results-table th:nth-child(5),
+.monitor-overall-results-table td:nth-child(5),
+.monitor-overall-results-table th:nth-child(6),
+.monitor-overall-results-table td:nth-child(6) {
+    width: 12%;
+    white-space: nowrap;
+}
+
+.monitor-overall-results-table th:nth-child(7),
+.monitor-overall-results-table td:nth-child(7) {
+    width: 8%;
+    white-space: nowrap;
+}
+
+.monitor-overall-results-table th:nth-child(8),
+.monitor-overall-results-table td:nth-child(8) {
+    width: 14%;
+    white-space: nowrap;
+}
+
 .compact-run-header {
     padding: 14px;
 }
