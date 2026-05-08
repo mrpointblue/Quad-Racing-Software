@@ -1,6 +1,6 @@
 # Quad Racing Software
 
-Webbasierte Software zur Verwaltung und Durchführung von Quad Parallel Race Veranstaltungen.
+Webbasierte Software zur Verwaltung und Durchführung von ADAC Quad Parallel Race Veranstaltungen.
 
 ---
 
@@ -278,7 +278,7 @@ sudo systemctl stop quad-race.service
 
 ---
 
-# Hinweise zur Siemens LOGO / Zeitmessanlage
+# Hinweise zur Siemens LOGO / Zeitmessanlage (Achtung, derzeit noch nicht implementiert)
 
 Die Anbindung an die Siemens LOGO beziehungsweise Zeitmessanlage erfolgt lokal über die Konfiguration der jeweiligen Installation.
 
