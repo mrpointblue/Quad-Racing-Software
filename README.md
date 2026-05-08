@@ -70,19 +70,19 @@ python app.py
 Die Software ist danach im Browser erreichbar, zum Beispiel:
 
 ```text
-http://<IP-DES-PI>:5000
+http://<IP-DES-PI>:8000
 ```
 
 Beispiel:
 
 ```text
-http://192.168.178.50:5000
+http://192.168.178.50:8000
 ```
 
 Lokal auf dem Pi:
 
 ```text
-http://localhost:5000
+http://localhost:8000
 ```
 
 ---
@@ -92,7 +92,7 @@ http://localhost:5000
 Wenn der Raspberry Pi per Hostname im Netzwerk erreichbar ist, kann die Software auch über den Hostnamen geöffnet werden:
 
 ```text
-http://pi.local:5000
+http://pi.local:8000
 ```
 
 Alternativ den tatsächlichen Hostnamen des Raspberry Pi verwenden.
@@ -100,7 +100,7 @@ Alternativ den tatsächlichen Hostnamen des Raspberry Pi verwenden.
 Beispiel:
 
 ```text
-http://quad-race.local:5000
+http://quad-race.local:8000
 ```
 
 ---
@@ -311,13 +311,13 @@ Die Software ist webbasiert. Dadurch kann die Monitor-Seite auf jedem Gerät im 
 Beispiele:
 
 ```text
-http://<IP-DES-PI>:5000/monitor
+http://<IP-DES-PI>:8000/monitor
 ```
 
 oder per Hostname:
 
 ```text
-http://quad-race.local:5000/monitor
+http://quad-race.local:8000/monitor
 ```
 
 Für einen Fernseher kann zum Beispiel ein Fire TV Stick genutzt werden.
@@ -399,5 +399,5 @@ python app.py
 Danach im Browser öffnen:
 
 ```text
-http://<IP-DES-PI>:5000
+http://<IP-DES-PI>:8000
 ```
