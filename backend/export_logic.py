@@ -3,7 +3,8 @@ from datetime import datetime
 
 import xlsxwriter
 
-from backend.models import Event, Pairing, RunResult
+from backend.models import Event, Pairing, Participant, RunResult
+from backend.results_logic import build_compact_round_results
 
 
 ROUND_LABELS = {
@@ -494,6 +495,82 @@ def write_round_sheet(
     )
 
 
+def write_compact_round_sheet(
+    workbook,
+    sheet_name: str,
+    event: Event,
+    race_class: int,
+    rows: list[dict],
+    export_timestamp: str,
+):
+    worksheet = workbook.add_worksheet(sheet_name)
+
+    title_format = workbook.add_format({"bold": True, "font_size": 16})
+    meta_format = workbook.add_format({"bold": True, "font_size": 11})
+    header_format = workbook.add_format({"bold": True, "bg_color": "#E5E7EB", "border": 1})
+    cell_format = workbook.add_format({"border": 1})
+    time_format = workbook.add_format({"border": 1, "align": "right"})
+    number_format = workbook.add_format({"border": 1, "align": "right"})
+    place_format = workbook.add_format({"border": 1, "bold": True, "align": "center"})
+
+    write_event_header(
+        worksheet=worksheet,
+        title=f"Ergebnis Klasse {race_class} – {sheet_name}",
+        event=event,
+        export_timestamp=export_timestamp,
+        title_format=title_format,
+        meta_format=meta_format,
+    )
+
+    headers = [
+        "Platz",
+        "Startnr.",
+        "Fahrer",
+        "Verein",
+        "Bahn A Zeit",
+        "Bahn A FP",
+        "Bahn B Zeit",
+        "Bahn B FP",
+        "Summe",
+    ]
+
+    header_row = 7
+
+    for column, header in enumerate(headers):
+        worksheet.write(header_row, column, header, header_format)
+
+    for row_index, row_data in enumerate(rows, start=header_row + 1):
+        round_detail = row_data["round_detail"]
+
+        worksheet.write(row_index, 0, row_data["place"], place_format)
+        worksheet.write(row_index, 1, row_data["start_number"], number_format)
+        worksheet.write(row_index, 2, row_data["driver_name"], cell_format)
+        worksheet.write(row_index, 3, row_data["club"], cell_format)
+        worksheet.write(row_index, 4, round_detail["run_1_raw_display"], time_format)
+        worksheet.write(row_index, 5, round_detail["run_1_penalty"], number_format)
+        worksheet.write(row_index, 6, round_detail["run_2_raw_display"], time_format)
+        worksheet.write(row_index, 7, round_detail["run_2_penalty"], number_format)
+        worksheet.write(row_index, 8, round_detail["round_total_display"], time_format)
+
+    worksheet.set_column(0, 0, 8)
+    worksheet.set_column(1, 1, 10)
+    worksheet.set_column(2, 2, 24)
+    worksheet.set_column(3, 3, 32)
+    worksheet.set_column(4, 4, 14)
+    worksheet.set_column(5, 5, 12)
+    worksheet.set_column(6, 6, 14)
+    worksheet.set_column(7, 7, 12)
+    worksheet.set_column(8, 8, 14)
+
+    worksheet.freeze_panes(header_row + 1, 0)
+    worksheet.autofilter(
+        header_row,
+        0,
+        max(header_row + len(rows), header_row),
+        len(headers) - 1,
+    )
+
+
 def write_overall_sheet(
     workbook,
     event: Event,
@@ -920,6 +997,7 @@ def build_team_standings_xlsx(
 def build_round_xlsx(
     event: Event,
     race_class: int,
+    participants: list[Participant],
     pairings: list[Pairing],
     round_key: str,
 ) -> bytes:
@@ -928,8 +1006,6 @@ def build_round_xlsx(
 
     workbook = xlsxwriter.Workbook(output, {"in_memory": True})
 
-    rows_by_round = build_class_export_rows(pairings)
-
     sheet_names = {
         "quarterfinal": "Viertelfinale",
         "semifinal": "Halbfinale",
@@ -937,13 +1013,18 @@ def build_round_xlsx(
     }
 
     sheet_name = sheet_names.get(round_key, round_key)
+    rows = build_compact_round_results(
+        participants=participants,
+        pairings=pairings,
+        round_key=round_key,
+    )
 
-    write_round_sheet(
+    write_compact_round_sheet(
         workbook=workbook,
         sheet_name=sheet_name,
         event=event,
         race_class=race_class,
-        rows=rows_by_round.get(round_key, []),
+        rows=rows,
         export_timestamp=export_timestamp,
     )
 

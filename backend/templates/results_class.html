@@ -21,9 +21,27 @@
         Gesamtwertung Export
     </a>
 
-    <button type="button" class="small-button print-button" onclick="window.print()">
+    <a class="button small-button print-link" href="/ui/events/{{ active_event.id }}/print/class/{{ race_class }}/overall">
         Gesamtwertung Druck
-    </button>
+    </a>
+
+    {% if print_mode %}
+        <button type="button" class="small-button print-button" onclick="window.print()">
+            Drucken
+        </button>
+    {% endif %}
+
+    <a class="button small-button" href="/ui/events/{{ active_event.id }}/results/class/{{ race_class }}/round/quarterfinal">
+        VF
+    </a>
+
+    <a class="button small-button" href="/ui/events/{{ active_event.id }}/results/class/{{ race_class }}/round/semifinal">
+        HF
+    </a>
+
+    <a class="button small-button" href="/ui/events/{{ active_event.id }}/results/class/{{ race_class }}/round/final">
+        F
+    </a>
 </div>
 
 <div class="card">

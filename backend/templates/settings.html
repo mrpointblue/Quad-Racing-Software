@@ -209,6 +209,44 @@
     </p>
 
     <p>
+        Verbunden via:
+        <strong>{{ system_status.network.active_connection }}</strong>
+    </p>
+
+    <p>
+        Ethernet:
+        <strong>{{ system_status.network.ethernet.status }}</strong>
+        · MAC:
+        <strong>{{ system_status.network.ethernet.mac_address }}</strong>
+        · IP:
+        <strong>{{ system_status.network.ethernet.ip_address }}</strong>
+    </p>
+
+    <p>
+        WLAN:
+        <strong>{{ system_status.network.wifi.status }}</strong>
+        · MAC:
+        <strong>{{ system_status.network.wifi.mac_address }}</strong>
+        · IP:
+        <strong>{{ system_status.network.wifi.ip_address }}</strong>
+        {% if system_status.network.wifi.connected %}
+            · Signal:
+            <strong>{{ system_status.network.wifi.signal_strength }}</strong>
+        {% endif %}
+    </p>
+
+    <p>
+        Letzter Prüfstatus:
+        {% if settings.logo_last_check_ok == "true" %}
+            <span class="success">OK</span>
+        {% elif settings.logo_last_check_ok == "false" %}
+            <span class="error">Fehler</span>
+        {% else %}
+            <strong>-</strong>
+        {% endif %}
+    </p>
+
+    <p>
         Letzter Check:
         <strong>{{ settings.logo_last_check_at or "-" }}</strong>
     </p>
@@ -216,6 +254,11 @@
     <p>
         Letzter Fehler:
         <strong>{{ settings.logo_last_error or "-" }}</strong>
+    </p>
+
+    <p>
+        Der Verbindungstest führt aktuell nur TCP-/Modbus-Verbindungstests aus.
+        Es werden keine Ausgänge geschaltet.
     </p>
 
     <hr>
@@ -271,6 +314,26 @@
     <form method="post" action="/ui/settings/logo/reset-status" style="display:inline;">
         <button type="submit" class="small-button">
             Status zurücksetzen
+        </button>
+    </form>
+
+    <form method="post" action="/ui/settings/system/restart" style="display:inline;">
+        <button
+            type="submit"
+            class="small-button red-button"
+            onclick="return confirm('Software wirklich neu starten? Die Oberfläche ist kurz nicht erreichbar.')"
+        >
+            Software Neustart
+        </button>
+    </form>
+
+    <form method="post" action="/ui/settings/system/reboot" style="display:inline;">
+        <button
+            type="submit"
+            class="small-button red-button"
+            onclick="return confirm('Sind Sie sicher, dass Sie das System neu starten möchten? Der Raspberry Pi ist während des Neustarts nicht erreichbar.')"
+        >
+            System neu starten
         </button>
     </form>
 </div>

@@ -162,6 +162,8 @@
                 <th>VF</th>
                 <th>HF</th>
                 <th>F</th>
+                <th>Gesamt</th>
+                <th>Auswahl</th>
                 <th>Aktionen</th>
             </tr>
         </thead>
@@ -206,23 +208,111 @@
                 </td>
 
                 <td>
-                    <a class="button small-button" href="/ui/events/{{ active_event.id }}/results/class/{{ item.race_class }}">
-                        Ergebnis anzeigen
-                    </a>
+                    {% if item.pairings_count > 0 %}
+                        <span class="success">Verfügbar</span>
+                    {% else %}
+                        <span class="error">Offen</span>
+                    {% endif %}
+                </td>
 
-                    <a class="button small-button" href="/ui/events/{{ active_event.id }}/export/class/{{ item.race_class }}/overall/xlsx">
-                        Gesamtwertung Export
-                    </a>
+                <td>
+                    <div class="result-choice-row">
+                    <label>
+                        <input
+                            type="radio"
+                            name="result_selection_{{ item.race_class }}"
+                            value="quarterfinal"
+                        >
+                        VF
+                    </label>
 
-                    <a class="button small-button print-link" href="/ui/events/{{ active_event.id }}/results/class/{{ item.race_class }}?print=1">
-                        Gesamtwertung Druck
-                    </a>
+                    <label>
+                        <input
+                            type="radio"
+                            name="result_selection_{{ item.race_class }}"
+                            value="semifinal"
+                        >
+                        HF
+                    </label>
+
+                    <label>
+                        <input
+                            type="radio"
+                            name="result_selection_{{ item.race_class }}"
+                            value="final"
+                        >
+                        F
+                    </label>
+
+                    <label>
+                        <input
+                            type="radio"
+                            name="result_selection_{{ item.race_class }}"
+                            value="overall"
+                            checked
+                        >
+                        Gesamt
+                    </label>
+                    </div>
+                </td>
+
+                <td>
+                    <div class="result-action-row">
+                    <button type="button" class="small-button" onclick="openResultAction({{ active_event.id }}, {{ item.race_class }}, 'view')">
+                        Anzeigen
+                    </button>
+
+                    <button type="button" class="small-button" onclick="openResultAction({{ active_event.id }}, {{ item.race_class }}, 'export')">
+                        Export
+                    </button>
+
+                    <button type="button" class="small-button print-button" onclick="openResultAction({{ active_event.id }}, {{ item.race_class }}, 'print')">
+                        Druck
+                    </button>
+                    </div>
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
+
+<script>
+    function getSelectedResultType(raceClass) {
+        const selected = document.querySelector("input[name='result_selection_" + raceClass + "']:checked");
+
+        if (!selected) {
+            return "overall";
+        }
+
+        return selected.value || "overall";
+    }
+
+    function openResultAction(eventId, raceClass, action) {
+        const selection = getSelectedResultType(raceClass);
+        let url = "/ui/events/" + eventId;
+
+        if (selection === "overall") {
+            if (action === "view") {
+                url += "/results/class/" + raceClass;
+            } else if (action === "export") {
+                url += "/export/class/" + raceClass + "/overall/xlsx";
+            } else {
+                url += "/print/class/" + raceClass + "/overall";
+            }
+        } else {
+            if (action === "view") {
+                url += "/results/class/" + raceClass + "/round/" + selection;
+            } else if (action === "export") {
+                url += "/export/class/" + raceClass + "/round/" + selection + "/xlsx";
+            } else {
+                url += "/print/class/" + raceClass + "/round/" + selection;
+            }
+        }
+
+        window.location.href = url;
+    }
+</script>
 
 <div class="card screen-only">
     <h2>Mannschaftswertung</h2>

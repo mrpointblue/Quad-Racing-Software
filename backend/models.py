@@ -256,6 +256,7 @@ class MonitorDisplaySetting(Base):
     display_rounds = Column(String, default="")
     show_overall_results = Column(Boolean, default=False)
     show_team_results = Column(Boolean, default=False)
+    show_logo_signal = Column(Boolean, default=False)
     display_orientation = Column(String, default="landscape")
 
     updated_at = Column(String, nullable=True)

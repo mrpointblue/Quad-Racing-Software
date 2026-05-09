@@ -371,6 +371,62 @@ select {
     color: #bbf7d0;
 }
 
+.monitor-topbar-status {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    justify-content: flex-end;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.monitor-logo-signal {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #374151;
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: #020617;
+    color: #d1d5db;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.monitor-logo-signal[hidden] {
+    display: none;
+}
+
+.monitor-logo-signal strong {
+    color: #f9fafb;
+}
+
+.monitor-logo-lights {
+    display: flex;
+    gap: 5px;
+}
+
+.monitor-logo-light {
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    display: inline-block;
+    background: #374151;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+
+.monitor-logo-signal-red .monitor-logo-light-red {
+    background: #dc2626;
+}
+
+.monitor-logo-signal-orange .monitor-logo-light-orange {
+    background: #f59e0b;
+}
+
+.monitor-logo-signal-green .monitor-logo-light-green {
+    background: #16a34a;
+}
+
 .monitor-grid {
     display: grid;
     grid-template-columns: minmax(520px, 2fr) minmax(320px, 1fr);
@@ -386,6 +442,45 @@ select {
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 10px 16px;
     margin-top: 10px;
+}
+
+.result-choice-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    min-height: 32px;
+    white-space: nowrap;
+}
+
+.result-choice-row label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+    line-height: 1.2;
+    font-weight: normal;
+    white-space: nowrap;
+}
+
+.result-choice-row input[type="radio"] {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    margin: 0;
+}
+
+.result-action-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    min-height: 32px;
+    white-space: nowrap;
+}
+
+.result-action-row .small-button {
+    margin-top: 0;
+    line-height: 1.2;
+    white-space: nowrap;
 }
 
 .monitor-output-header {
@@ -750,22 +845,29 @@ select {
 
 .monitor-results-table {
     width: 100%;
-    table-layout: fixed;
     border-collapse: collapse;
-    font-size: 20px;
+    table-layout: fixed;
+    font-size: 18px;
     color: #f9fafb;
     background: #0f172a;
 }
 
 .monitor-results-table th,
 .monitor-results-table td {
-    padding: 10px 12px;
+    padding: 6px 10px;
     border-bottom: 1px solid #374151;
     text-align: left;
     color: #f9fafb;
     background: #0f172a;
-    vertical-align: top;
-    overflow-wrap: anywhere;
+    line-height: 1.15;
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    vertical-align: middle;
+    box-sizing: border-box;
+    height: auto;
+    min-height: 0;
+    display: table-cell;
 }
 
 .monitor-results-table th {
@@ -775,50 +877,85 @@ select {
 
 .monitor-race-results-table th:nth-child(1),
 .monitor-race-results-table td:nth-child(1) {
-    width: 8%;
+    width: 6%;
+    text-align: center;
 }
 
 .monitor-race-results-table th:nth-child(2),
 .monitor-race-results-table td:nth-child(2) {
-    width: 8%;
+    width: 9%;
+    text-align: center;
 }
 
 .monitor-race-results-table th:nth-child(3),
 .monitor-race-results-table td:nth-child(3) {
     width: 30%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
 }
 
 .monitor-race-results-table th:nth-child(4),
-.monitor-race-results-table td:nth-child(4) {
-    width: 18%;
-}
-
-.monitor-race-results-table th:nth-child(5),
-.monitor-race-results-table td:nth-child(5) {
-    width: 13%;
-}
-
-.monitor-race-results-table th:nth-child(6),
-.monitor-race-results-table td:nth-child(6) {
-    width: 8%;
-}
-
-.monitor-race-results-table th:nth-child(7),
-.monitor-race-results-table td:nth-child(7) {
-    width: 15%;
-}
-
-.monitor-race-results-table th:nth-child(1),
-.monitor-race-results-table td:nth-child(1),
-.monitor-race-results-table th:nth-child(2),
-.monitor-race-results-table td:nth-child(2),
-.monitor-race-results-table th:nth-child(5),
-.monitor-race-results-table td:nth-child(5),
+.monitor-race-results-table td:nth-child(4),
 .monitor-race-results-table th:nth-child(6),
 .monitor-race-results-table td:nth-child(6),
+.monitor-race-results-table th:nth-child(8),
+.monitor-race-results-table td:nth-child(8) {
+    width: 13%;
+    text-align: right;
+}
+
+.monitor-race-results-table th:nth-child(5),
+.monitor-race-results-table td:nth-child(5),
 .monitor-race-results-table th:nth-child(7),
 .monitor-race-results-table td:nth-child(7) {
-    white-space: nowrap;
+    width: 8%;
+    text-align: center;
+}
+
+.monitor-driver-cell {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap !important;
+}
+
+.monitor-time-cell,
+.monitor-sum-cell {
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+    overflow: visible;
+    text-overflow: clip;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.monitor-sum-cell {
+    min-width: 8ch;
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+}
+
+.monitor-sum-cell strong {
+    display: inline-block;
+    min-width: 8ch;
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+}
+
+.monitor-fp-cell {
+    text-align: center;
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+    font-variant-numeric: tabular-nums;
+}
+
+.monitor-results {
+    width: 100%;
+    overflow: hidden;
 }
 
 .monitor-team-results-table th:nth-child(1),

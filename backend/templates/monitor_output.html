@@ -44,7 +44,13 @@
     <div class="monitor-output-summary">
         <div class="summary-tile">
             <span>Rennbetrieb</span>
-            <strong>{% if setting.show_race_control %}Aktiv{% else %}Aus{% endif %}</strong>
+            <strong>
+                {% if setting.show_race_control or setting.show_logo_signal %}
+                    Aktiv
+                {% else %}
+                    Aus
+                {% endif %}
+            </strong>
         </div>
 
         <div class="summary-tile">
@@ -97,6 +103,19 @@
                 <span>
                     <strong>Aktuelle Paarung und nächste Starter</strong>
                     <small>Zeigt Zeitnahme, Fahrer und Vorbereitungsliste.</small>
+                </span>
+            </label>
+
+            <label class="choice-row">
+                <input
+                    type="checkbox"
+                    name="show_logo_signal"
+                    value="1"
+                    {% if setting.show_logo_signal %}checked{% endif %}
+                >
+                <span>
+                    <strong>Ampel anzeigen</strong>
+                    <small>Zeigt Rot, Orange und Grün als visuelle Monitor-Anzeige.</small>
                 </span>
             </label>
         </section>

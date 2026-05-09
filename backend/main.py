@@ -1,7 +1,12 @@
 import shutil
+import os
+import socket
+import subprocess
+import threading
 import time
 
 from datetime import datetime, date
+from urllib.parse import quote
 
 from fastapi import FastAPI, Depends, HTTPException, Request, Form
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -36,7 +41,7 @@ from backend.round_logic import (
     create_semifinal_pairings,
     create_final_pairings,
 )
-from backend.results_logic import build_class_results
+from backend.results_logic import build_class_results, build_compact_round_results
 from backend.export_logic import build_class_export_rows, build_overall_rows
 
 
@@ -72,6 +77,12 @@ ensure_schema_column(
 ensure_schema_column(
     table_name="monitor_display_settings",
     column_name="show_overall_results",
+    column_definition="BOOLEAN DEFAULT 0",
+)
+
+ensure_schema_column(
+    table_name="monitor_display_settings",
+    column_name="show_logo_signal",
     column_definition="BOOLEAN DEFAULT 0",
 )
 
@@ -859,6 +870,7 @@ def monitor_run_payload(
         "pairing_number": pairing.pairing_number,
         "run_number": race_run.run_number,
         "status": race_run.status,
+        "traffic_light_status": race_run.traffic_light_status or "off",
         "confirmed": race_run.confirmed,
         "lane_a": monitor_result_payload(lane_a_result),
         "lane_b": monitor_result_payload(lane_b_result),
@@ -1097,10 +1109,44 @@ def get_monitor_live_result_runs(
     return rows[:limit]
 
 
+def build_monitor_logo_signal_payload(
+    settings: dict,
+    setting: MonitorDisplaySetting,
+    current_run: RaceRun | None,
+) -> dict:
+    visible = bool(setting.show_logo_signal)
+    status = "off"
+
+    if visible and current_run is not None:
+        status = current_run.traffic_light_status or "off"
+
+    if status == "yellow":
+        status = "orange"
+
+    if status not in ["red", "orange", "green"]:
+        status = "off"
+
+    return {
+        "visible": visible,
+        "status": status,
+        "label": {
+            "red": "ROT",
+            "orange": "ORANGE",
+            "green": "GRÜN",
+            "off": "AUS",
+        }.get(status, "AUS"),
+        "mode": settings.get("logo_access_mode") or "inactive",
+    }
+
+
 def build_monitor_payload(
     event: Event,
     db: Session,
+    setting: MonitorDisplaySetting | None = None,
 ) -> dict:
+    if setting is None:
+        setting = get_or_create_monitor_display_setting(event, db)
+
     run_items = get_monitor_runs(
         event_id=event.id,
         db=db,
@@ -1122,6 +1168,8 @@ def build_monitor_payload(
         current_run = None
         current_round_number = None
 
+    logo_settings = get_logo_settings(db)
+
     return {
         "event": {
             "id": event.id,
@@ -1132,6 +1180,11 @@ def build_monitor_payload(
         },
         "server_time": now_string(),
         "current_run": current_payload,
+        "logo_signal": build_monitor_logo_signal_payload(
+            settings=logo_settings,
+            setting=setting,
+            current_run=current_run,
+        ),
         "next_runs": pick_monitor_next_runs(
             run_items=run_items,
             current_run_id=current_run_id,
@@ -1194,6 +1247,7 @@ def get_or_create_monitor_display_setting(
         display_rounds="",
         show_overall_results=False,
         show_team_results=False,
+        show_logo_signal=False,
         display_orientation="landscape",
         updated_at=now_string(),
     )
@@ -1215,6 +1269,7 @@ def monitor_display_setting_payload(setting: MonitorDisplaySetting) -> dict:
         "display_rounds": parse_monitor_csv(setting.display_rounds),
         "show_overall_results": bool(setting.show_overall_results),
         "show_team_results": bool(setting.show_team_results),
+        "show_logo_signal": bool(setting.show_logo_signal),
         "display_orientation": setting.display_orientation or "landscape",
     }
 
@@ -1225,68 +1280,46 @@ def build_monitor_result_rows_for_round(
     race_class: int,
     round_name: str,
 ) -> list[dict]:
-    round_names = [round_name]
+    round_key_by_name = {
+        ROUND_PRELIMINARY: "quarterfinal",
+        ROUND_SEMIFINAL: "semifinal",
+        ROUND_FINAL: "final",
+    }
+    round_key = round_key_by_name.get(round_name)
 
-    if round_name == ROUND_PRELIMINARY:
-        round_names = [ROUND_PRELIMINARY, "vorlauf", "viertelfinale"]
+    if round_key is None:
+        return []
+
+    participants = db.query(Participant).filter(
+        Participant.event_id == event.id,
+        Participant.race_class == race_class,
+        Participant.active == True,
+    ).all()
 
     pairings = db.query(Pairing).filter(
         Pairing.event_id == event.id,
         Pairing.race_class == race_class,
-        Pairing.round_name.in_(round_names),
     ).all()
 
-    participant_rows = {}
-    _round_number, round_label = get_round_display(round_name)
-
-    for pairing in pairings:
-        for race_run in pairing.runs:
-            for result in race_run.results:
-                if result.raw_time_ms is None:
-                    continue
-
-                valued_time_ms = get_monitor_valued_time_ms(result)
-
-                if valued_time_ms is None:
-                    continue
-
-                row = participant_rows.get(result.participant_id)
-
-                if row is None:
-                    row = {
-                        "place": None,
-                        "driver": monitor_driver_name(result.participant),
-                        "race_class": race_class,
-                        "round_label": round_label,
-                        "raw_time_ms": 0,
-                        "penalty": 0,
-                        "valued_time_ms": 0,
-                    }
-                    participant_rows[result.participant_id] = row
-
-                row["raw_time_ms"] += result.raw_time_ms
-                row["penalty"] += get_monitor_penalty_sum(result)
-                row["valued_time_ms"] += valued_time_ms
-
-    rows = sorted(
-        [
-            {
-                **row,
-                "raw_time": format_time_ms(row["raw_time_ms"]),
-                "valued_time": format_time_ms(row["valued_time_ms"]),
-            }
-            for row in participant_rows.values()
-        ],
-        key=lambda row: (
-            row["valued_time_ms"],
-            row["driver"],
-        ),
+    compact_rows = build_compact_round_results(
+        participants=participants,
+        pairings=pairings,
+        round_key=round_key,
     )
 
-    for index, row in enumerate(rows, start=1):
-        row["place"] = index
-
-    return rows
+    return [
+        {
+            "place": row["place"],
+            "start_number": row["start_number"],
+            "driver": row["driver_name"],
+            "run_1_raw_display": row["round_detail"]["run_1_raw_display"],
+            "run_1_penalty": row["round_detail"]["run_1_penalty"],
+            "run_2_raw_display": row["round_detail"]["run_2_raw_display"],
+            "run_2_penalty": row["round_detail"]["run_2_penalty"],
+            "round_total_display": row["round_detail"]["round_total_display"],
+        }
+        for row in compact_rows
+    ]
 
 
 def build_monitor_result_sections(
@@ -1427,7 +1460,7 @@ def build_monitor_output_payload(
     db: Session,
 ) -> dict:
     setting = get_or_create_monitor_display_setting(event, db)
-    race_payload = build_monitor_payload(event, db)
+    race_payload = build_monitor_payload(event, db, setting=setting)
 
     if not setting.show_race_control:
         race_payload["current_run"] = None
@@ -3600,6 +3633,7 @@ async def ui_event_update_monitor_output(
     ]
 
     setting.show_race_control = form.get("show_race_control") == "1"
+    setting.show_logo_signal = form.get("show_logo_signal") == "1"
     setting.display_classes = ",".join(selected_classes)
     setting.display_rounds = ",".join(selected_rounds)
     setting.show_overall_results = form.get("show_overall_results") == "1"
@@ -4587,6 +4621,7 @@ LOGO_DEFAULT_SETTINGS = {
     "logo_false_start_2_address": "4",
 
     "logo_last_check_at": "",
+    "logo_last_check_ok": "",
     "logo_last_error": "",
 }
 
@@ -4823,13 +4858,352 @@ def get_memory_status() -> dict:
     }
 
 
+def read_text_file(path: str) -> str | None:
+    try:
+        with open(path, "r", encoding="utf-8") as file:
+            return file.read().strip()
+    except OSError:
+        return None
+
+
+def get_ip_command() -> str | None:
+    ip_command = shutil.which("ip")
+
+    if ip_command:
+        return ip_command
+
+    for path in ["/usr/sbin/ip", "/sbin/ip", "/bin/ip", "/usr/bin/ip"]:
+        if os.path.exists(path):
+            return path
+
+    return None
+
+
+def get_interface_ipv4_address(interface_name: str) -> str:
+    ip_command = get_ip_command()
+
+    if not ip_command:
+        return "-"
+
+    try:
+        result = subprocess.run(
+            [ip_command, "-o", "-4", "addr", "show", "dev", interface_name],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return "-"
+
+    if result.returncode != 0:
+        return "-"
+
+    for line in result.stdout.splitlines():
+        parts = line.split()
+
+        if "inet" in parts:
+            inet_index = parts.index("inet")
+
+            try:
+                return parts[inet_index + 1].split("/")[0]
+            except IndexError:
+                return "-"
+
+    return "-"
+
+
+def get_host_ipv4_addresses() -> list[str]:
+    try:
+        result = subprocess.run(
+            ["hostname", "-I"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+
+    addresses = []
+
+    for raw_address in result.stdout.split():
+        address = raw_address.strip()
+
+        if "." in address and not address.startswith("127."):
+            addresses.append(address)
+
+    return addresses
+
+
+def get_primary_ipv4_address() -> str | None:
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.settimeout(1)
+            sock.connect(("8.8.8.8", 80))
+            address = sock.getsockname()[0]
+    except OSError:
+        return None
+
+    if address and not address.startswith("127."):
+        return address
+
+    return None
+
+
+def list_network_interfaces() -> list[str]:
+    try:
+        interfaces = os.listdir("/sys/class/net")
+    except OSError:
+        return []
+
+    return sorted(interface for interface in interfaces if interface != "lo")
+
+
+def is_wireless_interface(interface_name: str) -> bool:
+    return os.path.isdir(f"/sys/class/net/{interface_name}/wireless")
+
+
+def get_default_route_interface() -> str | None:
+    ip_command = get_ip_command()
+
+    if ip_command:
+        try:
+            result = subprocess.run(
+                [ip_command, "route", "show", "default"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=2,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            result = None
+
+        if result and result.returncode == 0:
+            for line in result.stdout.splitlines():
+                parts = line.split()
+
+                if "dev" in parts:
+                    try:
+                        return parts[parts.index("dev") + 1]
+                    except IndexError:
+                        pass
+
+    try:
+        with open("/proc/net/route", "r", encoding="utf-8") as route_file:
+            for line in route_file.readlines()[1:]:
+                parts = line.split()
+
+                if len(parts) > 2 and parts[1] == "00000000":
+                    return parts[0]
+    except OSError:
+        return None
+
+    return None
+
+
+def get_wifi_signal_strength(interface_name: str) -> str:
+    try:
+        with open("/proc/net/wireless", "r", encoding="utf-8") as wireless_file:
+            lines = wireless_file.readlines()
+    except OSError:
+        return "-"
+
+    for line in lines:
+        line = line.strip()
+
+        if not line.startswith(f"{interface_name}:"):
+            continue
+
+        values = line.replace(".", "").split()
+
+        try:
+            link_quality = float(values[2])
+        except (IndexError, ValueError):
+            return "-"
+
+        signal_percent = max(0, min(100, round((link_quality / 70) * 100)))
+        return f"{signal_percent}%"
+
+    return "-"
+
+
+def get_network_interface_status(interface_name: str, label: str, wireless: bool = False) -> dict:
+    mac_address = read_text_file(f"/sys/class/net/{interface_name}/address") or "-"
+    operstate = read_text_file(f"/sys/class/net/{interface_name}/operstate") or "-"
+    carrier = read_text_file(f"/sys/class/net/{interface_name}/carrier")
+    ip_address = get_interface_ipv4_address(interface_name)
+
+    link_connected = carrier == "1" or operstate == "up"
+    connected = ip_address != "-"
+
+    return {
+        "name": interface_name,
+        "label": label,
+        "mac_address": mac_address,
+        "ip_address": ip_address,
+        "connected": connected,
+        "link_connected": link_connected,
+        "status": "Verbunden" if connected else "Nicht verbunden",
+        "signal_strength": get_wifi_signal_strength(interface_name) if wireless else "-",
+    }
+
+
+def get_empty_network_interface_status(interface_name: str, label: str) -> dict:
+    return {
+        "name": interface_name,
+        "label": label,
+        "mac_address": "-",
+        "ip_address": "-",
+        "connected": False,
+        "link_connected": False,
+        "status": "Nicht verbunden",
+        "signal_strength": "-",
+    }
+
+
+def choose_network_interface_status(
+    statuses: list[dict],
+    default_interface: str | None,
+    fallback_name: str,
+    label: str,
+    wireless: bool = False,
+) -> dict:
+    for status in statuses:
+        if status["name"] == default_interface:
+            return status
+
+    for status in statuses:
+        if status["connected"]:
+            return status
+
+    for status in statuses:
+        if status["name"] == fallback_name:
+            return status
+
+    if statuses:
+        return statuses[0]
+
+    return get_empty_network_interface_status(fallback_name, label)
+
+
+def get_network_status() -> dict:
+    interfaces = list_network_interfaces()
+    default_interface = get_default_route_interface()
+    ethernet_interfaces = [
+        interface for interface in interfaces
+        if not is_wireless_interface(interface)
+    ]
+    wifi_interfaces = [
+        interface for interface in interfaces
+        if is_wireless_interface(interface)
+    ]
+
+    ethernet_statuses = [
+        get_network_interface_status(interface, "Ethernet")
+        for interface in ethernet_interfaces
+    ]
+    wifi_statuses = [
+        get_network_interface_status(interface, "WLAN", wireless=True)
+        for interface in wifi_interfaces
+    ]
+
+    ethernet = choose_network_interface_status(
+        statuses=ethernet_statuses,
+        default_interface=default_interface,
+        fallback_name="eth0",
+        label="Ethernet",
+    )
+    wifi = choose_network_interface_status(
+        statuses=wifi_statuses,
+        default_interface=default_interface,
+        fallback_name="wlan0",
+        label="WLAN",
+        wireless=True,
+    )
+
+    host_ipv4_addresses = get_host_ipv4_addresses()
+    primary_ipv4_address = get_primary_ipv4_address()
+
+    if primary_ipv4_address and primary_ipv4_address not in host_ipv4_addresses:
+        host_ipv4_addresses.insert(0, primary_ipv4_address)
+
+    if (
+        default_interface == ethernet["name"]
+        and ethernet["ip_address"] == "-"
+        and host_ipv4_addresses
+    ):
+        ethernet["ip_address"] = host_ipv4_addresses[0]
+        ethernet["connected"] = True
+        ethernet["status"] = "Verbunden"
+    elif (
+        default_interface == wifi["name"]
+        and wifi["ip_address"] == "-"
+        and host_ipv4_addresses
+    ):
+        wifi["ip_address"] = host_ipv4_addresses[0]
+        wifi["connected"] = True
+        wifi["status"] = "Verbunden"
+    elif (
+        ethernet["link_connected"]
+        and ethernet["ip_address"] == "-"
+        and host_ipv4_addresses
+    ):
+        ethernet["ip_address"] = host_ipv4_addresses[0]
+        ethernet["connected"] = True
+        ethernet["status"] = "Verbunden"
+    elif (
+        wifi["link_connected"]
+        and wifi["ip_address"] == "-"
+        and host_ipv4_addresses
+        and not ethernet["link_connected"]
+    ):
+        wifi["ip_address"] = host_ipv4_addresses[0]
+        wifi["connected"] = True
+        wifi["status"] = "Verbunden"
+
+    if ethernet["connected"]:
+        active_connection = "Ethernet"
+    elif wifi["connected"]:
+        active_connection = "WLAN"
+    else:
+        active_connection = "Nicht verbunden"
+
+    return {
+        "active_connection": active_connection,
+        "ethernet": ethernet,
+        "wifi": wifi,
+    }
+
+
 def get_system_status() -> dict:
     return {
         "storage": get_system_storage_status(),
         "cpu_usage_percent": get_cpu_usage_percent(),
         "cpu_temperature": get_cpu_temperature(),
         "memory": get_memory_status(),
+        "network": get_network_status(),
     }
+
+
+def restart_quad_race_service_delayed():
+    time.sleep(1)
+
+    subprocess.run(
+        ["sudo", "-n", "systemctl", "restart", "quad-race"],
+        check=False,
+        timeout=15,
+    )
+
+
+def reboot_system_delayed():
+    time.sleep(1)
+
+    subprocess.run(
+        ["sudo", "-n", "reboot"],
+        check=False,
+        timeout=15,
+    )
 
 
 @app.get("/ui/settings")
@@ -5016,41 +5390,22 @@ def ui_save_logo_mapping(
 def ui_logo_connection_check(
     db: Session = Depends(get_db),
 ):
+    from backend.logo_modbus import read_logo_status
+
     settings = get_logo_settings(db)
-
-    logo_enabled = settings.get("logo_enabled") == "true"
-    simulation_mode = settings.get("logo_simulation_mode") == "true"
-
-    if not logo_enabled:
-        set_setting(db, "logo_last_check_at", now_string())
-        set_setting(db, "logo_last_error", "LOGO ist deaktiviert.")
-        db.commit()
-
-        return RedirectResponse(
-            url="/ui/settings?success=Statusprüfung durchgeführt",
-            status_code=303,
-        )
-
-    if simulation_mode:
-        set_setting(db, "logo_last_check_at", now_string())
-        set_setting(db, "logo_last_error", "")
-        db.commit()
-
-        return RedirectResponse(
-            url="/ui/settings?success=Simulationsmodus aktiv. Verbindungstest übersprungen.",
-            status_code=303,
-        )
+    result = read_logo_status(settings)
+    message = result.get("message", "Statusprüfung durchgeführt")
+    ok = bool(result.get("ok"))
 
     set_setting(db, "logo_last_check_at", now_string())
-    set_setting(
-        db,
-        "logo_last_error",
-        "Echte LOGO-Kommunikation ist vorbereitet, aber noch nicht aktiviert.",
-    )
+    set_setting(db, "logo_last_check_ok", "true" if ok else "false")
+    set_setting(db, "logo_last_error", "" if ok else message)
     db.commit()
 
+    status_key = "success" if ok else "error"
+
     return RedirectResponse(
-        url="/ui/settings?success=Statusprüfung durchgeführt",
+        url=f"/ui/settings?{status_key}={quote(message)}",
         status_code=303,
     )
 
@@ -5060,11 +5415,38 @@ def ui_logo_reset_status(
     db: Session = Depends(get_db),
 ):
     set_setting(db, "logo_last_check_at", "")
+    set_setting(db, "logo_last_check_ok", "")
     set_setting(db, "logo_last_error", "")
     db.commit()
 
     return RedirectResponse(
         url="/ui/settings?success=LOGO-Status zurückgesetzt",
+        status_code=303,
+    )
+
+
+@app.post("/ui/settings/system/restart")
+def ui_restart_system_service():
+    threading.Thread(
+        target=restart_quad_race_service_delayed,
+        daemon=True,
+    ).start()
+
+    return RedirectResponse(
+        url="/ui/events?success=Neustart wurde ausgelöst.",
+        status_code=303,
+    )
+
+
+@app.post("/ui/settings/system/reboot")
+def ui_reboot_system():
+    threading.Thread(
+        target=reboot_system_delayed,
+        daemon=True,
+    ).start()
+
+    return RedirectResponse(
+        url="/ui/events?success=System-Neustart wurde ausgelöst.",
         status_code=303,
     )
 

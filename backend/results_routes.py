@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -6,7 +8,12 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.export_logic import build_class_export_rows, build_overall_rows
 from backend.models import Event, Participant, Pairing, RunResult, Team
-from backend.results_logic import build_class_results, format_time_ms
+from backend.results_logic import (
+    build_class_results,
+    build_compact_round_results,
+    format_time_ms,
+    get_round_key_config,
+)
 from backend.team_logic import build_team_standings
 from backend.template_helpers import register_template_helpers
 from backend.round_logic import (
@@ -20,6 +27,7 @@ from backend.round_logic import (
 router = APIRouter()
 templates = Jinja2Templates(directory="backend/templates")
 register_template_helpers(templates)
+EVENT_YEAR = datetime.now().year
 
 
 def get_active_event(db: Session) -> Event | None:
@@ -261,6 +269,26 @@ def ui_results_class_redirect(
     )
 
 
+@router.get("/ui/results/class/{race_class}/round/{round_key}")
+def ui_results_class_round_redirect(
+    race_class: int,
+    round_key: str,
+    db: Session = Depends(get_db),
+):
+    active_event = get_active_event(db)
+
+    if not active_event:
+        return RedirectResponse(
+            url="/ui/events",
+            status_code=303,
+        )
+
+    return RedirectResponse(
+        url=f"/ui/events/{active_event.id}/results/class/{race_class}/round/{round_key}",
+        status_code=303,
+    )
+
+
 # ------------------------------------------------------------
 # Ergebnisse je Veranstaltung
 # ------------------------------------------------------------
@@ -391,5 +419,161 @@ def ui_event_results_class(
             "active_event": active_event,
             "race_class": race_class,
             "result_rows": result_rows,
+            "print_mode": False,
+        },
+    )
+
+
+@router.get("/ui/events/{event_id}/results/class/{race_class}/round/{round_key}")
+def ui_event_results_class_round(
+    event_id: int,
+    race_class: int,
+    round_key: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+
+    if race_class not in [1, 2, 3, 4, 5]:
+        raise HTTPException(
+            status_code=400,
+            detail="Ungültige Klasse",
+        )
+
+    round_config = get_round_key_config(round_key)
+
+    if not round_config:
+        raise HTTPException(
+            status_code=400,
+            detail="Ungültige Runde",
+        )
+
+    participants = db.query(Participant).filter(
+        Participant.event_id == active_event.id,
+        Participant.race_class == race_class,
+        Participant.active == True,
+    ).all()
+
+    pairings = db.query(Pairing).filter(
+        Pairing.event_id == active_event.id,
+        Pairing.race_class == race_class,
+    ).all()
+
+    result_rows = build_compact_round_results(
+        participants=participants,
+        pairings=pairings,
+        round_key=round_key,
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="results_round.html",
+        context={
+            "active_event": active_event,
+            "race_class": race_class,
+            "round_key": round_key,
+            "round_label": round_config["label"],
+            "result_rows": result_rows,
+            "event_year": EVENT_YEAR,
+            "print_mode": False,
+        },
+    )
+
+
+@router.get("/ui/events/{event_id}/print/class/{race_class}/overall")
+def ui_event_print_results_class(
+    event_id: int,
+    race_class: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+
+    if race_class not in [1, 2, 3, 4, 5]:
+        raise HTTPException(
+            status_code=400,
+            detail="Ungültige Klasse",
+        )
+
+    participants = db.query(Participant).filter(
+        Participant.event_id == active_event.id,
+        Participant.race_class == race_class,
+        Participant.active == True,
+    ).all()
+
+    pairings = db.query(Pairing).filter(
+        Pairing.event_id == active_event.id,
+        Pairing.race_class == race_class,
+    ).all()
+
+    result_rows = build_class_results(
+        participants=participants,
+        pairings=pairings,
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="results_class.html",
+        context={
+            "active_event": active_event,
+            "race_class": race_class,
+            "result_rows": result_rows,
+            "print_mode": True,
+        },
+    )
+
+
+@router.get("/ui/events/{event_id}/print/class/{race_class}/round/{round_key}")
+def ui_event_print_results_class_round(
+    event_id: int,
+    race_class: int,
+    round_key: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+
+    if race_class not in [1, 2, 3, 4, 5]:
+        raise HTTPException(
+            status_code=400,
+            detail="Ungültige Klasse",
+        )
+
+    round_config = get_round_key_config(round_key)
+
+    if not round_config:
+        raise HTTPException(
+            status_code=400,
+            detail="Ungültige Runde",
+        )
+
+    participants = db.query(Participant).filter(
+        Participant.event_id == active_event.id,
+        Participant.race_class == race_class,
+        Participant.active == True,
+    ).all()
+
+    pairings = db.query(Pairing).filter(
+        Pairing.event_id == active_event.id,
+        Pairing.race_class == race_class,
+    ).all()
+
+    result_rows = build_compact_round_results(
+        participants=participants,
+        pairings=pairings,
+        round_key=round_key,
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="results_round.html",
+        context={
+            "active_event": active_event,
+            "race_class": race_class,
+            "round_key": round_key,
+            "round_label": round_config["label"],
+            "result_rows": result_rows,
+            "event_year": EVENT_YEAR,
+            "print_mode": True,
         },
     )

@@ -8,10 +8,25 @@
 <div class="monitor-page">
     <div class="monitor-topbar">
         <div>
-            <h1>Monitor</h1>
+            <h1>Rennstatus</h1>
             <p id="monitor_event">—</p>
         </div>
-        <div id="monitor_time" class="monitor-clock">—</div>
+        <div class="monitor-topbar-status">
+            <div
+                id="monitor_logo_signal"
+                class="monitor-logo-signal monitor-logo-signal-{{ monitor_data.logo_signal.status }}"
+                {% if not monitor_data.logo_signal.visible %}hidden{% endif %}
+            >
+                <span>Ampel</span>
+                <div class="monitor-logo-lights">
+                    <span class="monitor-logo-light monitor-logo-light-red"></span>
+                    <span class="monitor-logo-light monitor-logo-light-orange"></span>
+                    <span class="monitor-logo-light monitor-logo-light-green"></span>
+                </div>
+                <strong id="monitor_logo_signal_label">{{ monitor_data.logo_signal.label }}</strong>
+            </div>
+            <div id="monitor_time" class="monitor-clock">—</div>
+        </div>
     </div>
 
     <div id="monitor_starter_grid" class="monitor-grid"{% if not monitor_data.current_run and monitor_data.next_runs|length == 0 %} hidden{% endif %}>
@@ -55,7 +70,7 @@
     </div>
 
     <section id="monitor_output_results" class="monitor-panel">
-        <h2>Monitor-Ausgabe</h2>
+        <h2>Ergebnisse</h2>
         <div id="monitor_results" class="monitor-results">
             {% if monitor_data.result_sections|length > 0 %}
                 {% for section in monitor_data.result_sections %}
@@ -63,25 +78,27 @@
                     <table class="monitor-results-table monitor-race-results-table">
                         <thead>
                             <tr>
-                                <th>Kl.</th>
-                                <th>Pl.</th>
-                                <th>Fahrer</th>
-                                <th>Runde</th>
-                                <th>Zeit</th>
-                                <th>FP</th>
-                                <th>Ergebnis</th>
+                                <th class="place-cell">Pl.</th>
+                                <th class="start-cell">Startnr.</th>
+                                <th class="monitor-driver-cell">Fahrer</th>
+                                <th>A Zeit</th>
+                                <th>A FP</th>
+                                <th>B Zeit</th>
+                                <th>B FP</th>
+                                <th>Summe</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for row in section.rows %}
                                 <tr>
-                                    <td>{{ row.race_class }}</td>
-                                    <td><strong>{{ row.place }}</strong></td>
-                                    <td>{{ row.driver }}</td>
-                                    <td>{{ row.round_label }}</td>
-                                    <td>{{ row.raw_time }}</td>
-                                    <td>{{ row.penalty }}</td>
-                                    <td><strong>{{ row.valued_time }}</strong></td>
+                                    <td class="place-cell"><strong>{{ row.place }}</strong></td>
+                                    <td class="start-cell">#{{ row.start_number }}</td>
+                                    <td class="monitor-driver-cell">{{ row.driver }}</td>
+                                    <td class="monitor-time-cell">{{ row.run_1_raw_display or "—" }}</td>
+                                    <td class="monitor-fp-cell">{{ row.run_1_penalty }}</td>
+                                    <td class="monitor-time-cell">{{ row.run_2_raw_display or "—" }}</td>
+                                    <td class="monitor-fp-cell">{{ row.run_2_penalty }}</td>
+                                    <td class="monitor-time-cell monitor-sum-cell"><strong>{{ row.round_total_display or "—" }}</strong></td>
                                 </tr>
                             {% endfor %}
                         </tbody>
@@ -209,6 +226,27 @@
         text("current_lane_b_result", run.lane_b.valued_time);
     }
 
+    function renderLogoSignal(signal) {
+        const container = document.getElementById("monitor_logo_signal");
+
+        if (!container) {
+            return;
+        }
+
+        const data = signal || {};
+        const status = data.status || "off";
+        container.hidden = !data.visible;
+
+        container.classList.remove(
+            "monitor-logo-signal-red",
+            "monitor-logo-signal-orange",
+            "monitor-logo-signal-green",
+            "monitor-logo-signal-off"
+        );
+        container.classList.add("monitor-logo-signal-" + status);
+        text("monitor_logo_signal_label", data.label || "AUS");
+    }
+
     function renderNextRuns(runs) {
         const container = document.getElementById("next_runs");
 
@@ -247,13 +285,14 @@
         table.innerHTML =
             "<thead>" +
                 "<tr>" +
-                    "<th>Kl.</th>" +
-                    "<th>Pl.</th>" +
-                    "<th>Fahrer</th>" +
-                    "<th>Runde</th>" +
-                    "<th>Zeit</th>" +
-                    "<th>FP</th>" +
-                    "<th>Ergebnis</th>" +
+                    "<th class='place-cell'>Pl.</th>" +
+                    "<th class='start-cell'>Startnr.</th>" +
+                    "<th class='monitor-driver-cell'>Fahrer</th>" +
+                    "<th>A Zeit</th>" +
+                    "<th>A FP</th>" +
+                    "<th>B Zeit</th>" +
+                    "<th>B FP</th>" +
+                    "<th>Summe</th>" +
                 "</tr>" +
             "</thead>";
 
@@ -262,13 +301,14 @@
         runs.forEach((row) => {
             const tr = document.createElement("tr");
             tr.innerHTML =
-                "<td>" + row.race_class + "</td>" +
-                "<td><strong>" + row.place + "</strong></td>" +
-                "<td>" + row.driver + "</td>" +
-                "<td>" + row.round_label + "</td>" +
-                "<td>" + row.raw_time + "</td>" +
-                "<td>" + row.penalty + "</td>" +
-                "<td><strong>" + row.valued_time + "</strong></td>";
+                "<td class='place-cell'><strong>" + row.place + "</strong></td>" +
+                "<td class='start-cell'>#" + row.start_number + "</td>" +
+                "<td class='monitor-driver-cell'>" + row.driver + "</td>" +
+                "<td class='monitor-time-cell'>" + (row.run_1_raw_display || "—") + "</td>" +
+                "<td class='monitor-fp-cell'>" + row.run_1_penalty + "</td>" +
+                "<td class='monitor-time-cell'>" + (row.run_2_raw_display || "—") + "</td>" +
+                "<td class='monitor-fp-cell'>" + row.run_2_penalty + "</td>" +
+                "<td class='monitor-time-cell monitor-sum-cell'><strong>" + (row.round_total_display || "—") + "</strong></td>";
             tbody.appendChild(tr);
         });
 
@@ -417,6 +457,7 @@
                 document.body.classList.toggle("monitor-landscape", data.display_setting.display_orientation !== "portrait");
                 text("monitor_event", data.event.event_number + " · " + data.event.name + " · " + data.event.organizer_club);
                 text("monitor_time", data.server_time);
+                renderLogoSignal(data.logo_signal);
                 updateStarterGrid(data.current_run, data.next_runs);
                 renderCurrentRun(data.current_run);
                 renderMonitorResults(data.result_sections, data.overall_sections, data.team_results);

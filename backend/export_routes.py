@@ -5,7 +5,7 @@ from fastapi.responses import RedirectResponse, Response
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.models import Event, Pairing, Team
+from backend.models import Event, Pairing, Participant, Team
 from backend.export_logic import (
     build_all_overall_xlsx,
     build_class_xlsx,
@@ -293,9 +293,16 @@ def export_event_class_round_xlsx(
         Pairing.race_class == race_class,
     ).all()
 
+    participants = db.query(Participant).filter(
+        Participant.event_id == active_event.id,
+        Participant.race_class == race_class,
+        Participant.active == True,
+    ).all()
+
     xlsx_data = build_round_xlsx(
         event=active_event,
         race_class=race_class,
+        participants=participants,
         pairings=pairings,
         round_key=round_key,
     )

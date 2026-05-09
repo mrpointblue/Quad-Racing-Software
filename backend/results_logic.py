@@ -19,6 +19,21 @@ ROUND_ORDER = [
     ROUND_FINAL,
 ]
 
+ROUND_KEY_CONFIG = {
+    "quarterfinal": {
+        "field": "preliminary",
+        "label": "Viertelfinale",
+    },
+    "semifinal": {
+        "field": "semifinal",
+        "label": "Halbfinale",
+    },
+    "final": {
+        "field": "final",
+        "label": "Finale",
+    },
+}
+
 
 def normalize_round_name(round_name: str) -> str:
     if round_name in ["vorlauf", "viertelfinale"]:
@@ -224,5 +239,54 @@ def build_class_results(
     for row in result_rows:
         row["place"] = current_place
         current_place += 1
+
+    return result_rows
+
+
+def get_round_key_config(round_key: str) -> dict | None:
+    return ROUND_KEY_CONFIG.get(round_key)
+
+
+def build_compact_round_results(
+    participants: list[Participant],
+    pairings: list[Pairing],
+    round_key: str,
+) -> list[dict]:
+    round_config = get_round_key_config(round_key)
+
+    if not round_config:
+        return []
+
+    result_rows = []
+
+    for row in build_class_results(
+        participants=participants,
+        pairings=pairings,
+    ):
+        round_detail = row[round_config["field"]]
+
+        if round_detail["round_total_ms"] is None:
+            continue
+
+        result_rows.append(
+            {
+                "place": None,
+                "start_number": row["start_number"],
+                "driver_name": row["driver_name"],
+                "club": row["club"],
+                "round_detail": round_detail,
+            }
+        )
+
+    result_rows.sort(
+        key=lambda row: (
+            row["round_detail"]["round_total_ms"],
+            row["round_detail"]["round_penalty"],
+            row["start_number"],
+        )
+    )
+
+    for index, row in enumerate(result_rows, start=1):
+        row["place"] = index
 
     return result_rows
