@@ -101,7 +101,7 @@ def get_participant_total_until_round(
     participant: Participant,
     pairings: list[Pairing],
     included_rounds: list[str],
-) -> int | None:
+) -> tuple[int, int] | None:
     if not is_participant_available(participant):
         return None
 
@@ -111,6 +111,7 @@ def get_participant_total_until_round(
     ]
 
     total_ms = 0
+    total_penalty = 0
     has_result = False
 
     for pairing in pairings:
@@ -131,37 +132,40 @@ def get_participant_total_until_round(
                     return None
 
                 total_ms += valued_time_ms
+                total_penalty += get_penalty_sum(result)
                 has_result = True
 
     if not has_result:
         return None
 
-    return total_ms
+    return total_ms, total_penalty
 
 
 def get_ranked_participants_until_round(
     participants: list[Participant],
     pairings: list[Pairing],
     included_rounds: list[str],
-) -> list[tuple[Participant, int]]:
-    ranking: list[tuple[Participant, int]] = []
+) -> list[tuple[Participant, int, int]]:
+    ranking: list[tuple[Participant, int, int]] = []
 
     for participant in participants:
         if not is_participant_available(participant):
             continue
 
-        total_ms = get_participant_total_until_round(
+        total = get_participant_total_until_round(
             participant=participant,
             pairings=pairings,
             included_rounds=included_rounds,
         )
 
-        if total_ms is not None:
-            ranking.append((participant, total_ms))
+        if total is not None:
+            total_ms, total_penalty = total
+            ranking.append((participant, total_ms, total_penalty))
 
     ranking.sort(
         key=lambda item: (
             item[1],
+            item[2],
             item[0].start_number,
         )
     )
@@ -417,7 +421,7 @@ def create_semifinal_pairings(
     )
 
     ordered = [
-        participant for participant, _total_ms in ranking
+        participant for participant, _total_ms, _total_penalty in ranking
     ]
 
     middle_out_pairs = create_middle_out_pairs(ordered)
@@ -443,7 +447,7 @@ def create_final_pairings(
     )
 
     ordered = [
-        participant for participant, _total_ms in ranking
+        participant for participant, _total_ms, _total_penalty in ranking
     ]
 
     middle_out_pairs = create_middle_out_pairs(ordered)

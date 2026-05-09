@@ -27,7 +27,7 @@ sudo apt install -y git python3 python3-venv python3-pip
 ```bash
 cd ~
 git clone https://github.com/mrpointblue/Quad-Racing-Software.git
-cd Quad-Racing-Software
+cd /home/pi/Quad-Racing-Software
 ```
 
 Falls das Repository privat ist, wird ein GitHub Login oder ein Personal Access Token benötigt.
@@ -47,6 +47,12 @@ Nach dem Aktivieren sollte vorne in der Terminalzeile ungefähr Folgendes stehen
 (venv)
 ```
 
+Falls lokal bereits eine Umgebung mit dem Namen `.venv` genutzt wird, entsprechend aktivieren:
+
+```bash
+source .venv/bin/activate
+```
+
 ---
 
 ## 4. Abhängigkeiten installieren
@@ -60,11 +66,9 @@ pip install -r requirements.txt
 
 ## 5. Anwendung starten
 
-Je nach Projektstruktur liegt die eigentliche Anwendung im Ordner `backend`.
-
 ```bash
-cd backend
-python app.py
+mkdir -p data
+uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
 
 Die Software ist danach im Browser erreichbar, zum Beispiel:
@@ -164,14 +168,13 @@ Danach die Anwendung neu starten.
 Wenn die Software manuell gestartet wurde:
 
 ```bash
-cd backend
-python app.py
+uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
 
 Wenn die Software als Dienst läuft:
 
 ```bash
-sudo systemctl restart quad-race.service
+sudo systemctl restart quad-race
 ```
 
 ---
@@ -217,8 +220,8 @@ After=network.target
 
 [Service]
 User=pi
-WorkingDirectory=/home/pi/Quad-Racing-Software/backend
-ExecStart=/home/pi/Quad-Racing-Software/venv/bin/python app.py
+WorkingDirectory=/home/pi/Quad-Racing-Software
+ExecStart=/home/pi/Quad-Racing-Software/venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=5
 
@@ -240,8 +243,8 @@ STRG + X
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable quad-race.service
-sudo systemctl start quad-race.service
+sudo systemctl enable quad-race
+sudo systemctl start quad-race
 ```
 
 ---
@@ -249,7 +252,7 @@ sudo systemctl start quad-race.service
 ## 3. Dienststatus prüfen
 
 ```bash
-sudo systemctl status quad-race.service
+sudo systemctl status quad-race
 ```
 
 ---
@@ -257,7 +260,7 @@ sudo systemctl status quad-race.service
 ## 4. Logs anzeigen
 
 ```bash
-journalctl -u quad-race.service -f
+journalctl -u quad-race -f
 ```
 
 ---
@@ -265,7 +268,7 @@ journalctl -u quad-race.service -f
 ## 5. Dienst neu starten
 
 ```bash
-sudo systemctl restart quad-race.service
+sudo systemctl restart quad-race
 ```
 
 ---
@@ -273,7 +276,7 @@ sudo systemctl restart quad-race.service
 ## 6. Dienst stoppen
 
 ```bash
-sudo systemctl stop quad-race.service
+sudo systemctl stop quad-race
 ```
 
 ---
@@ -384,7 +387,7 @@ sudo apt install -y git python3 python3-venv python3-pip
 
 cd ~
 git clone https://github.com/mrpointblue/Quad-Racing-Software.git
-cd Quad-Racing-Software
+cd /home/pi/Quad-Racing-Software
 
 python3 -m venv venv
 source venv/bin/activate
@@ -392,8 +395,8 @@ source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 
-cd backend
-python app.py
+mkdir -p data
+uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
 
 Danach im Browser öffnen:

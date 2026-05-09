@@ -186,6 +186,16 @@ def parse_event_date(event_date: str | None) -> date | None:
     return None
 
 
+def get_event_year(event: Event | None) -> int:
+    if event and event.event_date:
+        parsed_date = parse_event_date(event.event_date)
+
+        if parsed_date:
+            return parsed_date.year
+
+    return datetime.now().year
+
+
 def is_event_date_reached(event: Event) -> bool:
     parsed_date = parse_event_date(event.event_date)
 
@@ -1504,7 +1514,7 @@ def health_check(
 
     return {
         "status": "ok",
-        "event_year": EVENT_YEAR,
+        "event_year": get_event_year(active_event),
         "active_event": active_event.name if active_event else None,
         "active_event_closed": active_event.closed if active_event else None,
     }
@@ -1562,7 +1572,7 @@ def ui_event_dashboard(
             "active_event": active_event,
             "total_participants": total_participants,
             "class_counts": class_counts,
-            "event_year": EVENT_YEAR,
+            "event_year": get_event_year(active_event),
             "current_time": now_string(),
             "registration_groups": registration_groups,
         },
@@ -1602,7 +1612,7 @@ def ui_events(
             "open_events": open_events,
             "closed_events": closed_events,
             "error": None,
-            "event_year": EVENT_YEAR,
+            "event_year": get_event_year(active_event),
         },
     )
 
@@ -1656,7 +1666,7 @@ def ui_create_event(
                 "open_events": open_events,
                 "closed_events": closed_events,
                 "error": "Diese Veranstaltungsnummer ist bereits vergeben.",
-                "event_year": EVENT_YEAR,
+                "event_year": get_event_year(active_event),
             },
         )
 
@@ -1741,7 +1751,7 @@ def ui_edit_event(
             "active_event": event,
             "event": event,
             "error": None,
-            "event_year": EVENT_YEAR,
+            "event_year": get_event_year(event),
         },
     )
 
@@ -1782,7 +1792,7 @@ def ui_update_event(
                 "active_event": event,
                 "event": event,
                 "error": "Diese Veranstaltungsnummer ist bereits vergeben.",
-                "event_year": EVENT_YEAR,
+                "event_year": get_event_year(event),
             },
         )
 
@@ -1953,7 +1963,7 @@ def ui_event_participant_list(
         context={
             "active_event": active_event,
             "participants": participants,
-            "event_year": EVENT_YEAR,
+            "event_year": get_event_year(active_event),
         },
     )
 
@@ -1980,7 +1990,7 @@ def ui_event_new_participant(
             "active_event": active_event,
             "error": None,
             "success": None,
-            "event_year": EVENT_YEAR,
+            "event_year": get_event_year(active_event),
             "youth_card_scan_enabled": settings.get("youth_card_scan_enabled") == "true",
         },
     )
@@ -2020,7 +2030,7 @@ def ui_event_create_participant(
                 "active_event": active_event,
                 "error": "Diese Startnummer ist bereits vergeben.",
                 "success": None,
-                "event_year": EVENT_YEAR,
+                "event_year": get_event_year(active_event),
                 "youth_card_scan_enabled": get_app_settings(db).get("youth_card_scan_enabled") == "true",
             },
         )
@@ -2039,13 +2049,16 @@ def ui_event_create_participant(
                     "active_event": active_event,
                     "error": "Dieser Fahrer ist für diese Veranstaltung bereits erfasst.",
                     "success": None,
-                    "event_year": EVENT_YEAR,
+                    "event_year": get_event_year(active_event),
                     "youth_card_scan_enabled": get_app_settings(db).get("youth_card_scan_enabled") == "true",
                 },
             )
 
     try:
-        race_class = determine_race_class(birth_year)
+        race_class = determine_race_class(
+            birth_year=birth_year,
+            event_year=get_event_year(active_event),
+        )
     except ValueError as error:
         return templates.TemplateResponse(
             request=request,
@@ -2054,7 +2067,7 @@ def ui_event_create_participant(
                 "active_event": active_event,
                 "error": str(error),
                 "success": None,
-                "event_year": EVENT_YEAR,
+                "event_year": get_event_year(active_event),
                 "youth_card_scan_enabled": get_app_settings(db).get("youth_card_scan_enabled") == "true",
             },
         )
@@ -2073,7 +2086,7 @@ def ui_event_create_participant(
                 "active_event": active_event,
                 "error": "Registrierung nach Nennschluss nicht möglich.",
                 "success": None,
-                "event_year": EVENT_YEAR,
+                "event_year": get_event_year(active_event),
                 "youth_card_scan_enabled": get_app_settings(db).get("youth_card_scan_enabled") == "true",
             },
         )
@@ -2105,7 +2118,7 @@ def ui_event_create_participant(
                     "active_event": active_event,
                     "error": "Ausgewählter Fahrer wurde nicht gefunden.",
                     "success": None,
-                    "event_year": EVENT_YEAR,
+                    "event_year": get_event_year(active_event),
                     "youth_card_scan_enabled": get_app_settings(db).get("youth_card_scan_enabled") == "true",
                 },
             )
@@ -2177,7 +2190,7 @@ def ui_event_create_participant(
             "active_event": active_event,
             "error": None,
             "success": f"Teilnehmer wurde gespeichert und Klasse {race_class} zugeordnet.",
-            "event_year": EVENT_YEAR,
+            "event_year": get_event_year(active_event),
             "youth_card_scan_enabled": get_app_settings(db).get("youth_card_scan_enabled") == "true",
         },
     )
@@ -2254,7 +2267,7 @@ def ui_event_edit_participant(
         context={
             "active_event": active_event,
             "participant": participant,
-            "event_year": EVENT_YEAR,
+            "event_year": get_event_year(active_event),
             "error": None,
             "youth_card_scan_enabled": settings.get("youth_card_scan_enabled") == "true",
         },
@@ -2306,14 +2319,17 @@ def ui_event_update_participant(
             context={
                 "active_event": active_event,
                 "participant": participant,
-                "event_year": EVENT_YEAR,
+                "event_year": get_event_year(active_event),
                 "error": "Diese Startnummer ist bereits vergeben.",
                 "youth_card_scan_enabled": get_app_settings(db).get("youth_card_scan_enabled") == "true",
             },
         )
 
     try:
-        race_class = determine_race_class(birth_year)
+        race_class = determine_race_class(
+            birth_year=birth_year,
+            event_year=get_event_year(active_event),
+        )
     except ValueError as error:
         return templates.TemplateResponse(
             request=request,
@@ -2321,7 +2337,7 @@ def ui_event_update_participant(
             context={
                 "active_event": active_event,
                 "participant": participant,
-                "event_year": EVENT_YEAR,
+                "event_year": get_event_year(active_event),
                 "error": str(error),
                 "youth_card_scan_enabled": get_app_settings(db).get("youth_card_scan_enabled") == "true",
             },
@@ -2344,7 +2360,7 @@ def ui_event_update_participant(
                 context={
                     "active_event": active_event,
                     "participant": participant,
-                    "event_year": EVENT_YEAR,
+                    "event_year": get_event_year(active_event),
                     "error": "Registrierung nach Nennschluss nicht möglich.",
                     "youth_card_scan_enabled": get_app_settings(db).get("youth_card_scan_enabled") == "true",
                 },
@@ -2543,7 +2559,7 @@ def ui_event_edit_driver_profile(
         context={
             "active_event": active_event,
             "driver_profile": driver_profile,
-            "event_year": EVENT_YEAR,
+            "event_year": get_event_year(active_event),
             "error": None,
             "youth_card_scan_enabled": settings.get("youth_card_scan_enabled") == "true",
         },
@@ -2580,16 +2596,19 @@ def ui_event_update_driver_profile(
         )
 
     try:
-        determine_race_class(birth_year)
-    except HTTPException as error:
+        determine_race_class(
+            birth_year=birth_year,
+            event_year=get_event_year(active_event),
+        )
+    except ValueError as error:
         return templates.TemplateResponse(
             request=request,
             name="driver_profile_edit.html",
             context={
                 "active_event": active_event,
                 "driver_profile": driver_profile,
-                "event_year": EVENT_YEAR,
-                "error": str(error.detail),
+                "event_year": get_event_year(active_event),
+                "error": str(error),
                 "youth_card_scan_enabled": get_app_settings(db).get("youth_card_scan_enabled") == "true",
             },
         )
@@ -2800,7 +2819,7 @@ def ui_event_registration_release(
             "active_event": active_event,
             "registration_groups": registration_groups,
             "registration_group_status": registration_group_status,
-            "event_year": EVENT_YEAR,
+            "event_year": get_event_year(active_event),
         },
     )
 
@@ -2989,7 +3008,7 @@ def ui_event_teams(
             "teams": teams,
             "standings": standings,
             "error": error,
-            "event_year": EVENT_YEAR,
+            "event_year": get_event_year(active_event),
         },
     )
 
@@ -3353,7 +3372,7 @@ def ui_event_classes(
             "class_data": class_data,
             "runs_by_class": runs_by_class,
             "active_run_by_class": active_run_by_class,
-            "event_year": EVENT_YEAR,
+            "event_year": get_event_year(active_event),
             "event_date_reached": is_event_date_reached(active_event),
         },
     )
@@ -3606,7 +3625,7 @@ def ui_event_monitor_output(
             "selected_rounds": selected_rounds,
             "round_options": MONITOR_ROUND_OPTIONS,
             "monitor_data": build_monitor_output_payload(active_event, db),
-            "event_year": EVENT_YEAR,
+            "event_year": get_event_year(active_event),
         },
     )
 
@@ -3678,7 +3697,7 @@ def ui_event_monitor(
         context={
             "active_event": active_event,
             "monitor_data": monitor_data,
-            "event_year": EVENT_YEAR,
+            "event_year": get_event_year(active_event),
         },
     )
 
@@ -3748,7 +3767,7 @@ def ui_event_timekeeper_class(
             "active_event": active_event,
             "race_class": race_class,
             "pairings": pairings,
-            "event_year": EVENT_YEAR,
+            "event_year": get_event_year(active_event),
         },
     )
 
@@ -3844,7 +3863,7 @@ def ui_event_timekeeper_run(
             "next_unconfirmed_run": next_unconfirmed_payload,
             "is_next_startable_run": is_next_startable_run,
             "start_error": request.query_params.get("start_error"),
-            "event_year": EVENT_YEAR,
+            "event_year": get_event_year(active_event),
         },
     )
 
@@ -4368,7 +4387,10 @@ def api_event_registration_open_for_birth_year(
         }
 
     try:
-        race_class = determine_race_class(birth_year)
+        race_class = determine_race_class(
+            birth_year=birth_year,
+            event_year=get_event_year(active_event),
+        )
     except ValueError as error:
         return {
             "registration_open": False,
@@ -4441,7 +4463,10 @@ def create_participant(
         )
 
     try:
-        race_class = determine_race_class(participant.birth_year)
+        race_class = determine_race_class(
+            birth_year=participant.birth_year,
+            event_year=get_event_year(active_event),
+        )
     except ValueError as error:
         raise HTTPException(
             status_code=400,
@@ -5228,7 +5253,7 @@ def ui_settings(
             "system_status": system_status,
             "success": success,
             "error": error,
-            "event_year": EVENT_YEAR,
+            "event_year": get_event_year(active_event),
         },
     )
 

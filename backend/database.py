@@ -1,5 +1,11 @@
+from pathlib import Path
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
+
+
+DATA_DIR = Path("data")
+DATA_DIR.mkdir(exist_ok=True)
 
 DATABASE_URL = "sqlite:///./data/quad_race.sqlite"
 

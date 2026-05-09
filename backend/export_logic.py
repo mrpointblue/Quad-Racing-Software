@@ -142,6 +142,7 @@ def sort_and_place_round_rows(rows: list[dict]) -> list[dict]:
             row["withdrawn"],
             row["round_total_ms"] is None,
             row["round_total_ms"] if row["round_total_ms"] is not None else 999999999999,
+            row["round_penalty"] if isinstance(row["round_penalty"], int) else 999999,
             row["start_number"],
         ),
     )
@@ -355,6 +356,7 @@ def build_overall_rows(rows_by_round: dict[str, list[dict]]) -> list[dict]:
             row["withdrawn"],
             row["total_ms"] is None,
             row["total_ms"] if row["total_ms"] is not None else 999999999999,
+            row["total_penalty"] if isinstance(row["total_penalty"], int) else 999999,
             row["start_number"],
         ),
     )
