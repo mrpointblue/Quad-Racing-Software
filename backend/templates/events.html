@@ -18,6 +18,9 @@
     {% endif %}
 </div>
 
+{% set current_event_tab = event_tab|default('open') %}
+
+{% if current_event_tab == 'open' %}
 <div class="card">
     <h2>Offene / zukünftige Veranstaltungen</h2>
 
@@ -122,161 +125,121 @@
     {% endif %}
 </div>
 
+{% elif current_event_tab == 'new' %}
 <div class="card">
-    <div
-        class="class-header"
-        style="cursor:pointer;"
-        onclick="toggleEventBlock('new_event')"
-    >
-        <div>
-            <h2>
-                <span id="event_toggle_icon_new_event">▶</span>
-                Neue Veranstaltung anlegen
-            </h2>
-        </div>
-    </div>
+    <h2>Veranstaltung anlegen</h2>
 
-    <div id="event_body_new_event" style="display:none;">
-        <form method="post" action="/ui/events/new">
-            <label>Veranstaltungsnummer</label>
-            <input type="text" name="event_number" placeholder="z. B. 2026-01" required>
+    <form method="post" action="/ui/events/new">
+        <label>Veranstaltungsnummer</label>
+        <input type="text" name="event_number" placeholder="z. B. 2026-01" required>
 
-            <label>Name der Veranstaltung</label>
-            <input type="text" name="name" placeholder="z. B. ADAC Quad Parallel Race" required>
+        <label>Name der Veranstaltung</label>
+        <input type="text" name="name" placeholder="z. B. ADAC Quad Parallel Race" required>
 
-            <label>Datum</label>
-            <input type="text" name="event_date" placeholder="z. B. 25.04.2026">
+        <label>Datum</label>
+        <input type="text" name="event_date" placeholder="z. B. 25.04.2026">
 
-            <label>Ort</label>
-            <input type="text" name="location" placeholder="z. B. Itzehoe">
+        <label>Ort</label>
+        <input type="text" name="location" placeholder="z. B. Itzehoe">
 
-            <label>Ortsclub / Veranstalter</label>
-            <select name="organizer_club" required>
-                <option value="">Bitte Ortsclub / Veranstalter auswählen</option>
-                <option value="MSC Lägerdorf v. 1925 e.V.">MSC Lägerdorf v. 1925 e.V.</option>
-                <option value="AC Kellinghusen e.V.">AC Kellinghusen e.V.</option>
-                <option value="Wühlmäuse Schleswig-Holstein e.V.">Wühlmäuse Schleswig-Holstein e.V.</option>
-            </select>
+        <label>Ortsclub / Veranstalter</label>
+        <select name="organizer_club" required>
+            <option value="">Bitte Ortsclub / Veranstalter auswählen</option>
+            <option value="MSC Lägerdorf v. 1925 e.V.">MSC Lägerdorf v. 1925 e.V.</option>
+            <option value="AC Kellinghusen e.V.">AC Kellinghusen e.V.</option>
+            <option value="Wühlmäuse Schleswig-Holstein e.V.">Wühlmäuse Schleswig-Holstein e.V.</option>
+        </select>
 
-            <label>Anzahl Positionen pro Bahn</label>
-            <input
-                type="number"
-                name="sectors_per_lane"
-                value="1"
-                min="1"
-                max="10"
-                required
-            >
+        <label>Anzahl Positionen pro Bahn</label>
+        <input
+            type="number"
+            name="sectors_per_lane"
+            value="1"
+            min="1"
+            max="10"
+            required
+        >
 
-            <label>Nennschluss Klasse 1 &amp; 2</label>
-            <input type="time" name="registration_deadline_class_1_2">
+        <label>Nennschluss Klasse 1 &amp; 2</label>
+        <input type="time" name="registration_deadline_class_1_2">
 
-            <label>Nennschluss Klasse 3 &amp; 4</label>
-            <input type="time" name="registration_deadline_class_3_4">
+        <label>Nennschluss Klasse 3 &amp; 4</label>
+        <input type="time" name="registration_deadline_class_3_4">
 
-            <label>Nennschluss Klasse 5</label>
-            <input type="time" name="registration_deadline_class_5">
+        <label>Nennschluss Klasse 5</label>
+        <input type="time" name="registration_deadline_class_5">
 
-            <p class="hint">
-                Bei Auswahl eines Samstags oder Sonntags werden die Nennschlusszeiten automatisch vorgeschlagen und können manuell angepasst werden.
-            </p>
+        <p class="hint">
+            Bei Auswahl eines Samstags oder Sonntags werden die Nennschlusszeiten automatisch vorgeschlagen und können manuell angepasst werden.
+        </p>
 
-            <button type="submit">Veranstaltung anlegen</button>
-        </form>
-    </div>
+        <button type="submit">Veranstaltung anlegen</button>
+    </form>
 </div>
 
+{% elif current_event_tab == 'closed' %}
 <div class="card">
-    <div
-        class="class-header"
-        style="cursor:pointer;"
-        onclick="toggleEventBlock('closed_events')"
-    >
-        <div>
-            <h2>
-                <span id="event_toggle_icon_closed_events">▶</span>
-                Geschlossene Veranstaltungen
-            </h2>
-        </div>
-    </div>
+    <h2>Geschlossene Veranstaltungen</h2>
 
-    <div id="event_body_closed_events" style="display:none;">
-        {% if closed_events|length > 0 %}
-            <p class="hint">
-                Geschlossene Veranstaltungen können zur Speicherbereinigung gelöscht werden.
-                Der Fahrerstamm bleibt erhalten. Vor dem Löschen wird ein Datenbankexport empfohlen.
-            </p>
+    {% if closed_events|length > 0 %}
+        <p class="hint">
+            Geschlossene Veranstaltungen können zur Speicherbereinigung gelöscht werden.
+            Der Fahrerstamm bleibt erhalten. Vor dem Löschen wird ein Datenbankexport empfohlen.
+        </p>
 
-            <table>
-                <thead>
-                    <tr>
-                        <th>Nr.</th>
-                        <th>Name</th>
-                        <th>Datum</th>
-                        <th>Ort</th>
-                        <th>Ortsclub / Veranstalter</th>
-                        <th>Grund</th>
-                        <th>Geschlossen am</th>
-                        <th>Geschlossen durch</th>
-                        <th>Status</th>
-                        <th>Aktion</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for event in closed_events %}
-                    <tr>
-                        <td>{{ event.event_number }}</td>
-                        <td>{{ event.name }}</td>
-                        <td>{{ event.event_date or "" }}</td>
-                        <td>{{ event.location or "" }}</td>
-                        <td>{{ event.organizer_club or "" }}</td>
-                        <td>{{ event.closed_reason or "" }}</td>
-                        <td>{{ event.closed_at or "" }}</td>
-                        <td>{{ event.closed_by or "" }}</td>
-                        <td>Geschlossen</td>
-                        <td>
-                            <a class="button" href="/ui/events/{{ event.id }}/dashboard">
-                                Veranstaltung öffnen
-                            </a>
+        <table>
+            <thead>
+                <tr>
+                    <th>Nr.</th>
+                    <th>Name</th>
+                    <th>Datum</th>
+                    <th>Ort</th>
+                    <th>Ortsclub / Veranstalter</th>
+                    <th>Grund</th>
+                    <th>Geschlossen am</th>
+                    <th>Geschlossen durch</th>
+                    <th>Status</th>
+                    <th>Aktion</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in closed_events %}
+                <tr>
+                    <td>{{ event.event_number }}</td>
+                    <td>{{ event.name }}</td>
+                    <td>{{ event.event_date or "" }}</td>
+                    <td>{{ event.location or "" }}</td>
+                    <td>{{ event.organizer_club or "" }}</td>
+                    <td>{{ event.closed_reason or "" }}</td>
+                    <td>{{ event.closed_at or "" }}</td>
+                    <td>{{ event.closed_by or "" }}</td>
+                    <td>Geschlossen</td>
+                    <td>
+                        <a class="button" href="/ui/events/{{ event.id }}/dashboard">
+                            Veranstaltung öffnen
+                        </a>
 
-                            <form
-                                method="post"
-                                action="/ui/events/{{ event.id }}/delete"
-                                onsubmit="return confirm('Veranstaltung wirklich löschen? Alle Teilnehmer, Läufe, Ergebnisse, Mannschaften, Startfreigaben und Monitor-Einstellungen dieser Veranstaltung werden dauerhaft gelöscht. Der Fahrerstamm bleibt erhalten.');"
-                            >
-                                <button type="submit" class="small-button red-button">
-                                    Löschen
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <p>Keine geschlossenen Veranstaltungen vorhanden.</p>
-        {% endif %}
-    </div>
+                        <form
+                            method="post"
+                            action="/ui/events/{{ event.id }}/delete"
+                            onsubmit="return confirm('Veranstaltung wirklich löschen? Alle Teilnehmer, Läufe, Ergebnisse, Mannschaften, Startfreigaben und Monitor-Einstellungen dieser Veranstaltung werden dauerhaft gelöscht. Der Fahrerstamm bleibt erhalten.');"
+                        >
+                            <button type="submit" class="small-button red-button">
+                                Löschen
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Keine geschlossenen Veranstaltungen vorhanden.</p>
+    {% endif %}
 </div>
+{% endif %}
 
 <script>
-    function toggleEventBlock(blockId) {
-        const body = document.getElementById("event_body_" + blockId);
-        const icon = document.getElementById("event_toggle_icon_" + blockId);
-
-        if (!body || !icon) {
-            return;
-        }
-
-        if (body.style.display === "none") {
-            body.style.display = "";
-            icon.innerText = "▼";
-        } else {
-            body.style.display = "none";
-            icon.innerText = "▶";
-        }
-    }
-
     function parseDateInputValue(value) {
         if (!value) {
             return null;

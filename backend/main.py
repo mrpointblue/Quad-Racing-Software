@@ -80,7 +80,7 @@ REQUIRED_DATABASE_TABLES = {
 
 app = FastAPI(
     title="Quad Parallel Race",
-    version="1.4.0",
+    version="1.4.1",
 )
 
 Base.metadata.create_all(bind=engine)
@@ -2110,6 +2110,10 @@ def ui_events(
     db: Session = Depends(get_db),
 ):
     active_event = get_active_event(db)
+    event_tab = request.query_params.get("tab", "open")
+
+    if event_tab not in {"open", "new", "closed"}:
+        event_tab = "open"
 
     open_events = db.query(Event).filter(
         Event.closed == False
@@ -2132,6 +2136,7 @@ def ui_events(
             "active_event": active_event,
             "open_events": open_events,
             "closed_events": closed_events,
+            "event_tab": event_tab,
             "error": None,
             "event_year": get_event_year(active_event),
         },
@@ -2206,6 +2211,7 @@ def ui_create_event(
                 "active_event": active_event,
                 "open_events": open_events,
                 "closed_events": closed_events,
+                "event_tab": "new",
                 "error": "Diese Veranstaltungsnummer ist bereits vergeben.",
                 "event_year": get_event_year(active_event),
             },
@@ -4597,6 +4603,7 @@ def ui_event_timekeeper_run(
             "next_unconfirmed_run": next_unconfirmed_payload,
             "is_next_startable_run": is_next_startable_run,
             "start_error": request.query_params.get("start_error"),
+            "saved_notice": request.query_params.get("saved") == "1",
             "event_year": get_event_year(active_event),
         },
     )
@@ -4897,7 +4904,7 @@ async def ui_event_save_run(
     db.commit()
 
     return RedirectResponse(
-        url=f"/ui/events/{active_event.id}/timekeeper/run/{run_id}",
+        url=f"/ui/events/{active_event.id}/timekeeper/run/{run_id}?saved=1",
         status_code=303,
     )
 

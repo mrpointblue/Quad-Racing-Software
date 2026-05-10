@@ -74,6 +74,14 @@
     </div>
 {% endif %}
 
+{% if saved_notice and not race_run.confirmed %}
+    <div class="card">
+        <div class="error">
+            Lauf gespeichert. Der Lauf ist noch nicht bestätigt.
+        </div>
+    </div>
+{% endif %}
+
 <div class="run-control-grid">
     <div class="card compact-control-card">
         <h3>Ampel</h3>
@@ -92,30 +100,21 @@
     </div>
 
     <div class="card compact-control-card">
-        <h3>Fehlstart</h3>
+        <h3>Bestätigung</h3>
 
-        <div class="false-start-box">
-            {% if race_run.false_start_lane == "none" %}
-                Kein Fehlstart
-            {% elif race_run.false_start_lane == "lane_a" %}
-                Fehlstart Bahn A
-            {% elif race_run.false_start_lane == "lane_b" %}
-                Fehlstart Bahn B
-            {% elif race_run.false_start_lane == "both" %}
-                Fehlstart beide Bahnen
-            {% endif %}
-        </div>
-
-        {% if not race_run.confirmed and not active_event.closed %}
-            <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/false-start">
-                <select name="false_start_lane">
-                    <option value="none" {% if race_run.false_start_lane == "none" %}selected{% endif %}>Kein Fehlstart</option>
-                    <option value="lane_a" {% if race_run.false_start_lane == "lane_a" %}selected{% endif %}>Bahn A</option>
-                    <option value="lane_b" {% if race_run.false_start_lane == "lane_b" %}selected{% endif %}>Bahn B</option>
-                    <option value="both" {% if race_run.false_start_lane == "both" %}selected{% endif %}>Beide</option>
-                </select>
-
-                <button type="submit" class="small-button">Speichern</button>
+        {% if race_run.confirmed %}
+            <div class="success compact-status-message">Lauf bestätigt</div>
+        {% elif active_event.closed %}
+            <div class="error compact-status-message">Veranstaltung geschlossen</div>
+        {% else %}
+            <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/confirm">
+                <button
+                    type="submit"
+                    class="confirm-run-button"
+                    onclick="return confirm('Lauf wirklich bestätigen? Danach ist er abgeschlossen.')"
+                >
+                    Lauf bestätigen
+                </button>
             </form>
         {% endif %}
     </div>
@@ -125,58 +124,83 @@
 
         {% if active_event.closed %}
             <div class="error">Gesperrt</div>
-        {% elif not race_run.confirmed and is_next_startable_run %}
-            <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/start" style="display:inline;">
-                <button type="submit" class="start-button">START</button>
-            </form>
-
-            <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/reset" style="display:inline;">
-                <button
-                    type="submit"
-                    class="reset-button"
-                    onclick="return confirm('Zeitmessanlage wirklich resetten? Zeiten und Fehlerpunkte bleiben erhalten.')"
-                >
-                    RESET
-                </button>
-            </form>
-        {% elif not race_run.confirmed %}
-            <div class="error">
-                Start gesperrt. Dieser Lauf ist noch nicht als nächster Lauf vorgesehen.
-            </div>
-
-            {% if next_unconfirmed_run %}
-                <a class="button small-button" href="/ui/events/{{ active_event.id }}/timekeeper/run/{{ next_unconfirmed_run.id }}">
-                    Zum nächsten Lauf
-                </a>
-            {% endif %}
         {% else %}
-            <div class="success">Lauf bestätigt</div>
-        {% endif %}
+            {% if not race_run.confirmed and is_next_startable_run %}
+                <div class="run-control-actions">
+                    <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/start">
+                        <button type="submit" class="start-button">START</button>
+                    </form>
 
-        {% if not active_event.closed %}
-            <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/repeat" style="margin-top:10px;">
-                <button
-                    type="submit"
-                    class="reset-button"
-                    onclick="return confirm('Lauf wirklich wiederholen? Alle Zeiten und Fehlerpunkte dieses Laufes werden gelöscht und der Lauf wird neu geöffnet.')"
-                >
-                    LAUF WIEDERHOLEN
-                </button>
-            </form>
+                    <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/reset">
+                        <button
+                            type="submit"
+                            class="reset-button"
+                            onclick="return confirm('Zeitmessanlage wirklich resetten? Zeiten und Fehlerpunkte bleiben erhalten.')"
+                        >
+                            RESET
+                        </button>
+                    </form>
+
+                    <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/repeat">
+                        <button
+                            type="submit"
+                            class="repeat-button"
+                            onclick="return confirm('Lauf wirklich wiederholen? Alle Zeiten und Fehlerpunkte dieses Laufes werden gelöscht und der Lauf wird neu geöffnet.')"
+                        >
+                            LAUF WIEDERHOLEN
+                        </button>
+                    </form>
+                </div>
+            {% elif not race_run.confirmed %}
+                <div class="error">
+                    Start gesperrt. Dieser Lauf ist noch nicht als nächster Lauf vorgesehen.
+                </div>
+
+                {% if next_unconfirmed_run %}
+                    <a class="button small-button" href="/ui/events/{{ active_event.id }}/timekeeper/run/{{ next_unconfirmed_run.id }}">
+                        Zum nächsten Lauf
+                    </a>
+                {% endif %}
+
+                <div class="run-control-actions">
+                    <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/repeat">
+                        <button
+                            type="submit"
+                            class="repeat-button"
+                            onclick="return confirm('Lauf wirklich wiederholen? Alle Zeiten und Fehlerpunkte dieses Laufes werden gelöscht und der Lauf wird neu geöffnet.')"
+                        >
+                            LAUF WIEDERHOLEN
+                        </button>
+                    </form>
+                </div>
+            {% else %}
+                <div class="success compact-status-message">Lauf bestätigt</div>
+
+                <div class="run-control-actions">
+                    <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/repeat">
+                        <button
+                            type="submit"
+                            class="repeat-button"
+                            onclick="return confirm('Lauf wirklich wiederholen? Alle Zeiten und Fehlerpunkte dieses Laufes werden gelöscht und der Lauf wird neu geöffnet.')"
+                        >
+                            LAUF WIEDERHOLEN
+                        </button>
+                    </form>
+                </div>
+            {% endif %}
         {% endif %}
     </div>
 </div>
 
 <div class="card">
-    <h3>Zeitnahme und Fehlerpunkte</h3>
+    <div class="monitor-output-title-row">
+        <h3>Zeitnahme und Fehlerpunkte</h3>
+        <span id="run-detail-unsaved-hint-top" class="monitor-output-unsaved-hint" hidden>
+            Änderungen noch nicht gespeichert.
+        </span>
+    </div>
 
-    <p>
-        Die Zeit wird technisch in Millisekunden gespeichert. Für Anzeige und Wertung wird sie gemäß Reglement
-        auf 1/100 Sekunde gerundet und als <strong>MM:SS,HH</strong> angezeigt.
-        Fehlerpunkte können auch nach Bestätigung angepasst werden und werden in 5er-Schritten erfasst.
-    </p>
-
-    <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/save">
+    <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/save" id="run-detail-save-form">
         <table class="compact-runs-table">
             <thead>
                 <tr>
@@ -302,28 +326,19 @@
             </tbody>
         </table>
 
-        <button type="submit" class="small-button">
+        <div class="monitor-output-savebar">
+            <button type="submit" class="small-button" id="run-detail-save-button">
             {% if race_run.confirmed or active_event.closed %}
                 Fehlerpunkte speichern
             {% else %}
                 Speichern
             {% endif %}
-        </button>
-    </form>
-</div>
-
-<div class="card compact-confirm-card">
-    {% if race_run.confirmed %}
-        <div class="success">Dieser Lauf ist bestätigt.</div>
-    {% elif active_event.closed %}
-        <div class="error">Diese Veranstaltung ist geschlossen. Lauf kann nicht bestätigt werden.</div>
-    {% else %}
-        <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/confirm">
-            <button type="submit" onclick="return confirm('Lauf wirklich bestätigen? Danach ist er abgeschlossen.')">
-                Lauf bestätigen
             </button>
-        </form>
-    {% endif %}
+            <span id="run-detail-unsaved-hint" class="monitor-output-unsaved-hint" hidden>
+                Änderungen noch nicht gespeichert.
+            </span>
+        </div>
+    </form>
 </div>
 
 <script>
@@ -370,5 +385,33 @@
     }
 
     updateTimeDisplays();
+
+    function initializeRunDetailChangeWarning() {
+        const form = document.getElementById("run-detail-save-form");
+        const saveButton = document.getElementById("run-detail-save-button");
+        const unsavedHint = document.getElementById("run-detail-unsaved-hint");
+        const unsavedHintTop = document.getElementById("run-detail-unsaved-hint-top");
+
+        if (!form || !saveButton || !unsavedHint || !unsavedHintTop) {
+            return;
+        }
+
+        function markUnsaved() {
+            saveButton.classList.add("red-button");
+            unsavedHint.hidden = false;
+            unsavedHintTop.hidden = false;
+        }
+
+        form.querySelectorAll("input, select, textarea").forEach(function(field) {
+            if (field.disabled) {
+                return;
+            }
+
+            field.addEventListener("change", markUnsaved);
+            field.addEventListener("input", markUnsaved);
+        });
+    }
+
+    initializeRunDetailChangeWarning();
 </script>
 {% endblock %}

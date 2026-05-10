@@ -329,9 +329,9 @@ Wichtig ist, dass der Raspberry Pi und das Anzeigegerät im gleichen Netzwerk si
 
 ---
 
-# Projektstand / Version 1.4.0
+# Projektstand / Version 1.4.1
 
-Dieser Stand basiert auf Version 1.4.0 der Quad Parallel Race Software.
+Dieser Stand basiert auf Version 1.4.1 der Quad Parallel Race Software.
 
 Kernpunkte:
 
@@ -370,6 +370,15 @@ Neue Funktionen in Version 1.4.0:
 - QR-Code-Anzeige für einzelne Stationen, alle Stationen oder Auswahl Station auf dem Monitor
 - automatische Rücksetzung der Streckenposten-QR-Anzeige nach fünf Minuten
 - Druckansichten für Streckenposten-QR-Codes
+
+Korrekturen in Version 1.4.1:
+
+- Veranstaltungsbereich in Untertabs für Dashboard, offene Veranstaltungen, Veranstaltung anlegen und geschlossene Veranstaltungen aufgeteilt.
+- Redundante Navigationsbuttons in Teilnehmerliste, Teilnehmerdatenbank und Ergebnisansichten entfernt.
+- Rennbetrieb auf einen klaren Button `Ergebnisse anzeigen` reduziert.
+- Zeitnahme-Steuerung kompakter dargestellt; `Lauf wiederholen` bleibt auch bei bestätigten Läufen verfügbar, solange die Veranstaltung offen ist.
+- Ergebnisnavigation vereinheitlicht: Viertelfinale, Halbfinale, Finale, Gesamtwertung, Export und Druck.
+- Mobile Streckenposten-Eingabe springt beim Hochzählen der Fehlerpunkte nicht mehr durch Auto-Aktualisierung zurück auf 0.
 
 Wichtige Korrekturen seit Version 1.3.0:
 

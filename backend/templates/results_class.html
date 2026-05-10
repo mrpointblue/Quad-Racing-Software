@@ -17,16 +17,24 @@
         Zeitwertung gemäß Reglement: Alle Zeiten werden für Anzeige und Wertung auf 1/100 Sekunde gerundet.
     </div>
 
-    <a class="button small-button" href="/ui/events/{{ active_event.id }}/results">
-        Zurück zu Ergebnisse
+    <a class="button small-button" href="/ui/events/{{ active_event.id }}/results/class/{{ race_class }}/round/quarterfinal">
+        Viertelfinale
+    </a>
+
+    <a class="button small-button" href="/ui/events/{{ active_event.id }}/results/class/{{ race_class }}/round/semifinal">
+        Halbfinale
+    </a>
+
+    <a class="button small-button" href="/ui/events/{{ active_event.id }}/results/class/{{ race_class }}/round/final">
+        Finale
     </a>
 
     <a class="button small-button" href="/ui/events/{{ active_event.id }}/export/class/{{ race_class }}/overall/xlsx">
-        Gesamtwertung Export
+        Export
     </a>
 
     <a class="button small-button print-link" href="/ui/events/{{ active_event.id }}/print/class/{{ race_class }}/overall">
-        Gesamtwertung Druck
+        Druck
     </a>
 
     {% if print_mode %}
@@ -34,18 +42,6 @@
             Drucken
         </button>
     {% endif %}
-
-    <a class="button small-button" href="/ui/events/{{ active_event.id }}/results/class/{{ race_class }}/round/quarterfinal">
-        VF
-    </a>
-
-    <a class="button small-button" href="/ui/events/{{ active_event.id }}/results/class/{{ race_class }}/round/semifinal">
-        HF
-    </a>
-
-    <a class="button small-button" href="/ui/events/{{ active_event.id }}/results/class/{{ race_class }}/round/final">
-        F
-    </a>
 </div>
 
 {% if tie_warnings %}

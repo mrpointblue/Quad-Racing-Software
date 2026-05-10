@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>{% block title %}Quad Parallel Race{% endblock %}</title>
-    <link rel="stylesheet" href="/static/style.css?v=20260510-01">
+    <link rel="stylesheet" href="/static/style.css?v=20260511-01">
 </head>
 <body class="{% block body_class %}{% endblock %}">
     {% set club_logo_path = get_club_logo_path() %}
@@ -62,9 +62,13 @@
 
     <div class="nav">
         {% set current_path = request.url.path %}
+        {% set event_tab = request.query_params.get('tab', 'open') %}
         {% set active_category = None %}
+        {% if current_path == '/ui/events' %}
+            {% set active_category = 'veranstaltung' %}
+        {% endif %}
         {% if active_event %}
-            {% if current_path.startswith('/ui/events/' + active_event.id|string + '/dashboard') or current_path == '/ui/events' %}
+            {% if current_path.startswith('/ui/events/' + active_event.id|string + '/dashboard') %}
                 {% set active_category = 'veranstaltung' %}
             {% elif current_path.startswith('/ui/events/' + active_event.id|string + '/participants') or current_path.startswith('/ui/events/' + active_event.id|string + '/registration') or current_path.startswith('/ui/events/' + active_event.id|string + '/driver-profiles') or current_path.startswith('/ui/events/' + active_event.id|string + '/driver-database') %}
                 {% set active_category = 'nennung' %}
@@ -91,10 +95,15 @@
             <a href="/ui/help" class="{% if active_category == 'hilfe' %}active{% endif %}">Hilfe</a>
         </div>
 
-        {% if active_event %}
+        {% if active_event or active_category == 'veranstaltung' %}
         <div class="nav-sub">
             {% if active_category == 'veranstaltung' %}
-                <a href="/ui/events/{{ active_event.id }}/dashboard" class="{% if current_path == '/ui/events/' + active_event.id|string + '/dashboard' %}active{% endif %}">Dashboard</a>
+                {% if active_event %}
+                    <a href="/ui/events/{{ active_event.id }}/dashboard" class="{% if current_path == '/ui/events/' + active_event.id|string + '/dashboard' %}active{% endif %}">Dashboard</a>
+                {% endif %}
+                <a href="/ui/events?tab=open" class="{% if current_path == '/ui/events' and event_tab not in ['new', 'closed'] %}active{% endif %}">Offene Veranstaltung</a>
+                <a href="/ui/events?tab=new" class="{% if current_path == '/ui/events' and event_tab == 'new' %}active{% endif %}">Veranstaltung anlegen</a>
+                <a href="/ui/events?tab=closed" class="{% if current_path == '/ui/events' and event_tab == 'closed' %}active{% endif %}">Geschlossene Veranstaltung</a>
             {% elif active_category == 'nennung' %}
                 <a href="/ui/events/{{ active_event.id }}/participants/new" class="{% if current_path == '/ui/events/' + active_event.id|string + '/participants/new' %}active{% endif %}">Teilnehmer erfassen</a>
                 <a href="/ui/events/{{ active_event.id }}/participants" class="{% if current_path == '/ui/events/' + active_event.id|string + '/participants' %}active{% endif %}">Teilnehmerliste</a>

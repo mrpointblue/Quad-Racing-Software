@@ -11,19 +11,11 @@
         </p>
     {% endif %}
 
-    {% if not active_event.closed %}
-        <a class="button small-button" href="/ui/events/{{ active_event.id }}/participants/new">
-            Teilnehmer erfassen
-        </a>
-    {% else %}
+    {% if active_event.closed %}
         <div class="error">
             Diese Veranstaltung ist geschlossen. Teilnehmer können nicht mehr geändert werden.
         </div>
     {% endif %}
-
-    <a class="button small-button" href="/ui/events/{{ active_event.id }}/driver-profiles">
-        Teilnehmerdatenbank
-    </a>
 </div>
 
 <div class="card">

@@ -59,15 +59,22 @@
 
     <script>
         let currentPoints = {{ current_points }};
+        let lastServerPoints = {{ current_points }};
         let canEdit = {{ can_edit|tojson }};
         let currentRunId = {{ run.id }};
-        let hasSubmitted = {{ (current_points > 0)|tojson }};
+        let hasSubmitted = {{ has_submission|tojson }};
+        let localDirty = false;
+
+        function updatePointsDisplay() {
+            document.getElementById('points').textContent = currentPoints;
+        }
 
         function changePoints(delta) {
             if (!canEdit) return;
             currentPoints = Math.max(0, currentPoints + delta);
             currentPoints = Math.round(currentPoints / 5) * 5;
-            document.getElementById('points').textContent = currentPoints;
+            localDirty = currentPoints !== lastServerPoints;
+            updatePointsDisplay();
         }
 
         async function submitPenalty() {
@@ -95,6 +102,8 @@
                     document.getElementById('success-message').style.display = 'block';
                     document.getElementById('submitted-points').textContent = currentPoints;
                     hasSubmitted = true;
+                    lastServerPoints = currentPoints;
+                    localDirty = false;
                 } else {
                     alert('Fehler beim Übermitteln');
                 }
@@ -106,6 +115,8 @@
         function correct() {
             document.getElementById('success-message').style.display = 'none';
             document.querySelector('.penalty-input').style.display = 'block';
+            localDirty = false;
+            lastServerPoints = currentPoints;
         }
 
         async function pollCurrentRun() {
@@ -136,9 +147,14 @@
                     return;
                 }
 
-                if (!hasSubmitted && typeof data.current_points === "number" && data.current_points !== currentPoints) {
+                if (typeof data.has_submission === "boolean") {
+                    hasSubmitted = data.has_submission;
+                }
+
+                if (!localDirty && typeof data.current_points === "number" && data.current_points !== currentPoints) {
                     currentPoints = data.current_points;
-                    document.getElementById('points').textContent = currentPoints;
+                    lastServerPoints = data.current_points;
+                    updatePointsDisplay();
                 }
             } catch (error) {
                 return;

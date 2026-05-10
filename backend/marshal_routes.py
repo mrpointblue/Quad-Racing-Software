@@ -471,6 +471,7 @@ def ui_marshal_station(
     )
 
     current_points = penalty.points if penalty else 0
+    has_submission = penalty is not None
     can_edit = not run.confirmed
 
     return templates.TemplateResponse(
@@ -486,6 +487,7 @@ def ui_marshal_station(
             "type": type,
             "sector": sector,
             "current_points": current_points,
+            "has_submission": has_submission,
             "can_edit": can_edit,
         },
     )
