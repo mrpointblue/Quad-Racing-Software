@@ -282,6 +282,22 @@
                         {% endif %}
                     </td>
                 </tr>
+                <tr>
+                    <td colspan="{{ sectors|length + 6 }}">
+                        <strong>Digitale Streckenpostenmeldungen Bahn {% if result.lane == "lane_a" %}A{% else %}B{% endif %}</strong>
+                        <div class="digital-penalty-status-row">
+                            {% for penalty_status in result.digital_penalty_statuses %}
+                                <span
+                                    class="digital-penalty-status {% if not penalty_status.has_submission %}digital-penalty-open{% elif penalty_status.points == 0 %}digital-penalty-zero{% else %}digital-penalty-points{% endif %}"
+                                >
+                                    {{ penalty_status.label }}:
+                                    {{ penalty_status.status }}
+                                    {% if penalty_status.changed %}(geändert){% endif %}
+                                </span>
+                            {% endfor %}
+                        </div>
+                    </td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>

@@ -31,7 +31,7 @@
                     <th>Datum</th>
                     <th>Ort</th>
                     <th>Ortsclub / Veranstalter</th>
-                    <th>Sektoren</th>
+                    <th>Positionen</th>
                     <th>Aktionen</th>
                 </tr>
             </thead>
@@ -51,7 +51,7 @@
                     <td>{{ event.event_date or "" }}</td>
                     <td>{{ event.location or "" }}</td>
                     <td>{{ event.organizer_club or "" }}</td>
-                    <td>{{ event.sectors_per_lane or 4 }}</td>
+                    <td>{{ event.sectors_per_lane or 1 }}</td>
 
                     <td class="event-actions-cell">
                         <div class="event-actions">
@@ -158,11 +158,11 @@
                 <option value="Wühlmäuse Schleswig-Holstein e.V.">Wühlmäuse Schleswig-Holstein e.V.</option>
             </select>
 
-            <label>Sektoren pro Bahn</label>
+            <label>Anzahl Positionen pro Bahn</label>
             <input
                 type="number"
                 name="sectors_per_lane"
-                value="4"
+                value="1"
                 min="1"
                 max="10"
                 required

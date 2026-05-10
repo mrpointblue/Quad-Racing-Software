@@ -329,9 +329,9 @@ Wichtig ist, dass der Raspberry Pi und das Anzeigegerät im gleichen Netzwerk si
 
 ---
 
-# Projektstand / Version 1.3.0
+# Projektstand / Version 1.4.0
 
-Dieser Stand basiert auf Version 1.3.0 der Quad Parallel Race Software.
+Dieser Stand basiert auf Version 1.4.0 der Quad Parallel Race Software.
 
 Kernpunkte:
 
@@ -353,8 +353,25 @@ Kernpunkte:
 - Vorbereitung für ADAC Nummer und Jugendausweisnummer
 - Vorbereitung für Siemens LOGO / Zeitmessanlage im Simulationsmodus
 - Monitor-Seite für Anzeige auf TV oder externem Bildschirm
+- optionale digitale Streckenpostenfunktion je Veranstaltung
+- mobile Erfassung allgemeiner und positionsbezogener Fehlerpunkte
+- QR-Codes für Streckenposten-Stationen mit Monitoranzeige und Druckansicht
 
-Wichtige Korrekturen in Version 1.3.0:
+Neue Funktionen in Version 1.4.0:
+
+- zweistufige Navigation mit Hauptbereich `Nennung`
+- Untertab `Teilnehmerdatenbank` für Fahrerstamm/wiederkehrende Fahrer
+- optionale digitale Streckenpostenfunktion in den Einstellungen
+- Start-/Zielposten für allgemeine Fehlerpunkte je Bahn und Fahrer
+- Streckenposten Positionen für positionsbezogene Fehlerpunkte
+- mobile Streckenposten-Oberfläche für Smartphone und Tablet
+- Fehlerpunkte in 5er-Schritten mit Übergabe in die Zeitnahme
+- Statusanzeige in der Zeitnahme: keine Meldung, 0 FP übermittelt, FP übermittelt
+- QR-Code-Anzeige für einzelne Stationen, alle Stationen oder Auswahl Station auf dem Monitor
+- automatische Rücksetzung der Streckenposten-QR-Anzeige nach fünf Minuten
+- Druckansichten für Streckenposten-QR-Codes
+
+Wichtige Korrekturen seit Version 1.3.0:
 
 - Zeitwertung erfolgt für Anzeige, Wertung, Export, Monitor und Paarungslogik auf 1/100 Sekunde.
 - Die Startnummer entscheidet keinen fachlichen Gleichstand.

@@ -282,6 +282,52 @@
     <button
         type="button"
         class="settings-accordion-header"
+        onclick="toggleSettingsAccordion('marshals')"
+    >
+        <span>Streckenpostenfunktion</span>
+        <span class="settings-accordion-indicator" id="indicator_marshals">▼</span>
+    </button>
+
+    <div class="settings-accordion-body" id="accordion_marshals">
+        {% if active_event %}
+            <p>
+                Veranstaltung:
+                <strong>{{ active_event.event_number }} · {{ active_event.name }}</strong>
+            </p>
+            <p>
+                Anzahl Positionen:
+                <strong>{{ active_event.sectors_per_lane or 1 }}</strong>
+            </p>
+            <p class="hint">
+                Die Anzahl Positionen kommt aus den Veranstaltungsvorgaben. Die digitale Streckenpostenfunktion ist optional.
+                Wenn sie deaktiviert ist, werden Fehlerpunkte ausschließlich durch die Zeitnahme erfasst.
+            </p>
+
+            <form method="post" action="/ui/settings/marshals">
+                <input type="hidden" name="event_id" value="{{ active_event.id }}">
+                <label>
+                    <input
+                        type="checkbox"
+                        name="marshal_enabled"
+                        value="1"
+                        {% if active_event.marshal_enabled %}checked{% endif %}
+                    >
+                    Digitale Streckenposten aktivieren
+                </label>
+
+                <button type="submit">Streckenposten-Einstellung speichern</button>
+            </form>
+        {% else %}
+            <p>Keine aktive Veranstaltung vorhanden.</p>
+            <p class="hint">Die Streckenpostenfunktion wird je Veranstaltung aktiviert.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card settings-accordion-card">
+    <button
+        type="button"
+        class="settings-accordion-header"
         onclick="toggleSettingsAccordion('database_backup')"
     >
         <span>Datenbank-Sicherung</span>
@@ -520,6 +566,7 @@
         signal_mapping: false,
         club_logo: false,
         youth_card: false,
+        marshals: false,
         database_backup: false,
         system_status: true,
     };

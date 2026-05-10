@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streckenposten QR-Codes</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="marshal-print-body">
+    <main class="container marshal-print-page">
+        <section class="card">
+            <h1>Streckenposten QR-Codes</h1>
+            <p>{{ event.event_number }} – {{ event.name }}</p>
+            <button type="button" onclick="window.print()">Alle QR-Codes drucken</button>
+        </section>
+
+        <section class="marshal-print-grid">
+            {% for station in stations %}
+                <article class="card marshal-print-card">
+                    <div class="marshal-station-title">{{ station.name }}</div>
+                    {% if station.qr_data_uri %}
+                        <img src="{{ station.qr_data_uri }}" alt="QR-Code {{ station.name }}" class="marshal-qr-image">
+                    {% else %}
+                        <div class="marshal-warning">QR-Code kann nicht erzeugt werden.</div>
+                    {% endif %}
+                    <p class="marshal-url">{{ station.absolute_url }}</p>
+                </article>
+            {% endfor %}
+        </section>
+    </main>
+</body>
+</html>

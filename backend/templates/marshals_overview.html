@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Streckenposten{% if active_event %} - {{ active_event.event_number }}{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Streckenposten</h2>
+    <p>Digitale Fehlerpunkte-Erfassung für {{ event.event_number }} · {{ event.name }}.</p>
+
+    {% if not marshal_enabled %}
+        <div class="warning">
+            <p>Die digitale Streckenpostenfunktion ist für diese Veranstaltung deaktiviert.</p>
+            <p>Fehlerpunkte können weiterhin manuell durch die Zeitnahme erfasst werden.</p>
+            <p><a class="button small-button" href="/ui/settings">In Einstellungen aktivieren</a></p>
+        </div>
+    {% else %}
+        <div class="button-row marshal-toolbar">
+            <a class="button small-button" href="/ui/events/{{ event.id }}/marshal/qr/print-all">Alle QR-Codes drucken</a>
+            <button type="button" class="small-button" onclick="resetMarshalQrMonitor()">Monitor zurücksetzen</button>
+        </div>
+    {% endif %}
+</div>
+
+{% if marshal_enabled %}
+<div class="card">
+    <h3>Stationen</h3>
+    <div class="marshal-station-list">
+        {% for station in stations %}
+            <div class="marshal-station-row">
+                <div class="marshal-station-name">{{ station.name }}</div>
+                <div class="marshal-station-actions">
+                    <a href="{{ station.url }}" class="button small-button">Bedienoberfläche öffnen</a>
+                    <a href="/ui/events/{{ event.id }}/marshal/qr?type={{ station.type }}&lane={{ station.lane }}{% if station.sector %}&sector={{ station.sector }}{% endif %}" class="button small-button">QR-Code anzeigen</a>
+                    <button
+                        type="button"
+                        class="small-button"
+                        onclick="showMarshalQrOnMonitor('{{ station.type }}', '{{ station.lane }}', '{{ station.sector or '' }}')"
+                    >
+                        Auf Monitor anzeigen
+                    </button>
+                    <a href="/ui/events/{{ event.id }}/marshal/qr/print?type={{ station.type }}&lane={{ station.lane }}{% if station.sector %}&sector={{ station.sector }}{% endif %}" class="button small-button">Drucken</a>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="card">
+    <h3>Statusübersicht</h3>
+
+    {% if status_rows|length > 0 %}
+        <table class="compact-runs-table">
+            <thead>
+                <tr>
+                    <th>Lauf</th>
+                    <th>Klasse</th>
+                    <th>Bahn</th>
+                    <th>Art</th>
+                    <th>Position</th>
+                    <th>Startnr.</th>
+                    <th>Fahrer</th>
+                    <th>Fehlerpunkte</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in status_rows %}
+                    <tr>
+                        <td>{{ row.run_number }}</td>
+                        <td>Klasse {{ row.race_class }}</td>
+                        <td>{{ row.lane }}</td>
+                        <td>{{ row.type_label }}</td>
+                        <td>{% if row.sector %}{{ row.sector }}{% else %}-{% endif %}</td>
+                        <td>{{ row.start_number }}</td>
+                        <td>{{ row.driver_name }}</td>
+                        <td>{{ row.points }} Punkte</td>
+                        <td>{{ row.status }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Aktuell ist kein Lauf für die Streckenposten-Eingabe verfügbar.</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<script>
+    function showMarshalQrOnMonitor(type, lane, sector) {
+        const payload = {type: type, lane: lane};
+
+        if (sector) {
+            payload.sector = parseInt(sector, 10);
+        }
+
+        fetch("/api/events/{{ event.id }}/monitor/marshal-qr", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload),
+        }).then(function(response) {
+            alert(response.ok ? "QR-Code wird auf dem Monitor angezeigt." : "QR-Code konnte nicht auf dem Monitor angezeigt werden.");
+        });
+    }
+
+    function resetMarshalQrMonitor() {
+        fetch("/api/events/{{ event.id }}/monitor/reset", {
+            method: "POST",
+        }).then(function(response) {
+            alert(response.ok ? "Monitoranzeige zurückgesetzt." : "Monitoranzeige konnte nicht zurückgesetzt werden.");
+        });
+    }
+</script>
+{% endblock %}

@@ -2,6 +2,418 @@
     box-sizing: border-box;
 }
 
+.marshal-mobile-body {
+    background: #0f172a;
+    color: #f8fafc;
+}
+
+.marshal-page {
+    width: min(100%, 860px);
+    margin: 0 auto;
+    padding: 18px;
+}
+
+.marshal-card {
+    background: #ffffff;
+    color: #111827;
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.22);
+}
+
+.marshal-center-card {
+    text-align: center;
+}
+
+.marshal-card h1 {
+    font-size: 34px;
+    margin: 0 0 10px;
+}
+
+.marshal-station-title {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 8px 0 18px;
+}
+
+.marshal-info-card {
+    text-align: left;
+    background: #f3f4f6;
+    border-radius: 12px;
+    padding: 16px;
+    margin: 16px 0;
+    font-size: 20px;
+}
+
+.marshal-info-card p {
+    margin: 8px 0;
+}
+
+.marshal-warning {
+    background: #fee2e2;
+    border: 2px solid #dc2626;
+    border-radius: 12px;
+    color: #7f1d1d;
+    font-size: 22px;
+    font-weight: 700;
+    padding: 18px;
+    margin: 16px 0;
+}
+
+.marshal-success {
+    background: #dcfce7;
+    border: 2px solid #16a34a;
+    border-radius: 12px;
+    color: #14532d;
+    padding: 18px;
+    margin: 16px 0;
+    font-size: 20px;
+}
+
+.marshal-primary-button,
+.marshal-secondary-button,
+.marshal-counter-button {
+    min-height: 56px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    margin: 8px;
+    padding: 14px 20px;
+    font-size: 20px;
+    font-weight: 800;
+}
+
+.marshal-primary-button {
+    background: #16a34a;
+    color: #ffffff;
+}
+
+.marshal-secondary-button {
+    background: #e5e7eb;
+    color: #111827;
+}
+
+.marshal-penalty-input h2 {
+    font-size: 26px;
+}
+
+.counter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    margin: 22px 0;
+}
+
+.counter #points {
+    min-width: 110px;
+    font-size: 56px;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+}
+
+.marshal-counter-button {
+    width: 88px;
+    min-height: 76px;
+    background: #1d4ed8;
+    color: #ffffff;
+    font-size: 42px;
+}
+
+.marshal-qr-image {
+    width: min(76vw, 360px);
+    height: auto;
+    image-rendering: pixelated;
+    margin: 14px auto;
+}
+
+.marshal-url {
+    word-break: break-word;
+    font-size: 14px;
+    color: #374151;
+}
+
+.marshal-qr-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+.marshal-mobile-hint {
+    font-size: 18px;
+    color: #4b5563;
+}
+
+.marshal-landing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin: 12px 0 20px;
+}
+
+.marshal-station-choice {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 78px;
+    padding: 16px;
+    border-radius: 12px;
+    background: #16a34a;
+    color: #ffffff;
+    text-decoration: none;
+    justify-content: center;
+    box-shadow: 0 6px 14px rgba(22, 163, 74, 0.22);
+}
+
+.marshal-station-choice span {
+    font-size: 21px;
+    font-weight: 900;
+}
+
+.marshal-station-choice small {
+    color: rgba(255, 255, 255, 0.86);
+    font-size: 14px;
+}
+
+.monitor-marshal-qr-section {
+    text-align: center;
+}
+
+.monitor-marshal-qr-label {
+    font-size: 42px;
+    font-weight: 900;
+    margin: 12px 0;
+}
+
+.monitor-marshal-qr-image {
+    width: min(52vh, 420px);
+    max-width: 80vw;
+    height: auto;
+    background: white;
+    padding: 12px;
+    border-radius: 8px;
+}
+
+.monitor-marshal-qr-url {
+    font-size: 18px;
+    word-break: break-word;
+}
+
+.monitor-marshal-qr-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 18px;
+}
+
+.monitor-marshal-qr-card {
+    background: rgba(255, 255, 255, 0.94);
+    color: #111827;
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+}
+
+.monitor-marshal-qr-card strong {
+    display: block;
+    font-size: 17px;
+    margin-bottom: 8px;
+}
+
+.monitor-marshal-qr-card img {
+    width: min(15vw, 150px);
+    height: auto;
+    image-rendering: pixelated;
+}
+
+@media (max-width: 900px) {
+    .monitor-marshal-qr-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.digital-penalty-status-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.digital-penalty-status {
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.digital-penalty-open {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.digital-penalty-zero {
+    background: #dcfce7;
+    color: #14532d;
+}
+
+.digital-penalty-points {
+    background: #fed7aa;
+    color: #7c2d12;
+}
+
+.marshal-toolbar {
+    margin-top: 12px;
+}
+
+.marshal-station-list {
+    display: grid;
+    gap: 10px;
+}
+
+.marshal-station-row {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f9fafb;
+}
+
+.marshal-station-name {
+    font-weight: 700;
+}
+
+.marshal-station-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.marshal-station-actions .button,
+.marshal-station-actions button {
+    margin: 0;
+    min-width: 150px;
+    text-align: center;
+}
+
+.monitor-marshal-control {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.monitor-marshal-control h4 {
+    margin: 0 0 8px;
+}
+
+.monitor-marshal-control-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.monitor-marshal-control-row select {
+    min-width: 260px;
+    flex: 1;
+    margin: 0;
+}
+
+.marshal-print-body {
+    background: #f3f4f6;
+}
+
+.marshal-print-page {
+    max-width: 1180px;
+}
+
+.marshal-print-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+.marshal-print-card {
+    text-align: center;
+    break-inside: avoid;
+}
+
+@media print {
+    .marshal-print-body {
+        background: #ffffff;
+    }
+
+    .marshal-print-page {
+        max-width: none;
+        padding: 0;
+    }
+
+    .marshal-print-page > .card:first-child button {
+        display: none;
+    }
+
+    .marshal-print-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10mm;
+    }
+
+    .marshal-print-card {
+        box-shadow: none;
+        border: 1px solid #d1d5db;
+        page-break-inside: avoid;
+    }
+}
+
+@media (max-width: 640px) {
+    .marshal-page {
+        padding: 10px;
+    }
+
+    .marshal-card {
+        padding: 16px;
+    }
+
+    .marshal-card h1 {
+        font-size: 28px;
+    }
+
+    .marshal-station-title {
+        font-size: 24px;
+    }
+
+    .marshal-primary-button,
+    .marshal-secondary-button {
+        width: 100%;
+        margin: 8px 0;
+    }
+
+    .marshal-landing-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .marshal-station-row {
+        grid-template-columns: 1fr;
+    }
+
+    .marshal-station-actions {
+        justify-content: stretch;
+    }
+
+    .marshal-station-actions .button,
+    .marshal-station-actions button {
+        width: 100%;
+    }
+}
+
 body {
     margin: 0;
     font-family: Arial, sans-serif;
@@ -41,9 +453,21 @@ body {
 .nav {
     background: #1f2937;
     padding: 10px 24px;
+}
+
+.nav-main {
     display: flex;
     gap: 12px;
     flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.nav-sub {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding-left: 20px;
+    border-left: 2px solid #374151;
 }
 
 .nav a {
@@ -56,6 +480,11 @@ body {
 
 .nav a:hover {
     background: #4b5563;
+}
+
+.nav a.active {
+    background: #3b82f6;
+    color: white;
 }
 
 .notification-bar {
@@ -787,10 +1216,26 @@ select {
     margin-top: 16px;
 }
 
+.monitor-output-title-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.monitor-output-title-row h2 {
+    margin-bottom: 0;
+}
+
 .monitor-output-savebar .button,
 .monitor-output-savebar button,
 .monitor-output-actions .button {
     margin-top: 0;
+}
+
+.monitor-output-unsaved-hint {
+    color: #dc2626;
+    font-weight: 700;
 }
 
 .monitor-portrait {

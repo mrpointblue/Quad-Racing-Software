@@ -5,10 +5,12 @@ import sqlite3
 import subprocess
 import threading
 import time
+import base64
 
 from datetime import datetime, date
+from io import BytesIO
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 from fastapi import FastAPI, Depends, File, HTTPException, Request, Form, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
@@ -35,6 +37,7 @@ from backend.models import (
     MonitorDisplaySetting,
     Team,
     TeamMember,
+    RunPenalty,
 )
 from backend.schemas import ParticipantCreate, ParticipantResponse, PairingResponse
 from backend.pairing_logic import create_random_preliminary_pairings
@@ -77,7 +80,7 @@ REQUIRED_DATABASE_TABLES = {
 
 app = FastAPI(
     title="Quad Parallel Race",
-    version="1.3.0",
+    version="1.4.0",
 )
 
 Base.metadata.create_all(bind=engine)
@@ -127,6 +130,26 @@ ensure_schema_column(
     column_name="registration_deadline",
     column_definition="VARCHAR",
 )
+
+ensure_schema_column(
+    table_name="events",
+    column_name="marshal_enabled",
+    column_definition="BOOLEAN DEFAULT 0",
+)
+
+for column_name, column_definition in [
+    ("penalty_type", "VARCHAR DEFAULT 'sector'"),
+    ("sector", "INTEGER"),
+    ("submitted_at", "VARCHAR"),
+    ("updated_at", "VARCHAR"),
+    ("created_by", "VARCHAR"),
+    ("updated_by", "VARCHAR"),
+]:
+    ensure_schema_column(
+        table_name="run_penalties",
+        column_name=column_name,
+        column_definition=column_definition,
+    )
 
 for table_name in ["driver_profiles", "participants"]:
     ensure_schema_column(
@@ -885,6 +908,76 @@ def prepare_result_for_display(result: RunResult, sectors: list[int]) -> RunResu
     return result
 
 
+def get_digital_penalty_status(
+    run_penalties: list[RunPenalty],
+    penalty_type: str,
+    lane: str,
+    sector: int | None = None,
+) -> dict:
+    matching_penalty = None
+
+    for penalty in run_penalties:
+        if penalty.penalty_type != penalty_type or penalty.lane != lane:
+            continue
+
+        if penalty_type == "sector" and penalty.sector != sector:
+            continue
+
+        if penalty_type == "general" and penalty.sector not in [None, 0]:
+            continue
+
+        matching_penalty = penalty
+        break
+
+    if not matching_penalty:
+        return {
+            "label": "Allgemein" if penalty_type == "general" else f"Position {sector}",
+            "points": None,
+            "has_submission": False,
+            "status": "keine Meldung",
+            "changed": False,
+        }
+
+    points = matching_penalty.points or 0
+    changed = bool(matching_penalty.updated_at)
+
+    return {
+        "label": "Allgemein" if penalty_type == "general" else f"Position {sector}",
+        "points": points,
+        "has_submission": True,
+        "status": f"{points} FP übermittelt",
+        "changed": changed,
+    }
+
+
+def build_digital_penalty_statuses(
+    race_run: RaceRun,
+    result: RunResult,
+    sectors: list[int],
+    run_penalties: list[RunPenalty],
+) -> list[dict]:
+    lane = "A" if result.lane == "lane_a" else "B"
+    statuses = [
+        get_digital_penalty_status(
+            run_penalties=run_penalties,
+            penalty_type="general",
+            lane=lane,
+        )
+    ]
+
+    for sector in sectors:
+        statuses.append(
+            get_digital_penalty_status(
+                run_penalties=run_penalties,
+                penalty_type="sector",
+                lane=lane,
+                sector=sector,
+            )
+        )
+
+    return statuses
+
+
 def get_lane_results_for_run(run: RaceRun) -> tuple[RunResult | None, RunResult | None]:
     lane_a = None
     lane_b = None
@@ -941,7 +1034,7 @@ def reset_run_values_for_repeat(
 # Monitor-Helfer
 # ------------------------------------------------------------
 
-def get_monitor_penalty_sum(result: RunResult | None) -> int:
+def get_monitor_penalty_sum(result: RunResult | None, db: Session) -> int:
     if result is None:
         return 0
 
@@ -961,7 +1054,7 @@ def normalize_penalty_input(value: str | None) -> int:
     return ((penalty + 2) // 5) * 5
 
 
-def get_monitor_valued_time_ms(result: RunResult | None) -> int | None:
+def get_monitor_valued_time_ms(result: RunResult | None, db: Session) -> int | None:
     if result is None or result.raw_time_ms is None:
         return None
 
@@ -973,7 +1066,7 @@ def get_monitor_valued_time_ms(result: RunResult | None) -> int | None:
     if scoring_raw_time_ms is None:
         return None
 
-    return scoring_raw_time_ms + (get_monitor_penalty_sum(result) * 1000)
+    return scoring_raw_time_ms + (get_monitor_penalty_sum(result, db) * 1000)
 
 
 def monitor_driver_name(participant: Participant | None) -> str:
@@ -983,7 +1076,7 @@ def monitor_driver_name(participant: Participant | None) -> str:
     return f"#{participant.start_number} {participant.first_name} {participant.last_name}"
 
 
-def monitor_result_payload(result: RunResult | None) -> dict:
+def monitor_result_payload(result: RunResult | None, db: Session) -> dict:
     if result is None:
         return {
             "driver": "-",
@@ -995,14 +1088,15 @@ def monitor_result_payload(result: RunResult | None) -> dict:
     return {
         "driver": monitor_driver_name(result.participant),
         "raw_time": format_time_ms(result.raw_time_ms),
-        "penalty": get_monitor_penalty_sum(result),
-        "valued_time": format_time_ms(get_monitor_valued_time_ms(result)),
+        "penalty": get_monitor_penalty_sum(result, db),
+        "valued_time": format_time_ms(get_monitor_valued_time_ms(result, db)),
     }
 
 
 def monitor_run_payload(
     race_run: RaceRun,
     pairing: Pairing,
+    db: Session,
 ) -> dict:
     lane_a_result, lane_b_result = get_lane_results_for_run(race_run)
     round_number, round_label = get_round_display(race_run.round_name)
@@ -1018,8 +1112,8 @@ def monitor_run_payload(
         "status": race_run.status,
         "traffic_light_status": race_run.traffic_light_status or "off",
         "confirmed": race_run.confirmed,
-        "lane_a": monitor_result_payload(lane_a_result),
-        "lane_b": monitor_result_payload(lane_b_result),
+        "lane_a": monitor_result_payload(lane_a_result, db),
+        "lane_b": monitor_result_payload(lane_b_result, db),
     }
 
 
@@ -1138,6 +1232,7 @@ def pick_monitor_current_run(
 
 def pick_monitor_next_runs(
     run_items: list[tuple[RaceRun, Pairing]],
+    db: Session,
     current_run_id: int | None,
     limit: int = 3,
 ) -> list[dict]:
@@ -1150,7 +1245,7 @@ def pick_monitor_next_runs(
         if current_run_id is not None and race_run.id == current_run_id:
             continue
 
-        next_runs.append(monitor_run_payload(race_run, pairing))
+        next_runs.append(monitor_run_payload(race_run, pairing, db))
 
         if len(next_runs) >= limit:
             break
@@ -1173,6 +1268,7 @@ def get_monitor_result_classes(race_class: int | None) -> set[int] | None:
 
 def get_monitor_live_result_runs(
     run_items: list[tuple[RaceRun, Pairing]],
+    db: Session,
     focus_race_classes: set[int] | None = None,
     preferred_round_number: int | None = None,
     limit: int = 20,
@@ -1230,7 +1326,7 @@ def get_monitor_live_result_runs(
             if result.raw_time_ms is None:
                 continue
 
-            valued_time_ms = get_monitor_valued_time_ms(result)
+            valued_time_ms = get_monitor_valued_time_ms(result, db)
 
             if valued_time_ms is None:
                 continue
@@ -1256,7 +1352,7 @@ def get_monitor_live_result_runs(
                 participant_rows[row_key] = existing
 
             existing["raw_time_ms"] += normalize_time_to_centiseconds_ms(result.raw_time_ms) or 0
-            existing["penalty"] += get_monitor_penalty_sum(result)
+            existing["penalty"] += get_monitor_penalty_sum(result, db)
             existing["valued_time_ms"] += valued_time_ms
             existing["runs_count"] += 1
 
@@ -1350,7 +1446,7 @@ def build_monitor_payload(
     if current_item is not None:
         current_run, current_pairing = current_item
         current_run_id = current_run.id
-        current_payload = monitor_run_payload(current_run, current_pairing)
+        current_payload = monitor_run_payload(current_run, current_pairing, db)
         current_round_number, _current_round_label = get_round_display(current_run.round_name)
 
         if current_run.round_name == ROUND_FINAL:
@@ -1379,11 +1475,13 @@ def build_monitor_payload(
         ),
         "next_runs": pick_monitor_next_runs(
             run_items=run_items,
+            db=db,
             current_run_id=current_run_id,
             limit=3,
         ),
         "live_results": get_monitor_live_result_runs(
             run_items=run_items,
+            db=db,
             focus_race_classes=get_monitor_result_classes(
                 current_run.race_class if current_run is not None else None
             ),
@@ -1686,9 +1784,156 @@ def build_monitor_output_payload(
         if setting.show_statistics
         else None
     )
+    race_payload["marshal_qr"] = get_monitor_marshal_qr_payload(event, db)
     race_payload["live_results"] = []
 
     return race_payload
+
+
+def build_qr_data_uri(value: str) -> str | None:
+    try:
+        import qrcode
+    except ImportError:
+        return None
+
+    image = qrcode.make(value)
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+    return f"data:image/png;base64,{encoded}"
+
+
+def get_monitor_marshal_qr_payload(event: Event, db: Session) -> dict | None:
+    enabled_setting = db.query(SystemSetting).filter(
+        SystemSetting.key == f"marshal_qr_event_{event.id}_enabled"
+    ).first()
+
+    if not enabled_setting or enabled_setting.value != "true":
+        return None
+
+    expires_at_setting = db.query(SystemSetting).filter(
+        SystemSetting.key == f"marshal_qr_event_{event.id}_expires_at"
+    ).first()
+
+    if expires_at_setting and expires_at_setting.value:
+        try:
+            expires_at = datetime.fromisoformat(expires_at_setting.value)
+        except ValueError:
+            expires_at = None
+
+        if expires_at and datetime.now() >= expires_at:
+            enabled_setting.value = "false"
+            enabled_setting.updated_at = now_string()
+            db.commit()
+            return None
+
+    mode_setting = db.query(SystemSetting).filter(
+        SystemSetting.key == f"marshal_qr_event_{event.id}_mode"
+    ).first()
+    mode = mode_setting.value if mode_setting else "single"
+
+    if mode == "all":
+        stations = []
+
+        for station in build_marshal_station_options(event):
+            params = {
+                "type": station["type"],
+                "lane": station["lane"],
+            }
+
+            if station["sector"]:
+                params["sector"] = station["sector"]
+
+            station_url = f"/ui/events/{event.id}/marshal?{urlencode(params)}"
+            stations.append(
+                {
+                    "label": station["label"],
+                    "url": station_url,
+                    "qr_data_uri": build_qr_data_uri(station_url),
+                }
+            )
+
+        return {
+            "mode": "all",
+            "label": "Alle Streckenposten",
+            "stations": stations,
+        }
+
+    label_setting = db.query(SystemSetting).filter(
+        SystemSetting.key == f"marshal_qr_event_{event.id}_label"
+    ).first()
+    url_setting = db.query(SystemSetting).filter(
+        SystemSetting.key == f"marshal_qr_event_{event.id}_url"
+    ).first()
+
+    station_url = url_setting.value if url_setting else ""
+
+    if not station_url:
+        return None
+
+    return {
+        "mode": "landing" if mode == "landing" else "single",
+        "label": label_setting.value if label_setting else "Streckenposten",
+        "url": station_url,
+        "qr_data_uri": build_qr_data_uri(station_url),
+    }
+
+
+def build_marshal_station_options(event: Event) -> list[dict]:
+    position_count = max(1, int(event.sectors_per_lane or 1))
+    stations = []
+
+    for lane in ["A", "B"]:
+        stations.append(
+            {
+                "type": "general",
+                "lane": lane,
+                "sector": "",
+                "label": f"Start-/Zielposten Bahn {lane}",
+            }
+        )
+
+        for sector in range(1, position_count + 1):
+            stations.append(
+                {
+                    "type": "sector",
+                    "lane": lane,
+                    "sector": str(sector),
+                    "label": f"Bahn {lane} / Position {sector}",
+                }
+            )
+
+    return stations
+
+
+def get_marshal_qr_expires_at(event: Event, db: Session) -> str:
+    enabled = get_setting(
+        db=db,
+        key=f"marshal_qr_event_{event.id}_enabled",
+        default_value="false",
+    )
+
+    if enabled != "true":
+        return ""
+
+    expires_at = get_setting(
+        db=db,
+        key=f"marshal_qr_event_{event.id}_expires_at",
+        default_value="",
+    )
+
+    if not expires_at:
+        return ""
+
+    try:
+        parsed_expires_at = datetime.fromisoformat(expires_at)
+    except ValueError:
+        return ""
+
+    if datetime.now() >= parsed_expires_at:
+        return ""
+
+    return expires_at
 
 
 # ------------------------------------------------------------
@@ -1918,7 +2163,7 @@ def ui_create_event(
     event_date: str = Form(""),
     location: str = Form(""),
     organizer_club: str = Form(""),
-    sectors_per_lane: int = Form(4),
+    sectors_per_lane: int = Form(1),
     registration_deadline_class_1_2: str = Form(""),
     registration_deadline_class_3_4: str = Form(""),
     registration_deadline_class_5: str = Form(""),
@@ -1977,6 +2222,7 @@ def ui_create_event(
         location=location.strip() or None,
         organizer_club=organizer_club.strip() or None,
         sectors_per_lane=sectors_per_lane,
+        marshal_enabled=False,
         active=not has_active_event,
         closed=False,
         closed_at=None,
@@ -2079,7 +2325,7 @@ def ui_update_event(
     event_date: str = Form(""),
     location: str = Form(""),
     organizer_club: str = Form(""),
-    sectors_per_lane: int = Form(4),
+    sectors_per_lane: int = Form(1),
     registration_deadline_class_1_2: str = Form(""),
     registration_deadline_class_3_4: str = Form(""),
     registration_deadline_class_5: str = Form(""),
@@ -2199,6 +2445,10 @@ def ui_delete_event(
 
     db.query(RunResult).filter(
         RunResult.event_id == event.id
+    ).delete()
+
+    db.query(RunPenalty).filter(
+        RunPenalty.event_id == event.id
     ).delete()
 
     db.query(RaceRun).filter(
@@ -2870,6 +3120,64 @@ def ui_event_driver_profiles(
             "active_event": active_event,
             "driver_profiles": driver_profiles,
         },
+    )
+
+
+@app.get("/ui/events/{event_id}/help")
+def ui_event_help_redirect(
+    event_id: int,
+    db: Session = Depends(get_db),
+):
+    require_event(event_id, db)
+    return RedirectResponse(url="/ui/help", status_code=303)
+
+
+@app.get("/ui/events/{event_id}/start-approval")
+def ui_event_start_approval_redirect(
+    event_id: int,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+    return RedirectResponse(
+        url=f"/ui/events/{active_event.id}/registration",
+        status_code=303,
+    )
+
+
+@app.get("/ui/events/{event_id}/race")
+def ui_event_race_redirect(
+    event_id: int,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+    return RedirectResponse(
+        url=f"/ui/events/{active_event.id}/classes",
+        status_code=303,
+    )
+
+
+@app.get("/ui/events/{event_id}/team-results")
+def ui_event_team_results_redirect(
+    event_id: int,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+    return RedirectResponse(
+        url=f"/ui/events/{active_event.id}/teams",
+        status_code=303,
+    )
+
+
+@app.get("/ui/events/{event_id}/driver-database")
+def ui_event_driver_database_redirect(
+    event_id: int,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+
+    return RedirectResponse(
+        url=f"/ui/events/{active_event.id}/driver-profiles",
+        status_code=303,
     )
 
 
@@ -3990,6 +4298,26 @@ def ui_monitor_output_redirect(
     return redirect_to_active_event_path(db, "/monitor-output")
 
 
+@app.get("/ui/output-monitor")
+def ui_output_monitor_redirect(
+    db: Session = Depends(get_db),
+):
+    return redirect_to_active_event_path(db, "/monitor-output")
+
+
+@app.get("/ui/events/{event_id}/output-monitor")
+def ui_event_output_monitor_redirect(
+    event_id: int,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+
+    return RedirectResponse(
+        url=f"/ui/events/{active_event.id}/monitor-output",
+        status_code=303,
+    )
+
+
 @app.get("/ui/events/{event_id}/monitor-output")
 def ui_event_monitor_output(
     event_id: int,
@@ -4015,6 +4343,8 @@ def ui_event_monitor_output(
             "selected_rounds": selected_rounds,
             "round_options": MONITOR_ROUND_OPTIONS,
             "monitor_data": build_monitor_output_payload(active_event, db),
+            "marshal_station_options": build_marshal_station_options(active_event),
+            "marshal_qr_expires_at": get_marshal_qr_expires_at(active_event, db),
             "event_year": get_event_year(active_event),
         },
     )
@@ -4217,10 +4547,22 @@ def ui_event_timekeeper_run(
         RunResult.lane,
     ).all()
 
-    prepared_results = [
-        prepare_result_for_display(result, sectors)
-        for result in results
-    ]
+    run_penalties = db.query(RunPenalty).filter(
+        RunPenalty.event_id == active_event.id,
+        RunPenalty.run_id == race_run.id,
+    ).all()
+
+    prepared_results = []
+
+    for result in results:
+        prepared_result = prepare_result_for_display(result, sectors)
+        prepared_result.digital_penalty_statuses = build_digital_penalty_statuses(
+            race_run=race_run,
+            result=result,
+            sectors=sectors,
+            run_penalties=run_penalties,
+        )
+        prepared_results.append(prepared_result)
 
     run_items = get_start_ordered_class_runs(
         event_id=active_event.id,
@@ -6002,6 +6344,32 @@ def ui_save_youth_card_settings(
     )
 
 
+@app.post("/ui/settings/marshals")
+def ui_save_marshal_settings(
+    event_id: int = Form(...),
+    marshal_enabled: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    event = require_event(event_id, db)
+    event.marshal_enabled = marshal_enabled == "1"
+
+    if not event.marshal_enabled:
+        setting = db.query(SystemSetting).filter(
+            SystemSetting.key == f"marshal_qr_event_{event.id}_enabled"
+        ).first()
+
+        if setting:
+            setting.value = "false"
+            setting.updated_at = now_string()
+
+    db.commit()
+
+    return RedirectResponse(
+        url="/ui/settings?success=Streckenposten-Einstellung gespeichert",
+        status_code=303,
+    )
+
+
 @app.post("/ui/settings/logo-mapping")
 def ui_save_logo_mapping(
     logo_start_range: int = Form(...),
@@ -6163,3 +6531,6 @@ app.include_router(export_router)
 
 from backend.results_routes import router as results_router
 app.include_router(results_router)
+
+from backend.marshal_routes import router as marshal_router
+app.include_router(marshal_router)

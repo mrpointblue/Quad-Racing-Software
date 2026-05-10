@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streckenposten QR-Code</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="marshal-mobile-body">
+    <main class="marshal-page marshal-qr-page">
+        <section class="marshal-card marshal-center-card">
+            <h1>Streckenposten verbinden</h1>
+            <div class="marshal-station-title">{{ station_label }}</div>
+
+            {% if qr_data_uri %}
+                <img src="{{ qr_data_uri }}" alt="QR-Code {{ station_label }}" class="marshal-qr-image">
+            {% else %}
+                <div class="marshal-warning">
+                    QR-Code kann nicht erzeugt werden. Bitte die URL manuell öffnen.
+                </div>
+            {% endif %}
+
+            <p class="marshal-url">{{ station_url }}</p>
+            <p>QR-Code mit dem Mobilgerät scannen.</p>
+
+            <div class="marshal-actions">
+                <button type="button" class="marshal-secondary-button" onclick="window.print()">Drucken</button>
+                <a class="marshal-secondary-button" href="/ui/events/{{ event.id }}/marshal">Station wechseln</a>
+            </div>
+        </section>
+    </main>
+
+    {% if print_mode %}
+        <script>
+            window.addEventListener("load", function() {
+                window.print();
+            });
+        </script>
+    {% endif %}
+</body>
+</html>

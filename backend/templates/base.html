@@ -61,21 +61,57 @@
     </div>
 
     <div class="nav">
-        <a href="/ui/events">Veranstaltungen</a>
-
+        {% set current_path = request.url.path %}
+        {% set active_category = None %}
         {% if active_event %}
-            <a href="/ui/events/{{ active_event.id }}/dashboard">Dashboard</a>
-            <a href="/ui/events/{{ active_event.id }}/participants/new">Teilnehmer erfassen</a>
-            <a href="/ui/events/{{ active_event.id }}/participants">Teilnehmerliste</a>
-            <a href="/ui/events/{{ active_event.id }}/registration">Startfreigabe</a>
-            <a href="/ui/events/{{ active_event.id }}/classes">Rennbetrieb</a>
-            <a href="/ui/events/{{ active_event.id }}/results">Ergebnisse</a>
-            <a href="/ui/events/{{ active_event.id }}/teams">Mannschaftswertung</a>
-            <a href="/ui/events/{{ active_event.id }}/monitor-output">Ausgabe Monitor</a>
-            <a href="/ui/events/{{ active_event.id }}/monitor">Monitor</a>
+            {% if current_path.startswith('/ui/events/' + active_event.id|string + '/dashboard') or current_path == '/ui/events' %}
+                {% set active_category = 'veranstaltung' %}
+            {% elif current_path.startswith('/ui/events/' + active_event.id|string + '/participants') or current_path.startswith('/ui/events/' + active_event.id|string + '/registration') or current_path.startswith('/ui/events/' + active_event.id|string + '/driver-profiles') or current_path.startswith('/ui/events/' + active_event.id|string + '/driver-database') %}
+                {% set active_category = 'nennung' %}
+            {% elif current_path.startswith('/ui/events/' + active_event.id|string + '/classes') or current_path.startswith('/ui/events/' + active_event.id|string + '/marshals') %}
+                {% set active_category = 'rennen' %}
+            {% elif current_path.startswith('/ui/events/' + active_event.id|string + '/results') or current_path.startswith('/ui/events/' + active_event.id|string + '/teams') %}
+                {% set active_category = 'wertung' %}
+            {% elif current_path.startswith('/ui/events/' + active_event.id|string + '/monitor') %}
+                {% set active_category = 'anzeige' %}
+            {% endif %}
+        {% endif %}
+        {% if current_path == '/ui/help' %}
+            {% set active_category = 'hilfe' %}
         {% endif %}
 
-        <a href="/ui/help">Hilfe</a>
+        <div class="nav-main">
+            <a href="/ui/events" class="{% if current_path == '/ui/events' or (active_event and active_category == 'veranstaltung') %}active{% endif %}">Veranstaltung</a>
+            {% if active_event %}
+                <a href="/ui/events/{{ active_event.id }}/participants/new" class="{% if active_category == 'nennung' %}active{% endif %}">Nennung</a>
+                <a href="/ui/events/{{ active_event.id }}/classes" class="{% if active_category == 'rennen' %}active{% endif %}">Rennen</a>
+                <a href="/ui/events/{{ active_event.id }}/results" class="{% if active_category == 'wertung' %}active{% endif %}">Wertung</a>
+                <a href="/ui/events/{{ active_event.id }}/monitor-output" class="{% if active_category == 'anzeige' %}active{% endif %}">Anzeige</a>
+            {% endif %}
+            <a href="/ui/help" class="{% if active_category == 'hilfe' %}active{% endif %}">Hilfe</a>
+        </div>
+
+        {% if active_event %}
+        <div class="nav-sub">
+            {% if active_category == 'veranstaltung' %}
+                <a href="/ui/events/{{ active_event.id }}/dashboard" class="{% if current_path == '/ui/events/' + active_event.id|string + '/dashboard' %}active{% endif %}">Dashboard</a>
+            {% elif active_category == 'nennung' %}
+                <a href="/ui/events/{{ active_event.id }}/participants/new" class="{% if current_path == '/ui/events/' + active_event.id|string + '/participants/new' %}active{% endif %}">Teilnehmer erfassen</a>
+                <a href="/ui/events/{{ active_event.id }}/participants" class="{% if current_path == '/ui/events/' + active_event.id|string + '/participants' %}active{% endif %}">Teilnehmerliste</a>
+                <a href="/ui/events/{{ active_event.id }}/registration" class="{% if current_path == '/ui/events/' + active_event.id|string + '/registration' %}active{% endif %}">Startfreigabe</a>
+                <a href="/ui/events/{{ active_event.id }}/driver-profiles" class="{% if current_path.startswith('/ui/events/' + active_event.id|string + '/driver-profiles') or current_path.startswith('/ui/events/' + active_event.id|string + '/driver-database') %}active{% endif %}">Teilnehmerdatenbank</a>
+            {% elif active_category == 'rennen' %}
+                <a href="/ui/events/{{ active_event.id }}/classes" class="{% if current_path == '/ui/events/' + active_event.id|string + '/classes' %}active{% endif %}">Rennbetrieb</a>
+                <a href="/ui/events/{{ active_event.id }}/marshals" class="{% if current_path == '/ui/events/' + active_event.id|string + '/marshals' %}active{% endif %}">Streckenposten</a>
+            {% elif active_category == 'wertung' %}
+                <a href="/ui/events/{{ active_event.id }}/results" class="{% if current_path == '/ui/events/' + active_event.id|string + '/results' %}active{% endif %}">Ergebnisse</a>
+                <a href="/ui/events/{{ active_event.id }}/teams" class="{% if current_path == '/ui/events/' + active_event.id|string + '/teams' %}active{% endif %}">Mannschaftswertung</a>
+            {% elif active_category == 'anzeige' %}
+                <a href="/ui/events/{{ active_event.id }}/monitor-output" class="{% if current_path == '/ui/events/' + active_event.id|string + '/monitor-output' %}active{% endif %}">Ausgabe Monitor</a>
+                <a href="/ui/events/{{ active_event.id }}/monitor" class="{% if current_path == '/ui/events/' + active_event.id|string + '/monitor' %}active{% endif %}">Monitor</a>
+            {% endif %}
+        </div>
+        {% endif %}
     </div>
 
     {% if active_event %}

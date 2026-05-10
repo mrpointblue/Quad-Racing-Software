@@ -18,6 +18,7 @@ class Event(Base):
     organizer_club = Column(String, nullable=True)
 
     sectors_per_lane = Column(Integer, default=4)
+    marshal_enabled = Column(Boolean, default=False)
 
     active = Column(Boolean, default=True)
 
@@ -291,3 +292,27 @@ class TeamMember(Base):
 
     team = relationship("Team", back_populates="members")
     participant = relationship("Participant")
+
+
+class RunPenalty(Base):
+    __tablename__ = "run_penalties"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
+    run_id = Column(Integer, ForeignKey("race_runs.id"), nullable=False)
+
+    lane = Column(String, nullable=False)  # 'A' or 'B'
+    penalty_type = Column(String, nullable=False)  # 'sector' or 'general'
+    sector = Column(Integer, nullable=True)  # 1 to sector_count for 'sector', NULL for 'general'
+
+    points = Column(Integer, default=0)
+
+    submitted_at = Column(String, nullable=True)
+    updated_at = Column(String, nullable=True)
+
+    created_by = Column(String, nullable=True)
+    updated_by = Column(String, nullable=True)
+
+    event = relationship("Event")
+    race_run = relationship("RaceRun")

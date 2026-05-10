@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kein aktueller Lauf</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="marshal-mobile-body">
+    <main class="marshal-page">
+    <section class="marshal-card marshal-center-card">
+        <h1>Streckenposten</h1>
+        <div class="marshal-station-title">{{ station_label }}</div>
+        <div class="marshal-warning">Noch kein Rennbetrieb aktiv.</div>
+        <p>
+            Es ist aktuell noch kein Lauf für diese Veranstaltung gestartet oder vorbereitet.
+        </p>
+        <div class="marshal-info-card">
+            <strong>Startfreigabe:</strong>
+            <div>{{ start_approval_status.label }}</div>
+            <small>{{ start_approval_status.details }}</small>
+        </div>
+        <button type="button" class="marshal-primary-button" onclick="window.location.reload()">Aktualisieren</button>
+        <a class="marshal-secondary-button" href="/ui/events/{{ event.id }}/marshal">Station wechseln</a>
+    </section>
+    </main>
+
+    <script>
+        async function pollCurrentRun() {
+            try {
+                const response = await fetch(
+                    "/api/events/{{ event.id }}/marshal/current-run?type={{ type }}&lane={{ lane }}{% if sector %}&sector={{ sector }}{% endif %}",
+                    {cache: "no-store"}
+                );
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (data.has_current_run) {
+                    window.location.reload();
+                }
+            } catch (error) {
+                return;
+            }
+        }
+
+        setInterval(pollCurrentRun, 5000);
+    </script>
+</body>
+</html>

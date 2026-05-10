@@ -35,6 +35,38 @@
         </div>
     </div>
 
+    <section
+        id="monitor_marshal_qr_section"
+        class="monitor-panel monitor-marshal-qr-section"
+        {% if not monitor_data.marshal_qr %}hidden{% endif %}
+    >
+        <h2>Streckenposten verbinden</h2>
+        <div id="monitor_marshal_qr_label" class="monitor-marshal-qr-label">
+            {% if monitor_data.marshal_qr %}{{ monitor_data.marshal_qr.label }}{% endif %}
+        </div>
+        {% if monitor_data.marshal_qr and monitor_data.marshal_qr.qr_data_uri %}
+            <img id="monitor_marshal_qr_image" src="{{ monitor_data.marshal_qr.qr_data_uri }}" alt="Streckenposten QR-Code" class="monitor-marshal-qr-image">
+        {% else %}
+            <img id="monitor_marshal_qr_image" src="" alt="Streckenposten QR-Code" class="monitor-marshal-qr-image" hidden>
+        {% endif %}
+        <p>QR-Code mit dem Mobilgerät scannen.</p>
+        <p id="monitor_marshal_qr_url" class="monitor-marshal-qr-url">
+            {% if monitor_data.marshal_qr %}{{ monitor_data.marshal_qr.url }}{% endif %}
+        </p>
+        <div id="monitor_marshal_qr_grid" class="monitor-marshal-qr-grid" {% if not monitor_data.marshal_qr or monitor_data.marshal_qr.mode != "all" %}hidden{% endif %}>
+            {% if monitor_data.marshal_qr and monitor_data.marshal_qr.mode == "all" %}
+                {% for station in monitor_data.marshal_qr.stations %}
+                    <div class="monitor-marshal-qr-card">
+                        <strong>{{ station.label }}</strong>
+                        {% if station.qr_data_uri %}
+                            <img src="{{ station.qr_data_uri }}" alt="QR-Code {{ station.label }}">
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+    </section>
+
     <div id="monitor_starter_grid" class="monitor-grid"{% if not monitor_data.current_run and monitor_data.next_runs|length == 0 %} hidden{% endif %}>
         <section class="monitor-panel monitor-current">
             <h2>Aktuelle Paarung</h2>
@@ -567,6 +599,69 @@
         );
     }
 
+    function renderMarshalQr(marshalQr) {
+        const section = document.getElementById("monitor_marshal_qr_section");
+        const label = document.getElementById("monitor_marshal_qr_label");
+        const image = document.getElementById("monitor_marshal_qr_image");
+        const url = document.getElementById("monitor_marshal_qr_url");
+        const grid = document.getElementById("monitor_marshal_qr_grid");
+
+        if (!section) {
+            return;
+        }
+
+        section.hidden = !marshalQr;
+
+        if (!marshalQr) {
+            return;
+        }
+
+        const allMode = marshalQr.mode === "all";
+
+        if (label) {
+            label.textContent = marshalQr.label || "Streckenposten";
+        }
+
+        if (url) {
+            url.hidden = allMode;
+            url.textContent = marshalQr.url || "";
+        }
+
+        if (image) {
+            if (!allMode && marshalQr.qr_data_uri) {
+                image.src = marshalQr.qr_data_uri;
+                image.hidden = false;
+            } else {
+                image.hidden = true;
+            }
+        }
+
+        if (grid) {
+            grid.hidden = !allMode;
+            grid.innerHTML = "";
+
+            if (allMode) {
+                (marshalQr.stations || []).forEach((station) => {
+                    const card = document.createElement("div");
+                    card.className = "monitor-marshal-qr-card";
+
+                    const title = document.createElement("strong");
+                    title.textContent = station.label || "Streckenposten";
+                    card.appendChild(title);
+
+                    if (station.qr_data_uri) {
+                        const qrImage = document.createElement("img");
+                        qrImage.src = station.qr_data_uri;
+                        qrImage.alt = "QR-Code " + title.textContent;
+                        card.appendChild(qrImage);
+                    }
+
+                    grid.appendChild(card);
+                });
+            }
+        }
+    }
+
     function renderMonitorResults(resultSections, overallSections, teamResults) {
         const container = document.getElementById("monitor_results");
 
@@ -622,6 +717,7 @@
                 renderCurrentRun(data.current_run);
                 renderMonitorResults(data.result_sections, data.overall_sections, data.team_results);
                 renderMonitorStatistics(data.statistics);
+                renderMarshalQr(data.marshal_qr);
                 renderNextRuns(data.next_runs);
             })
             .catch(() => {

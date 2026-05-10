@@ -48,6 +48,7 @@
         <li><strong>Teilnehmerliste:</strong> Teilnehmer prüfen, bearbeiten, löschen oder als ausgeschieden markieren.</li>
         <li><strong>Startfreigabe:</strong> Startgruppen für den Rennbetrieb freigeben.</li>
         <li><strong>Rennbetrieb:</strong> Paarungen erzeugen, Läufe öffnen, Zeiten erfassen und Runden starten.</li>
+        <li><strong>Streckenposten:</strong> optionale mobile Erfassung von Fehlerpunkten je Bahn und Position.</li>
         <li><strong>Ergebnisse:</strong> Ergebnisse anzeigen, drucken und exportieren.</li>
         <li><strong>Mannschaftswertung:</strong> Teams erfassen und Mannschaftsergebnis berechnen.</li>
         <li><strong>Ausgabe Monitor:</strong> Monitor-Anzeige konfigurieren.</li>
@@ -229,7 +230,48 @@
 </div>
 
 <div class="card help-section">
-    <h3>8. Siemens LOGO! / Signal-Mapping</h3>
+    <h3>8. Streckenposten</h3>
+
+    <p>
+        Die digitale Streckenpostenfunktion ist optional und wird je Veranstaltung in den Einstellungen aktiviert.
+        Wenn sie deaktiviert ist, werden Fehlerpunkte wie gewohnt durch die Zeitnahme manuell erfasst.
+    </p>
+
+    <p>
+        Es gibt zwei mobile Rollen:
+    </p>
+
+    <ul>
+        <li><strong>Start-/Zielposten:</strong> erfasst allgemeine Fehlerpunkte je Bahn und Fahrer.</li>
+        <li><strong>Streckenposten Position:</strong> erfasst positionsbezogene Fehlerpunkte je Bahn und Position.</li>
+    </ul>
+
+    <p>
+        Die Anzahl der Positionen stammt aus den Veranstaltungsvorgaben. In der Bedienoberfläche wird daher von
+        Positionen gesprochen; intern können diese technisch weiterhin als Sektoren geführt werden.
+    </p>
+
+    <p>
+        Für jede Station kann ein QR-Code angezeigt oder gedruckt werden. Über <strong>Ausgabe Monitor</strong>
+        können einzelne Stations-QR-Codes, alle Stations-QR-Codes oder die mobile Auswahlseite
+        <strong>Auswahl Station</strong> für bis zu fünf Minuten auf dem Monitor angezeigt werden.
+    </p>
+
+    <p>
+        Die mobile Oberfläche ist für Smartphones und Tablets optimiert. Fehlerpunkte werden in 5er-Schritten
+        erfasst. Nach der Übermittlung werden die Werte in der Zeitnahme sichtbar; 0 Fehlerpunkte übermittelt
+        ist dabei klar von keiner Meldung unterscheidbar.
+    </p>
+
+    <p>
+        Die Zeitnahme bleibt führend. Digitale Meldungen sind keine Pflicht für die Laufbestätigung.
+        Nach Bestätigung eines Laufes ist die mobile Korrektur gesperrt; die Zeitnahme kann notwendige
+        Korrekturen weiterhin bewusst vornehmen.
+    </p>
+</div>
+
+<div class="card help-section">
+    <h3>9. Siemens LOGO! / Signal-Mapping</h3>
 
     <p>
         In den Einstellungen kann die Siemens LOGO!-Anbindung vorbereitet werden.
@@ -247,7 +289,7 @@
 </div>
 
 <div class="card help-section">
-    <h3>9. Ergebnisse</h3>
+    <h3>10. Ergebnisse</h3>
 
     <p>
         Im Bereich <strong>Ergebnisse</strong> können Runden- und Gesamtwertungen angezeigt werden.
@@ -271,7 +313,7 @@
 </div>
 
 <div class="card help-section">
-    <h3>10. Mannschaftswertung</h3>
+    <h3>11. Mannschaftswertung</h3>
 
     <p>
         In der Mannschaftswertung können Teams für die Veranstaltung angelegt werden.
@@ -285,11 +327,17 @@
 </div>
 
 <div class="card help-section">
-    <h3>11. Ausgabe Monitor und Monitor</h3>
+    <h3>12. Ausgabe Monitor und Monitor</h3>
 
     <p>
         Unter <strong>Ausgabe Monitor</strong> wird festgelegt, welche Informationen auf dem Monitor angezeigt werden.
         Dazu gehören Rennsteuerung, Klassen, Runden, Gesamtwertung, Mannschaftswertung, Statistik und LOGO!-Signal.
+    </p>
+
+    <p>
+        Bei aktivierter Streckenpostenfunktion können hier außerdem QR-Codes für einzelne Stationen, alle Stationen
+        oder die mobile Auswahlseite auf dem Monitor angezeigt werden. Die QR-Anzeige läuft automatisch nach fünf
+        Minuten ab oder kann manuell zurückgesetzt werden.
     </p>
 
     <p>
@@ -303,7 +351,7 @@
 </div>
 
 <div class="card help-section">
-    <h3>12. Einstellungen</h3>
+    <h3>13. Einstellungen</h3>
 
     <p>
         Die Einstellungen enthalten wichtige System- und Verwaltungsfunktionen:
@@ -313,6 +361,7 @@
         <li><strong>Siemens LOGO! Verbindung:</strong> Verbindung und Statusprüfung.</li>
         <li><strong>Signal-Mapping:</strong> Zuordnung der technischen Signale.</li>
         <li><strong>Vereinslogo:</strong> Logo hochladen, anzeigen und in Exporte einbinden.</li>
+        <li><strong>Streckenpostenfunktion:</strong> digitale Streckenposten je Veranstaltung aktivieren oder deaktivieren.</li>
         <li><strong>ADAC Jugendkarte:</strong> Scan-/Erfassungsfunktion aktivieren.</li>
         <li><strong>Datenbank-Sicherung:</strong> Datenbank exportieren oder importieren.</li>
         <li><strong>Status / Diagnose:</strong> Systemstatus, Netzwerk, Speicher, Neustart und Diagnose.</li>
@@ -325,13 +374,14 @@
 </div>
 
 <div class="card help-section">
-    <h3>13. Empfohlener Ablauf am Veranstaltungstag</h3>
+    <h3>14. Empfohlener Ablauf am Veranstaltungstag</h3>
 
     <ol>
         <li>Veranstaltung prüfen oder anlegen.</li>
         <li>Teilnehmer erfassen und Teilnehmerliste kontrollieren.</li>
         <li>ADAC Nummern, Jugendausweise und Klassen prüfen.</li>
         <li>Nennschlusszeiten kontrollieren.</li>
+        <li>Bei Bedarf digitale Streckenposten aktivieren und QR-Codes bereitstellen.</li>
         <li>Startfreigabe je Startgruppe erteilen.</li>
         <li>Rennbetrieb für die Klasse starten.</li>
         <li>Läufe der Reihe nach fahren, speichern und bestätigen.</li>
@@ -343,7 +393,7 @@
 </div>
 
 <div class="card help-section">
-    <h3>14. Wichtige Hinweise</h3>
+    <h3>15. Wichtige Hinweise</h3>
 
     <ul>
         <li>Die Software unterstützt die Zeitnahme, ersetzt aber keine Entscheidung der Rennleitung.</li>
@@ -351,6 +401,7 @@
         <li>Vor wichtigen Änderungen sollte ein Datenbankexport erstellt werden.</li>
         <li>Eine geschlossene Veranstaltung sollte nur geschlossen werden, wenn keine Änderungen mehr nötig sind.</li>
         <li>Beim Import einer Datenbank wird die aktuelle Datenbank ersetzt. Vorher wird ein Backup erstellt.</li>
+        <li>Die digitale Streckenpostenfunktion ist optional; die Zeitnahme bleibt immer führend.</li>
         <li>Bei technischen Problemen zuerst Status / Diagnose und die LOGO!-Statusprüfung nutzen.</li>
     </ul>
 </div>

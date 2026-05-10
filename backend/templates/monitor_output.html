@@ -6,7 +6,12 @@
 <form method="post" action="/ui/events/{{ active_event.id }}/monitor-output">
     <div class="card monitor-output-header">
         <div>
-            <h2>Ausgabe Monitor</h2>
+            <div class="monitor-output-title-row">
+                <h2>Ausgabe Monitor</h2>
+                <span id="monitor-output-unsaved-hint-top" class="monitor-output-unsaved-hint" hidden>
+                    Änderungen noch nicht gespeichert.
+                </span>
+            </div>
             <p>Steuerung der Inhalte auf dem externen Monitor.</p>
             {% if setting.updated_at %}
                 <p class="muted-text">Letzte Änderung: {{ setting.updated_at }}</p>
@@ -123,6 +128,46 @@
                     <small>Zeigt Rot, Orange und Grün als visuelle Monitor-Anzeige.</small>
                 </span>
             </label>
+
+            <div class="monitor-marshal-control">
+                <h4>Streckenposten-QR</h4>
+                {% if active_event.marshal_enabled %}
+                    <p
+                        id="marshal-qr-timer-text"
+                        class="muted-text"
+                        data-expires-at="{{ marshal_qr_expires_at or '' }}"
+                    >
+                        {% if marshal_qr_expires_at %}
+                            QR-Code wird noch berechnet angezeigt.
+                        {% else %}
+                            Aktuell wird kein Streckenposten-QR angezeigt.
+                        {% endif %}
+                    </p>
+                    <div class="monitor-marshal-control-row">
+                        <select id="marshal-monitor-station">
+                            <option value="landing||">Auswahl Station</option>
+                            <option value="all||">Alle Streckenposten anzeigen</option>
+                            {% for station in marshal_station_options %}
+                                <option
+                                    value="{{ station.type }}|{{ station.lane }}|{{ station.sector }}"
+                                >
+                                    {{ station.label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <button type="button" class="small-button" onclick="showSelectedMarshalQrOnMonitor()">
+                            Auf Monitor anzeigen
+                        </button>
+                        <button type="button" class="small-button" onclick="resetMarshalQrMonitor()">
+                            Monitor zurücksetzen
+                        </button>
+                    </div>
+                {% else %}
+                    <p class="hint">
+                        Die digitale Streckenpostenfunktion ist deaktiviert. Sie kann in den Einstellungen aktiviert werden.
+                    </p>
+                {% endif %}
+            </div>
         </section>
 
         <section class="card monitor-output-section monitor-output-results-section">
@@ -203,8 +248,180 @@
 
     </div>
 
-    <div class="card monitor-output-savebar">
-        <button type="submit">Monitor-Ausgabe speichern</button>
+<div class="card monitor-output-savebar">
+        <button type="submit" id="monitor-output-save-button">Monitor-Ausgabe speichern</button>
+        <span id="monitor-output-unsaved-hint" class="monitor-output-unsaved-hint" hidden>
+            Änderungen noch nicht gespeichert.
+        </span>
     </div>
 </form>
+
+<script>
+    function initializeMonitorOutputChangeWarning() {
+        const form = document.querySelector('form[action$="/monitor-output"]');
+        const saveButton = document.getElementById("monitor-output-save-button");
+        const unsavedHint = document.getElementById("monitor-output-unsaved-hint");
+        const unsavedHintTop = document.getElementById("monitor-output-unsaved-hint-top");
+
+        if (!form || !saveButton || !unsavedHint || !unsavedHintTop) {
+            return;
+        }
+
+        const trackedFields = Array.from(form.querySelectorAll("input, select, textarea")).filter(function(field) {
+            return field.id !== "marshal-monitor-station";
+        });
+
+        function markUnsaved() {
+            saveButton.classList.add("red-button");
+            unsavedHint.hidden = false;
+            unsavedHintTop.hidden = false;
+        }
+
+        trackedFields.forEach(function(field) {
+            field.addEventListener("change", markUnsaved);
+            field.addEventListener("input", markUnsaved);
+        });
+    }
+
+    initializeMonitorOutputChangeWarning();
+
+    function updateMarshalQrTimerText() {
+        const timerText = document.getElementById("marshal-qr-timer-text");
+
+        if (!timerText) {
+            return;
+        }
+
+        const expiresAtValue = timerText.dataset.expiresAt || "";
+
+        if (!expiresAtValue) {
+            timerText.textContent = "Aktuell wird kein Streckenposten-QR angezeigt.";
+            return;
+        }
+
+        const expiresAt = new Date(expiresAtValue);
+
+        if (Number.isNaN(expiresAt.getTime())) {
+            timerText.textContent = "Aktuell wird kein Streckenposten-QR angezeigt.";
+            return;
+        }
+
+        const diffMs = expiresAt.getTime() - Date.now();
+
+        if (diffMs <= 0) {
+            timerText.textContent = "QR-Code ist abgelaufen.";
+            return;
+        }
+
+        const totalSeconds = Math.ceil(diffMs / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        timerText.textContent = "QR-Code wird noch für " + minutes + ":" + String(seconds).padStart(2, "0") + " angezeigt.";
+    }
+
+    updateMarshalQrTimerText();
+    setInterval(updateMarshalQrTimerText, 1000);
+
+    function restartMarshalQrTimer() {
+        const timerText = document.getElementById("marshal-qr-timer-text");
+
+        if (!timerText) {
+            return;
+        }
+
+        timerText.dataset.expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+        updateMarshalQrTimerText();
+    }
+
+    function handleMarshalQrResponse(response, successMessage, errorMessage) {
+        if (response.ok) {
+            restartMarshalQrTimer();
+            alert(successMessage);
+            return;
+        }
+
+        alert(errorMessage);
+    }
+
+    function showSelectedMarshalQrOnMonitor() {
+        const stationSelect = document.getElementById("marshal-monitor-station");
+
+        if (!stationSelect) {
+            return;
+        }
+
+        const parts = stationSelect.value.split("|");
+
+        if (parts[0] === "landing") {
+            fetch("/api/events/{{ active_event.id }}/monitor/marshal-qr", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({mode: "landing"}),
+            }).then(function(response) {
+                handleMarshalQrResponse(
+                    response,
+                    "QR-Code für die Stationsauswahl wird auf dem Monitor angezeigt.",
+                    "QR-Code konnte nicht auf dem Monitor angezeigt werden."
+                );
+            });
+            return;
+        }
+
+        if (parts[0] === "all") {
+            fetch("/api/events/{{ active_event.id }}/monitor/marshal-qr", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({mode: "all"}),
+            }).then(function(response) {
+                handleMarshalQrResponse(
+                    response,
+                    "Alle QR-Codes werden auf dem Monitor angezeigt.",
+                    "QR-Codes konnten nicht auf dem Monitor angezeigt werden."
+                );
+            });
+            return;
+        }
+
+        const payload = {
+            type: parts[0],
+            lane: parts[1],
+        };
+
+        if (parts[2]) {
+            payload.sector = parseInt(parts[2], 10);
+        }
+
+        fetch("/api/events/{{ active_event.id }}/monitor/marshal-qr", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload),
+        }).then(function(response) {
+            handleMarshalQrResponse(
+                response,
+                "QR-Code wird auf dem Monitor angezeigt.",
+                "QR-Code konnte nicht auf dem Monitor angezeigt werden."
+            );
+        });
+    }
+
+    function resetMarshalQrMonitor() {
+        fetch("/api/events/{{ active_event.id }}/monitor/reset", {
+            method: "POST",
+        }).then(function(response) {
+            if (response.ok) {
+                const timerText = document.getElementById("marshal-qr-timer-text");
+
+                if (timerText) {
+                    timerText.dataset.expiresAt = "";
+                    updateMarshalQrTimerText();
+                }
+
+                alert("Monitoranzeige zurückgesetzt.");
+                return;
+            }
+
+            alert("Monitoranzeige konnte nicht zurückgesetzt werden.");
+        });
+    }
+</script>
 {% endblock %}

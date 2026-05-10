@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streckenposten - Station auswählen</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="marshal-mobile-body">
+    <main class="marshal-page">
+        <section class="marshal-card marshal-center-card">
+            <h1>Streckenposten</h1>
+            <p>Veranstaltung: {{ event.name }}</p>
+            <div class="marshal-station-title">Station auswählen</div>
+            <p class="marshal-mobile-hint">
+                Bitte die eigene Bahn und Position auswählen.
+            </p>
+        </section>
+
+        <section class="marshal-card">
+            <h2>Start-/Zielposten</h2>
+            <div class="marshal-landing-grid">
+                {% for station in stations %}
+                    {% if station.type == "general" %}
+                        <a class="marshal-station-choice" href="{{ station.url }}">
+                            <span>{{ station.name }}</span>
+                            <small>Allgemeine Fehlerpunkte</small>
+                        </a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="marshal-card">
+            <h2>Streckenposten Positionen</h2>
+            <p class="marshal-mobile-hint">
+                Alle Positionen werden angezeigt. Wähle die eigene Station aus.
+            </p>
+
+            <h3>Bahn A</h3>
+            <div class="marshal-landing-grid">
+                {% for station in stations %}
+                    {% if station.type == "sector" and station.lane == "A" %}
+                        <a class="marshal-station-choice" href="{{ station.url }}">
+                            <span>{{ station.name }}</span>
+                        </a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            <h3>Bahn B</h3>
+            <div class="marshal-landing-grid">
+                {% for station in stations %}
+                    {% if station.type == "sector" and station.lane == "B" %}
+                        <a class="marshal-station-choice" href="{{ station.url }}">
+                            <span>{{ station.name }}</span>
+                        </a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </section>
+    </main>
+</body>
+</html>
