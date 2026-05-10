@@ -114,6 +114,9 @@
                                         {{ member.driver_name }}
                                         · Kl. {{ member.race_class }} - Pl. {{ member.place or "-" }}
                                         · {{ member.points }} Punkte
+                                        {% if member.status != "Gewertet" %}
+                                            · {{ member.status }}
+                                        {% endif %}
                                     </div>
                                 {% endfor %}
                             {% else %}
@@ -128,6 +131,9 @@
                                         {{ member.driver_name }}
                                         · Kl. {{ member.race_class }} - Pl. {{ member.place or "-" }}
                                         · {{ member.points }} Punkte
+                                        {% if member.status != "Gewertet" %}
+                                            · {{ member.status }}
+                                        {% endif %}
                                     </div>
                                 {% endfor %}
                             {% else %}

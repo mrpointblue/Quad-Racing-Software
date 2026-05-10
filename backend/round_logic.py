@@ -1,4 +1,5 @@
 from backend.models import Participant, Pairing, RaceRun, RunResult
+from backend.time_utils import normalize_time_to_centiseconds_ms
 
 
 ROUND_PRELIMINARY = "vorlauf"
@@ -33,7 +34,12 @@ def get_valued_time_ms(result: RunResult) -> int | None:
     if result.participant and result.participant.withdrawn:
         return None
 
-    return result.raw_time_ms + (get_penalty_sum(result) * 1000)
+    scoring_raw_time_ms = normalize_time_to_centiseconds_ms(result.raw_time_ms)
+
+    if scoring_raw_time_ms is None:
+        return None
+
+    return scoring_raw_time_ms + (get_penalty_sum(result) * 1000)
 
 
 def normalize_round_name(round_name: str) -> str:
@@ -171,6 +177,34 @@ def get_ranked_participants_until_round(
     )
 
     return ranking
+
+
+def has_unresolved_ranking_ties(
+    participants: list[Participant],
+    pairings: list[Pairing],
+    included_rounds: list[str],
+) -> bool:
+    seen_keys: set[tuple[int, int]] = set()
+
+    for participant in participants:
+        if not is_participant_available(participant):
+            continue
+
+        total = get_participant_total_until_round(
+            participant=participant,
+            pairings=pairings,
+            included_rounds=included_rounds,
+        )
+
+        if total is None:
+            continue
+
+        if total in seen_keys:
+            return True
+
+        seen_keys.add(total)
+
+    return False
 
 
 def create_runs_for_pairing(

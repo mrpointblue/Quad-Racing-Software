@@ -24,7 +24,31 @@
             </button>
         </p>
     {% endif %}
+
+    <div class="hint">
+        Zeitwertung gemäß Reglement: Alle Zeiten werden für Anzeige und Wertung auf 1/100 Sekunde gerundet.
+    </div>
 </div>
+
+{% if tie_warnings %}
+    <div class="card screen-only">
+        <div class="error">
+            <strong>Nicht aufgelöster Gleichstand erkannt.</strong><br>
+            Gesamtzeit und Fehlerpunkte sind identisch. Es erfolgt keine automatische Entscheidung durch die Software.
+            Die Rennleitung muss entscheiden; ggf. ist ein Stechen bzw. eine Wiederholung des Finallaufs erforderlich.
+
+            <ul>
+                {% for warning in tie_warnings %}
+                    <li>
+                        Klasse {{ warning.race_class }} · Platz {{ warning.place }} ·
+                        {{ warning.total_display }} · {{ warning.total_penalty }} FP:
+                        {{ warning.drivers|join(", ") }}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+{% endif %}
 
 <div class="card print-only">
     <h2>ADAC-Gesamtliste</h2>
@@ -40,6 +64,24 @@
             Ort:
             <strong>{{ active_event.location or "-" }}</strong>
         </p>
+    {% endif %}
+
+    {% if tie_warnings %}
+        <div class="error">
+            <strong>Nicht aufgelöster Gleichstand erkannt.</strong><br>
+            Gesamtzeit und Fehlerpunkte sind identisch. Es erfolgt keine automatische Entscheidung durch die Software.
+            Die Rennleitung muss entscheiden; ggf. ist ein Stechen bzw. eine Wiederholung des Finallaufs erforderlich.
+
+            <ul>
+                {% for warning in tie_warnings %}
+                    <li>
+                        Klasse {{ warning.race_class }} · Platz {{ warning.place }} ·
+                        {{ warning.total_display }} · {{ warning.total_penalty }} FP:
+                        {{ warning.drivers|join(", ") }}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
     {% endif %}
 
     {% if adac_overall_rows|length > 0 %}
@@ -120,6 +162,9 @@
                                             {{ member.driver_name }}
                                             · Kl. {{ member.race_class }} - Pl. {{ member.place or "-" }}
                                             · {{ member.points }} Punkte
+                                            {% if member.status != "Gewertet" %}
+                                                · {{ member.status }}
+                                            {% endif %}
                                         </div>
                                     {% endfor %}
                                 </td>
@@ -131,6 +176,9 @@
                                                 {{ member.driver_name }}
                                                 · Kl. {{ member.race_class }} - Pl. {{ member.place or "-" }}
                                                 · {{ member.points }} Punkte
+                                                {% if member.status != "Gewertet" %}
+                                                    · {{ member.status }}
+                                                {% endif %}
                                             </div>
                                         {% endfor %}
                                     {% else %}
@@ -341,6 +389,9 @@
                                     {{ member.driver_name }}
                                     · Kl. {{ member.race_class }} - Pl. {{ member.place or "-" }}
                                     · {{ member.points }} Punkte
+                                    {% if member.status != "Gewertet" %}
+                                        · {{ member.status }}
+                                    {% endif %}
                                 </div>
                             {% endfor %}
                         </td>
@@ -352,6 +403,9 @@
                                         {{ member.driver_name }}
                                         · Kl. {{ member.race_class }} - Pl. {{ member.place or "-" }}
                                         · {{ member.points }} Punkte
+                                        {% if member.status != "Gewertet" %}
+                                            · {{ member.status }}
+                                        {% endif %}
                                     </div>
                                 {% endfor %}
                             {% else %}

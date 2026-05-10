@@ -84,6 +84,11 @@
             <span>Gesamtwertung</span>
             <strong>{% if setting.show_overall_results %}Aktiv{% else %}Aus{% endif %}</strong>
         </div>
+
+        <div class="summary-tile">
+            <span>Statistik</span>
+            <strong>{% if setting.show_statistics %}Aktiv{% else %}Aus{% endif %}</strong>
+        </div>
     </div>
 
     <div class="monitor-output-layout">
@@ -181,6 +186,16 @@
                             {% if setting.show_team_results %}checked{% endif %}
                         >
                         <span>Mannschaft</span>
+                    </label>
+
+                    <label class="select-pill">
+                        <input
+                            type="checkbox"
+                            name="show_statistics"
+                            value="1"
+                            {% if setting.show_statistics %}checked{% endif %}
+                        >
+                        <span>Statistik anzeigen</span>
                     </label>
                 </div>
             </div>

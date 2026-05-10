@@ -329,26 +329,39 @@ Wichtig ist, dass der Raspberry Pi und das Anzeigegerät im gleichen Netzwerk si
 
 ---
 
-# Projektstand
+# Projektstand / Version 1.3.0
 
-Dieser Stand basiert auf dem ersten stabilen Release der Quad Parallel Race Software.
+Dieser Stand basiert auf Version 1.3.0 der Quad Parallel Race Software.
 
 Kernpunkte:
 
 - veranstaltungsbezogene Struktur mit `event_id`
 - Navigation je Veranstaltung
 - Teilnehmerverwaltung je Veranstaltung
-- Nennfreigabe je Veranstaltung
-- Laufverwaltung je Veranstaltung
+- Startfreigabe je Veranstaltung
+- Rennbetrieb je Veranstaltung
 - Ergebnisverwaltung je Veranstaltung
 - Exportfunktionen
 - Gesamtwertung
 - Rundenexporte für Viertelfinale, Halbfinale und Finale
 - Berücksichtigung ausgeschiedener Fahrer
-- Vorbereitung für ADAC Nummer
-- Vorbereitung für Jugendausweisnummer
-- Vorbereitung für Siemens LOGO / Zeitmessanlage
+- Ausscheidegrund in Ergebnislisten und Mannschaftswertung
+- Hilfe-Seite mit Ablaufhinweisen und Reglement-Link
+- Nennschlusszeiten je Startfreigabe-Gruppe
+- Datenbank-Sicherung in den Einstellungen
+- Vereinslogo in Oberfläche, Monitor und Excel-Exports
+- Vorbereitung für ADAC Nummer und Jugendausweisnummer
+- Vorbereitung für Siemens LOGO / Zeitmessanlage im Simulationsmodus
 - Monitor-Seite für Anzeige auf TV oder externem Bildschirm
+
+Wichtige Korrekturen in Version 1.3.0:
+
+- Zeitwertung erfolgt für Anzeige, Wertung, Export, Monitor und Paarungslogik auf 1/100 Sekunde.
+- Die Startnummer entscheidet keinen fachlichen Gleichstand.
+- Bei gleicher Gesamtzeit und gleicher Fehlerpunktzahl erhält die Ergebnisliste einen Hinweis für die Rennleitung.
+- Ausgeschiedene oder disqualifizierte Fahrer bleiben sichtbar, werden aber nicht gewertet.
+- Die Mannschaftswertung berücksichtigt ausgeschiedene Fahrer mit 0 Punkten und zeigt den Ausscheidegrund an.
+- Geschlossene Veranstaltungen können bewusst gelöscht werden; der Fahrerstamm bleibt erhalten.
 
 ---
 

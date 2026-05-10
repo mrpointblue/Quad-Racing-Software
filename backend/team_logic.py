@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
 from backend.models import Event, Pairing, Participant, Team
-from backend.results_logic import build_class_results
+from backend.results_logic import build_class_results, get_participant_status
 
 
 POINTS_TABLE_C = {
@@ -64,9 +64,11 @@ def build_participant_points(
                 "place": row["place"],
                 "points": get_points_table_c(
                     place=row["place"],
-                    has_result=True,
+                    has_result=not row.get("withdrawn", False),
                 ),
                 "total_display": row["total_display"],
+                "status": row.get("status") or get_participant_status(participant),
+                "withdrawn": row.get("withdrawn", False),
             }
 
     return points_by_participant
@@ -95,6 +97,8 @@ def build_team_standings(
                     "place": None,
                     "points": 0,
                     "total_display": "-",
+                    "status": get_participant_status(participant),
+                    "withdrawn": participant.withdrawn is True,
                 },
             )
 
@@ -107,6 +111,8 @@ def build_team_standings(
                     "place": participant_points["place"],
                     "points": participant_points["points"],
                     "total_display": participant_points["total_display"],
+                    "status": participant_points["status"],
+                    "withdrawn": participant_points["withdrawn"],
                     "counted": False,
                 }
             )

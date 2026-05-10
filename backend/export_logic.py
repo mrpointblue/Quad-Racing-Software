@@ -1,10 +1,20 @@
 from io import BytesIO
 from datetime import datetime
+from pathlib import Path
 
 import xlsxwriter
 
 from backend.models import Event, Pairing, Participant, RunResult
-from backend.results_logic import build_compact_round_results
+from backend.time_utils import (
+    format_time_ms as format_centiseconds_time_ms,
+    normalize_time_to_centiseconds_ms,
+)
+from backend.results_logic import (
+    UNRESOLVED_TIE_MESSAGE,
+    build_compact_round_results,
+    build_round_tie_warnings,
+    build_tie_warnings,
+)
 
 
 ROUND_LABELS = {
@@ -44,15 +54,7 @@ def now_export_string() -> str:
 
 
 def format_time_ms(time_ms: int | None) -> str:
-    if time_ms is None:
-        return ""
-
-    total_centiseconds = round(time_ms / 10)
-    minutes = total_centiseconds // 6000
-    seconds = (total_centiseconds % 6000) // 100
-    hundredths = total_centiseconds % 100
-
-    return f"{minutes:02d}:{seconds:02d},{hundredths:02d}"
+    return format_centiseconds_time_ms(time_ms, empty_value="")
 
 
 def get_penalty_sum(result: RunResult | None) -> int:
@@ -94,7 +96,12 @@ def get_valued_time_ms(result: RunResult | None) -> int | None:
     if result.raw_time_ms is None:
         return None
 
-    return result.raw_time_ms + (get_penalty_sum(result) * 1000)
+    scoring_raw_time_ms = normalize_time_to_centiseconds_ms(result.raw_time_ms)
+
+    if scoring_raw_time_ms is None:
+        return None
+
+    return scoring_raw_time_ms + (get_penalty_sum(result) * 1000)
 
 
 def get_result_for_participant(
@@ -125,6 +132,84 @@ def get_pairing_participants(pairing: Pairing) -> list:
     return participants
 
 
+def get_image_dimensions(file_path: Path) -> tuple[int, int] | None:
+    try:
+        data = file_path.read_bytes()
+    except OSError:
+        return None
+
+    if data.startswith(b"\x89PNG\r\n\x1a\n") and len(data) >= 24:
+        width = int.from_bytes(data[16:20], "big")
+        height = int.from_bytes(data[20:24], "big")
+        return width, height
+
+    if data.startswith(b"\xff\xd8"):
+        index = 2
+
+        while index < len(data) - 9:
+            if data[index] != 0xFF:
+                index += 1
+                continue
+
+            marker = data[index + 1]
+            index += 2
+
+            if marker in [0xD8, 0xD9]:
+                continue
+
+            segment_length = int.from_bytes(data[index:index + 2], "big")
+
+            if marker in range(0xC0, 0xC4):
+                height = int.from_bytes(data[index + 3:index + 5], "big")
+                width = int.from_bytes(data[index + 5:index + 7], "big")
+                return width, height
+
+            index += segment_length
+
+    return None
+
+
+def add_logo_to_worksheet(
+    worksheet,
+    logo_file_path: str | None,
+    anchor: str = "H1",
+):
+    if not logo_file_path:
+        return
+
+    file_path = Path(logo_file_path)
+
+    if file_path.suffix.lower() not in [".png", ".jpg", ".jpeg"]:
+        return
+
+    if not file_path.exists():
+        return
+
+    max_width = 160
+    max_height = 80
+    dimensions = get_image_dimensions(file_path)
+
+    if dimensions:
+        width, height = dimensions
+        scale = min(max_width / width, max_height / height, 1.0)
+    else:
+        scale = 0.25
+
+    try:
+        worksheet.set_row(0, 60)
+        worksheet.insert_image(
+            anchor,
+            str(file_path),
+            {
+                "x_scale": scale,
+                "y_scale": scale,
+                "object_position": 1,
+            },
+        )
+    except Exception:
+        return
+
+
 def get_participant_status(participant) -> str:
     if participant.withdrawn:
         if participant.withdrawn_reason:
@@ -147,16 +232,22 @@ def sort_and_place_round_rows(rows: list[dict]) -> list[dict]:
         ),
     )
 
-    place = 1
+    previous_key = None
+    current_place = 0
 
-    for row in sorted_rows:
+    for index, row in enumerate(sorted_rows, start=1):
         if row["withdrawn"]:
             row["place"] = ""
         elif row["round_total_ms"] is None:
             row["place"] = ""
         else:
-            row["place"] = place
-            place += 1
+            key = (row["round_total_ms"], row["round_penalty"])
+
+            if key != previous_key:
+                current_place = index
+                previous_key = key
+
+            row["place"] = current_place
 
     return sorted_rows
 
@@ -361,16 +452,22 @@ def build_overall_rows(rows_by_round: dict[str, list[dict]]) -> list[dict]:
         ),
     )
 
-    place = 1
+    previous_key = None
+    current_place = 0
 
-    for row in overall_rows:
+    for index, row in enumerate(overall_rows, start=1):
         if row["withdrawn"]:
             row["place"] = ""
         elif row["total_ms"] is None:
             row["place"] = ""
         else:
-            row["place"] = place
-            place += 1
+            key = (row["total_ms"], row["total_penalty"])
+
+            if key != previous_key:
+                current_place = index
+                previous_key = key
+
+            row["place"] = current_place
 
     return overall_rows
 
@@ -382,6 +479,7 @@ def write_event_header(
     export_timestamp: str,
     title_format,
     meta_format,
+    logo_file_path: str | None = None,
 ):
     worksheet.write(0, 0, title, title_format)
     worksheet.write(1, 0, "Veranstaltung", meta_format)
@@ -394,6 +492,47 @@ def write_event_header(
     worksheet.write(4, 1, event.location or "")
     worksheet.write(5, 0, "Exportiert am", meta_format)
     worksheet.write(5, 1, export_timestamp)
+    worksheet.write(
+        6,
+        0,
+        "Zeitwertung gemäß Reglement auf 1/100 Sekunde; Millisekunden werden für Wertung und Anzeige gerundet.",
+        meta_format,
+    )
+    add_logo_to_worksheet(
+        worksheet=worksheet,
+        logo_file_path=logo_file_path,
+    )
+
+
+def write_tie_warning(
+    worksheet,
+    tie_warnings: list[dict] | None,
+    warning_format,
+):
+    if not tie_warnings:
+        return
+
+    warning_lines = [UNRESOLVED_TIE_MESSAGE]
+
+    for warning in tie_warnings:
+        round_label = warning.get("round_label")
+        round_part = f" · {round_label}" if round_label else ""
+        drivers = ", ".join(warning.get("drivers", []))
+        warning_lines.append(
+            f"Klasse {warning.get('race_class')}{round_part} · "
+            f"Platz {warning.get('place')} · {warning.get('total_display')} · "
+            f"{warning.get('total_penalty')} FP: {drivers}"
+        )
+
+    worksheet.set_row(6, 48)
+    worksheet.merge_range(
+        6,
+        0,
+        6,
+        8,
+        "\n".join(warning_lines),
+        warning_format,
+    )
 
 
 def write_round_sheet(
@@ -403,6 +542,7 @@ def write_round_sheet(
     race_class: int,
     rows: list[dict],
     export_timestamp: str,
+    logo_file_path: str | None = None,
 ):
     worksheet = workbook.add_worksheet(sheet_name)
 
@@ -421,6 +561,7 @@ def write_round_sheet(
         export_timestamp=export_timestamp,
         title_format=title_format,
         meta_format=meta_format,
+        logo_file_path=logo_file_path,
     )
 
     headers = [
@@ -504,6 +645,8 @@ def write_compact_round_sheet(
     race_class: int,
     rows: list[dict],
     export_timestamp: str,
+    logo_file_path: str | None = None,
+    tie_warnings: list[dict] | None = None,
 ):
     worksheet = workbook.add_worksheet(sheet_name)
 
@@ -514,6 +657,13 @@ def write_compact_round_sheet(
     time_format = workbook.add_format({"border": 1, "align": "right"})
     number_format = workbook.add_format({"border": 1, "align": "right"})
     place_format = workbook.add_format({"border": 1, "bold": True, "align": "center"})
+    warning_format = workbook.add_format({
+        "bold": True,
+        "font_color": "#991B1B",
+        "bg_color": "#FEE2E2",
+        "text_wrap": True,
+        "border": 1,
+    })
 
     write_event_header(
         worksheet=worksheet,
@@ -522,6 +672,12 @@ def write_compact_round_sheet(
         export_timestamp=export_timestamp,
         title_format=title_format,
         meta_format=meta_format,
+        logo_file_path=logo_file_path,
+    )
+    write_tie_warning(
+        worksheet=worksheet,
+        tie_warnings=tie_warnings,
+        warning_format=warning_format,
     )
 
     headers = [
@@ -543,10 +699,14 @@ def write_compact_round_sheet(
 
     for row_index, row_data in enumerate(rows, start=header_row + 1):
         round_detail = row_data["round_detail"]
+        driver_name = row_data["driver_name"]
+
+        if row_data.get("status") and row_data.get("status") != "Gewertet":
+            driver_name = f"{driver_name}\n{row_data['status']}"
 
         worksheet.write(row_index, 0, row_data["place"], place_format)
         worksheet.write(row_index, 1, row_data["start_number"], number_format)
-        worksheet.write(row_index, 2, row_data["driver_name"], cell_format)
+        worksheet.write(row_index, 2, driver_name, cell_format)
         worksheet.write(row_index, 3, row_data["club"], cell_format)
         worksheet.write(row_index, 4, round_detail["run_1_raw_display"], time_format)
         worksheet.write(row_index, 5, round_detail["run_1_penalty"], number_format)
@@ -581,6 +741,8 @@ def write_overall_sheet(
     export_timestamp: str,
     sheet_name: str = "Gesamtwertung",
     title: str | None = None,
+    logo_file_path: str | None = None,
+    tie_warnings: list[dict] | None = None,
 ):
     worksheet = workbook.add_worksheet(sheet_name)
 
@@ -591,6 +753,13 @@ def write_overall_sheet(
     time_format = workbook.add_format({"border": 1, "align": "right"})
     number_format = workbook.add_format({"border": 1, "align": "right"})
     place_format = workbook.add_format({"border": 1, "bold": True, "align": "center"})
+    warning_format = workbook.add_format({
+        "bold": True,
+        "font_color": "#991B1B",
+        "bg_color": "#FEE2E2",
+        "text_wrap": True,
+        "border": 1,
+    })
 
     write_event_header(
         worksheet=worksheet,
@@ -599,6 +768,12 @@ def write_overall_sheet(
         export_timestamp=export_timestamp,
         title_format=title_format,
         meta_format=meta_format,
+        logo_file_path=logo_file_path,
+    )
+    write_tie_warning(
+        worksheet=worksheet,
+        tie_warnings=tie_warnings,
+        warning_format=warning_format,
     )
 
     headers = [
@@ -671,6 +846,8 @@ def write_all_classes_overall_sheet(
     event: Event,
     rows: list[dict],
     export_timestamp: str,
+    logo_file_path: str | None = None,
+    tie_warnings: list[dict] | None = None,
 ):
     worksheet = workbook.add_worksheet("Alle Klassen")
 
@@ -681,6 +858,13 @@ def write_all_classes_overall_sheet(
     time_format = workbook.add_format({"border": 1, "align": "right"})
     number_format = workbook.add_format({"border": 1, "align": "right"})
     place_format = workbook.add_format({"border": 1, "bold": True, "align": "center"})
+    warning_format = workbook.add_format({
+        "bold": True,
+        "font_color": "#991B1B",
+        "bg_color": "#FEE2E2",
+        "text_wrap": True,
+        "border": 1,
+    })
 
     write_event_header(
         worksheet=worksheet,
@@ -689,6 +873,12 @@ def write_all_classes_overall_sheet(
         export_timestamp=export_timestamp,
         title_format=title_format,
         meta_format=meta_format,
+        logo_file_path=logo_file_path,
+    )
+    write_tie_warning(
+        worksheet=worksheet,
+        tie_warnings=tie_warnings,
+        warning_format=warning_format,
     )
 
     headers = [
@@ -764,6 +954,7 @@ def write_team_standings_sheet(
     event: Event,
     rows: list[dict],
     export_timestamp: str,
+    logo_file_path: str | None = None,
 ):
     worksheet = workbook.add_worksheet("Mannschaftswertung")
 
@@ -781,6 +972,7 @@ def write_team_standings_sheet(
         export_timestamp=export_timestamp,
         title_format=title_format,
         meta_format=meta_format,
+        logo_file_path=logo_file_path,
     )
 
     headers = [
@@ -801,17 +993,27 @@ def write_team_standings_sheet(
         dropped_members = []
 
         for member in row_data["counted_members"]:
+            status_text = (
+                f", {member['status']}"
+                if member.get("status") and member.get("status") != "Gewertet"
+                else ""
+            )
             counted_members.append(
                 f"#{member['start_number']} {member['driver_name']} "
                 f"(Kl. {member['race_class']}, Platz {member['place'] or '-'}, "
-                f"{member['points']} Punkte)"
+                f"{member['points']} Punkte{status_text})"
             )
 
         for member in row_data["dropped_members"]:
+            status_text = (
+                f", {member['status']}"
+                if member.get("status") and member.get("status") != "Gewertet"
+                else ""
+            )
             dropped_members.append(
                 f"#{member['start_number']} {member['driver_name']} "
                 f"(Kl. {member['race_class']}, Platz {member['place'] or '-'}, "
-                f"{member['points']} Punkte)"
+                f"{member['points']} Punkte{status_text})"
             )
 
         worksheet.write(row_index, 0, row_data["place"], place_format)
@@ -839,6 +1041,7 @@ def build_class_xlsx(
     event: Event,
     race_class: int,
     pairings: list[Pairing],
+    logo_file_path: str | None = None,
 ) -> bytes:
     output = BytesIO()
     export_timestamp = now_export_string()
@@ -847,6 +1050,7 @@ def build_class_xlsx(
 
     rows_by_round = build_class_export_rows(pairings)
     overall_rows = build_overall_rows(rows_by_round)
+    overall_tie_warnings = build_tie_warnings(overall_rows, race_class)
 
     write_overall_sheet(
         workbook=workbook,
@@ -854,6 +1058,8 @@ def build_class_xlsx(
         race_class=race_class,
         rows=overall_rows,
         export_timestamp=export_timestamp,
+        logo_file_path=logo_file_path,
+        tie_warnings=overall_tie_warnings,
     )
 
     write_round_sheet(
@@ -863,6 +1069,7 @@ def build_class_xlsx(
         race_class=race_class,
         rows=rows_by_round.get("quarterfinal", []),
         export_timestamp=export_timestamp,
+        logo_file_path=logo_file_path,
     )
 
     write_round_sheet(
@@ -872,6 +1079,7 @@ def build_class_xlsx(
         race_class=race_class,
         rows=rows_by_round.get("semifinal", []),
         export_timestamp=export_timestamp,
+        logo_file_path=logo_file_path,
     )
 
     write_round_sheet(
@@ -881,6 +1089,7 @@ def build_class_xlsx(
         race_class=race_class,
         rows=rows_by_round.get("final", []),
         export_timestamp=export_timestamp,
+        logo_file_path=logo_file_path,
     )
 
     workbook.close()
@@ -893,6 +1102,7 @@ def build_overall_xlsx(
     event: Event,
     race_class: int,
     pairings: list[Pairing],
+    logo_file_path: str | None = None,
 ) -> bytes:
     output = BytesIO()
     export_timestamp = now_export_string()
@@ -901,6 +1111,7 @@ def build_overall_xlsx(
 
     rows_by_round = build_class_export_rows(pairings)
     overall_rows = build_overall_rows(rows_by_round)
+    overall_tie_warnings = build_tie_warnings(overall_rows, race_class)
 
     write_overall_sheet(
         workbook=workbook,
@@ -908,6 +1119,8 @@ def build_overall_xlsx(
         race_class=race_class,
         rows=overall_rows,
         export_timestamp=export_timestamp,
+        logo_file_path=logo_file_path,
+        tie_warnings=overall_tie_warnings,
     )
 
     workbook.close()
@@ -920,6 +1133,7 @@ def build_all_overall_xlsx(
     event: Event,
     pairings_by_class: dict[int, list[Pairing]],
     team_standings: list[dict] | None = None,
+    logo_file_path: str | None = None,
 ) -> bytes:
     output = BytesIO()
     export_timestamp = now_export_string()
@@ -927,6 +1141,8 @@ def build_all_overall_xlsx(
     workbook = xlsxwriter.Workbook(output, {"in_memory": True})
     all_rows = []
     overall_rows_by_class = {}
+    tie_warnings_by_class = {}
+    all_tie_warnings = []
 
     for race_class in [1, 2, 3, 4, 5]:
         rows_by_round = build_class_export_rows(
@@ -934,6 +1150,9 @@ def build_all_overall_xlsx(
         )
         overall_rows = build_overall_rows(rows_by_round)
         overall_rows_by_class[race_class] = overall_rows
+        tie_warnings = build_tie_warnings(overall_rows, race_class)
+        tie_warnings_by_class[race_class] = tie_warnings
+        all_tie_warnings.extend(tie_warnings)
 
         for row in overall_rows:
             all_rows.append(
@@ -948,6 +1167,8 @@ def build_all_overall_xlsx(
         event=event,
         rows=all_rows,
         export_timestamp=export_timestamp,
+        logo_file_path=logo_file_path,
+        tie_warnings=all_tie_warnings,
     )
 
     for race_class in [1, 2, 3, 4, 5]:
@@ -959,6 +1180,8 @@ def build_all_overall_xlsx(
             export_timestamp=export_timestamp,
             sheet_name=f"Klasse {race_class}",
             title=f"Gesamtwertung – Klasse {race_class}",
+            logo_file_path=logo_file_path,
+            tie_warnings=tie_warnings_by_class.get(race_class, []),
         )
 
     write_team_standings_sheet(
@@ -966,6 +1189,7 @@ def build_all_overall_xlsx(
         event=event,
         rows=team_standings or [],
         export_timestamp=export_timestamp,
+        logo_file_path=logo_file_path,
     )
 
     workbook.close()
@@ -977,6 +1201,7 @@ def build_all_overall_xlsx(
 def build_team_standings_xlsx(
     event: Event,
     team_standings: list[dict],
+    logo_file_path: str | None = None,
 ) -> bytes:
     output = BytesIO()
     export_timestamp = now_export_string()
@@ -988,6 +1213,7 @@ def build_team_standings_xlsx(
         event=event,
         rows=team_standings,
         export_timestamp=export_timestamp,
+        logo_file_path=logo_file_path,
     )
 
     workbook.close()
@@ -1002,6 +1228,7 @@ def build_round_xlsx(
     participants: list[Participant],
     pairings: list[Pairing],
     round_key: str,
+    logo_file_path: str | None = None,
 ) -> bytes:
     output = BytesIO()
     export_timestamp = now_export_string()
@@ -1020,6 +1247,11 @@ def build_round_xlsx(
         pairings=pairings,
         round_key=round_key,
     )
+    tie_warnings = build_round_tie_warnings(
+        result_rows=rows,
+        race_class=race_class,
+        round_label=sheet_name,
+    )
 
     write_compact_round_sheet(
         workbook=workbook,
@@ -1028,6 +1260,8 @@ def build_round_xlsx(
         race_class=race_class,
         rows=rows,
         export_timestamp=export_timestamp,
+        logo_file_path=logo_file_path,
+        tie_warnings=tie_warnings,
     )
 
     workbook.close()

@@ -14,6 +14,8 @@ env/
 *.sqlite
 *.sqlite3
 instance/
+backend/static/uploads/*
+!backend/static/uploads/.gitkeep
 
 # Logs
 *.log

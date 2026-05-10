@@ -54,8 +54,148 @@
             required
         >
 
+        <label>Nennschluss Klasse 1 &amp; 2</label>
+        <input
+            type="time"
+            name="registration_deadline_class_1_2"
+            value="{{ registration_deadlines.get('class_1_2', '') }}"
+        >
+
+        <label>Nennschluss Klasse 3 &amp; 4</label>
+        <input
+            type="time"
+            name="registration_deadline_class_3_4"
+            value="{{ registration_deadlines.get('class_3_4', '') }}"
+        >
+
+        <label>Nennschluss Klasse 5</label>
+        <input
+            type="time"
+            name="registration_deadline_class_5"
+            value="{{ registration_deadlines.get('class_5', '') }}"
+        >
+
+        <p class="hint">
+            Bei Auswahl eines Samstags oder Sonntags werden die Nennschlusszeiten automatisch vorgeschlagen und können manuell angepasst werden.
+        </p>
+
         <button type="submit">Änderungen speichern</button>
         <a class="button" href="/ui/events">Abbrechen</a>
     </form>
 </div>
+
+<script>
+    function parseDateInputValue(value) {
+        if (!value) {
+            return null;
+        }
+
+        value = value.trim();
+
+        if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+            const parts = value.split("-");
+            return new Date(
+                parseInt(parts[0], 10),
+                parseInt(parts[1], 10) - 1,
+                parseInt(parts[2], 10)
+            );
+        }
+
+        if (/^\d{2}\.\d{2}\.\d{4}$/.test(value)) {
+            const parts = value.split(".");
+            return new Date(
+                parseInt(parts[2], 10),
+                parseInt(parts[1], 10) - 1,
+                parseInt(parts[0], 10)
+            );
+        }
+
+        return null;
+    }
+
+    function getDefaultRegistrationDeadlinesForDate(date) {
+        if (!date) {
+            return null;
+        }
+
+        const day = date.getDay();
+
+        if (day === 6) {
+            return {
+                class_1_2: "12:30",
+                class_3_4: "14:30",
+                class_5: "16:30",
+            };
+        }
+
+        if (day === 0) {
+            return {
+                class_1_2: "09:30",
+                class_3_4: "11:30",
+                class_5: "13:30",
+            };
+        }
+
+        return null;
+    }
+
+    function getRegistrationDeadlineFields(scope) {
+        return {
+            class_1_2: scope.querySelector('[name="registration_deadline_class_1_2"]'),
+            class_3_4: scope.querySelector('[name="registration_deadline_class_3_4"]'),
+            class_5: scope.querySelector('[name="registration_deadline_class_5"]'),
+        };
+    }
+
+    function registrationDeadlineFieldsAreEmpty(scope) {
+        const fields = getRegistrationDeadlineFields(scope);
+
+        if (!fields.class_1_2 || !fields.class_3_4 || !fields.class_5) {
+            return false;
+        }
+
+        return (
+            fields.class_1_2.value.trim() === "" &&
+            fields.class_3_4.value.trim() === "" &&
+            fields.class_5.value.trim() === ""
+        );
+    }
+
+    function applyDefaultRegistrationDeadlinesIfEmpty(scope) {
+        const eventDateInput = scope.querySelector('[name="event_date"]');
+
+        if (!eventDateInput || !registrationDeadlineFieldsAreEmpty(scope)) {
+            return;
+        }
+
+        const eventDate = parseDateInputValue(eventDateInput.value);
+        const defaults = getDefaultRegistrationDeadlinesForDate(eventDate);
+
+        if (!defaults) {
+            return;
+        }
+
+        const fields = getRegistrationDeadlineFields(scope);
+        fields.class_1_2.value = defaults.class_1_2;
+        fields.class_3_4.value = defaults.class_3_4;
+        fields.class_5.value = defaults.class_5;
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const eventForm = document.querySelector('form[action$="/edit"]');
+
+        if (!eventForm) {
+            return;
+        }
+
+        const eventDateInput = eventForm.querySelector('[name="event_date"]');
+
+        if (eventDateInput) {
+            eventDateInput.addEventListener("change", function() {
+                applyDefaultRegistrationDeadlinesIfEmpty(eventForm);
+            });
+            applyDefaultRegistrationDeadlinesIfEmpty(eventForm);
+        }
+    });
+</script>
 {% endblock %}

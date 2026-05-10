@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="card help-link-card">
+    <h2>Hilfe / Anleitung</h2>
+
+    <p>
+        Diese Seite erklärt die wichtigsten Funktionen der Quad Parallel Race Software.
+        Die Software unterstützt die Veranstaltung von der Teilnehmererfassung über die Startfreigabe
+        bis zum Rennbetrieb, zur Zeitnahme, Ergebnisanzeige, Monitor-Ausgabe und zum Export.
+    </p>
+
+    <p>
+        <a
+            class="button"
+            href="https://motorsport.adac-sh.de/service/regelwerke-und-mehr"
+            target="_blank"
+            rel="noopener noreferrer"
+        >
+            Aktuelle ADAC Reglements und Unterlagen öffnen
+        </a>
+    </p>
+
+    <div class="hint">
+        Hinweis: Maßgeblich sind immer die aktuellen Reglements und Ausschreibungen.
+        Die Software unterstützt den Ablauf, ersetzt aber keine Prüfung durch Zeitnahme oder Rennleitung.
+    </div>
+</div>
+
+<div class="card help-section">
+    <h3>1. Grundprinzip der Software</h3>
+
+    <p>
+        Die Software ist veranstaltungsbezogen aufgebaut. Jede Veranstaltung besitzt eigene Teilnehmer,
+        Startfreigaben, Läufe, Ergebnisse, Mannschaftswertungen, Monitor-Einstellungen und Exporte.
+    </p>
+
+    <p>
+        Eine aktive Veranstaltung wird im Kopfbereich angezeigt. Die Navigation arbeitet immer mit der
+        aktiven oder ausgewählten Veranstaltung.
+    </p>
+
+    <ul>
+        <li><strong>Veranstaltungen:</strong> Veranstaltung anlegen, aktivieren, bearbeiten oder schließen.</li>
+        <li><strong>Dashboard:</strong> Übersicht über Teilnehmer, Klassen und Freigabestatus.</li>
+        <li><strong>Teilnehmer erfassen:</strong> Fahrer erfassen und automatisch einer Klasse zuordnen.</li>
+        <li><strong>Teilnehmerliste:</strong> Teilnehmer prüfen, bearbeiten, löschen oder als ausgeschieden markieren.</li>
+        <li><strong>Startfreigabe:</strong> Startgruppen für den Rennbetrieb freigeben.</li>
+        <li><strong>Rennbetrieb:</strong> Paarungen erzeugen, Läufe öffnen, Zeiten erfassen und Runden starten.</li>
+        <li><strong>Ergebnisse:</strong> Ergebnisse anzeigen, drucken und exportieren.</li>
+        <li><strong>Mannschaftswertung:</strong> Teams erfassen und Mannschaftsergebnis berechnen.</li>
+        <li><strong>Ausgabe Monitor:</strong> Monitor-Anzeige konfigurieren.</li>
+        <li><strong>Monitor:</strong> Live-Anzeige für Bildschirm/TV.</li>
+    </ul>
+</div>
+
+<div class="card help-section">
+    <h3>2. Veranstaltungen</h3>
+
+    <p>
+        Unter <strong>Veranstaltungen</strong> werden neue Rennen angelegt. Dabei werden Veranstaltungsnummer,
+        Name, Datum, Ort, Ortsclub/Veranstalter und die Anzahl der Sektoren pro Bahn erfasst.
+    </p>
+
+    <p>
+        Zusätzlich können je Veranstaltung die Nennschlusszeiten für die Startfreigabe-Gruppen gepflegt werden:
+    </p>
+
+    <ul>
+        <li><strong>Klasse 1 &amp; 2</strong> gemeinsame Nennschlusszeit</li>
+        <li><strong>Klasse 3 &amp; 4</strong> gemeinsame Nennschlusszeit</li>
+        <li><strong>Klasse 5</strong> eigene Nennschlusszeit</li>
+    </ul>
+
+    <p>
+        Bei Samstag- und Sonntag-Veranstaltungen können Standardzeiten vorgeschlagen werden. Diese Zeiten sind
+        nur Vorschläge und können manuell angepasst werden.
+    </p>
+
+    <p>
+        Eine geschlossene Veranstaltung ist gegen weitere Änderungen geschützt. Ergebnisse und Daten bleiben
+        erhalten.
+    </p>
+</div>
+
+<div class="card help-section">
+    <h3>3. Teilnehmer erfassen</h3>
+
+    <p>
+        Teilnehmer werden mit Startnummer, Name, Geburtsjahr, Verein, Team sowie optional ADAC Nummer,
+        Jugendausweisnummer und digitaler Jugendkarte erfasst.
+    </p>
+
+    <p>
+        Die Klasse wird automatisch anhand des Geburtsjahres und des Veranstaltungsjahres berechnet.
+        Das Veranstaltungsjahr wird aus dem Veranstaltungsdatum abgeleitet.
+    </p>
+
+    <ul>
+        <li><strong>Klasse 1:</strong> 7 bis 8 Jahre</li>
+        <li><strong>Klasse 2:</strong> 9 bis 11 Jahre</li>
+        <li><strong>Klasse 3:</strong> 12 bis 14 Jahre</li>
+        <li><strong>Klasse 4:</strong> 15 bis 18 Jahre</li>
+        <li><strong>Klasse 5:</strong> ab 19 Jahre</li>
+    </ul>
+
+    <p>
+        Wiederkehrende Fahrer werden über den Fahrerstamm unterstützt. Dadurch können vorhandene Daten schneller
+        übernommen und aktualisiert werden.
+    </p>
+</div>
+
+<div class="card help-section">
+    <h3>4. Teilnehmerliste und Ausscheiden</h3>
+
+    <p>
+        In der Teilnehmerliste können Fahrer gesucht, gefiltert und bearbeitet werden.
+        Angezeigt werden unter anderem Startnummer, Name, Klasse, Verein, Team, ADAC Nummer,
+        Jugendausweisnummer, Status und Fahrerstamm-Verknüpfung.
+    </p>
+
+    <p>
+        Fahrer können während der Veranstaltung als ausgeschieden markiert werden, zum Beispiel wegen:
+    </p>
+
+    <ul>
+        <li>Verletzung</li>
+        <li>Disqualifizierung</li>
+        <li>Aufgabe</li>
+        <li>Entscheidung Rennleitung</li>
+    </ul>
+
+    <p>
+        Ausgeschiedene Fahrer werden in der weiteren Wertung und Paarungslogik entsprechend berücksichtigt.
+        Das Ausscheiden kann bei Bedarf wieder zurückgenommen werden.
+    </p>
+</div>
+
+<div class="card help-section">
+    <h3>5. Startfreigabe</h3>
+
+    <p>
+        Die Startfreigabe ersetzt die frühere Bezeichnung „Nennfreigabe“.
+        Jede Startgruppe muss separat durch Zeitnahme oder Rennleitung freigegeben werden.
+    </p>
+
+    <ul>
+        <li><strong>Klasse 1 &amp; 2:</strong> gemeinsame Startfreigabe</li>
+        <li><strong>Klasse 3 &amp; 4:</strong> gemeinsame Startfreigabe</li>
+        <li><strong>Klasse 5:</strong> eigene Startfreigabe</li>
+    </ul>
+
+    <p>
+        In jeder Kachel wird die Nennschlusszeit angezeigt. Ein Timer zeigt, wie lange noch bis zum Nennschluss
+        verbleibt. Ist die Zeit überschritten, erscheint der Hinweis <strong>Nennzeit überschritten</strong>.
+    </p>
+
+    <p>
+        Die Startfreigabe ist eine manuelle Entscheidung. Die Software zeigt Zeiten und Status an, erteilt die
+        Startfreigabe aber nicht automatisch.
+    </p>
+</div>
+
+<div class="card help-section">
+    <h3>6. Rennbetrieb</h3>
+
+    <p>
+        Im Bereich <strong>Rennbetrieb</strong> werden die Läufe einer Klasse erzeugt und durchgeführt.
+        Eine Klasse kann erst gestartet werden, wenn die zugehörige Startfreigabe erfolgt ist und das
+        Veranstaltungsdatum erreicht wurde.
+    </p>
+
+    <p>
+        Die Software arbeitet mit folgenden Runden:
+    </p>
+
+    <ul>
+        <li><strong>Viertelfinale</strong></li>
+        <li><strong>Halbfinale</strong></li>
+        <li><strong>Finale</strong></li>
+    </ul>
+
+    <p>
+        Die Läufe müssen in der vorgesehenen Reihenfolge gefahren werden. Ist Lauf 1.1 noch nicht bestätigt,
+        kann Lauf 1.2 noch nicht gestartet werden. Spätere Läufe werden in der Übersicht als
+        <strong>Start noch nicht möglich</strong> angezeigt.
+    </p>
+
+    <p>
+        Bereits bestätigte Läufe bleiben zur Kontrolle weiterhin öffnbar.
+    </p>
+</div>
+
+<div class="card help-section">
+    <h3>7. Zeitnahme und Fehlerpunkte</h3>
+
+    <p>
+        Im Laufdetail werden Bahn A und Bahn B angezeigt. Zeiten werden technisch in Millisekunden gespeichert
+        und als <strong>MM:SS,HH</strong> dargestellt.
+    </p>
+
+    <p>
+        Die Zeitnahme erfolgt gemäß Reglement mit einer Genauigkeit von 1/100 Sekunden. Die Software kann Zeiten
+        technisch in Millisekunden speichern, verwendet für Anzeige, Wertung, Sortierung, Paarungslogik, Monitor
+        und Exporte jedoch ausschließlich auf 1/100 Sekunde gerundete Zeiten.
+        Unterschiede unterhalb von 1/100 Sekunde entscheiden keine Platzierung.
+    </p>
+
+    <p>
+        Je nach Veranstaltung können mehrere Sektoren pro Bahn gepflegt werden. Fehlerpunkte werden pro Sektor
+        sowie als allgemeine Fehlerpunkte erfasst. Die gewertete Zeit ergibt sich aus:
+    </p>
+
+    <p>
+        <strong>Rohzeit + Fehlerpunkte in Sekunden = gewertete Zeit</strong>
+    </p>
+
+    <p>
+        Wenn beim Speichern noch Zeiten fehlen, fragt die Software nach, ob wirklich gespeichert werden soll.
+        Bestätigt der Bediener dies, werden fehlende Zeiten mit <strong>00:00,00</strong> gespeichert.
+        Das ist wichtig, wenn ein Teilnehmer während eines Laufes ausscheidet oder die Zeit nicht mehr regulär
+        erfasst werden kann.
+    </p>
+
+    <p>
+        Ein Lauf kann erst bestätigt werden, wenn er gespeichert wurde. Dadurch werden Fehlbedienungen reduziert.
+    </p>
+</div>
+
+<div class="card help-section">
+    <h3>8. Siemens LOGO! / Signal-Mapping</h3>
+
+    <p>
+        In den Einstellungen kann die Siemens LOGO!-Anbindung vorbereitet werden.
+        Dort werden Verbindung, Simulationsmodus, IP-Adresse, Port, Timeout und Signal-Mapping gepflegt.
+    </p>
+
+    <p>
+        Das Signal-Mapping bereitet die technische Zuordnung für Start, Reset, Zeiten, Lichtschranken,
+        Fehlstart und Statussignale vor.
+    </p>
+
+    <p>
+        Solange die echte LOGO! nicht physisch angebunden ist, kann im Simulationsmodus gearbeitet werden.
+    </p>
+</div>
+
+<div class="card help-section">
+    <h3>9. Ergebnisse</h3>
+
+    <p>
+        Im Bereich <strong>Ergebnisse</strong> können Runden- und Gesamtwertungen angezeigt werden.
+        Die Ergebnisansicht kann nach Viertelfinale, Halbfinale, Finale oder Gesamtwertung gewählt werden.
+    </p>
+
+    <p>
+        Für die Platzierung gilt:
+    </p>
+
+    <ul>
+        <li>Zuerst zählt die Gesamtzeit inklusive Fehlerpunkte.</li>
+        <li>Bei gleicher Gesamtzeit entscheidet die geringere Fehlerpunktzahl.</li>
+        <li>Wenn danach weiterhin Gleichstand besteht, erfolgt keine automatische Entscheidung durch die Software. Die Rennleitung muss entscheiden; in der Praxis ist ein Stechen bzw. eine Wiederholung des Finallaufs erforderlich.</li>
+    </ul>
+
+    <p>
+        Ergebnisse können angezeigt, gedruckt und als Excel-Datei exportiert werden.
+        Wenn ein Vereinslogo hinterlegt ist, wird es in die Exporte eingebunden.
+    </p>
+</div>
+
+<div class="card help-section">
+    <h3>10. Mannschaftswertung</h3>
+
+    <p>
+        In der Mannschaftswertung können Teams für die Veranstaltung angelegt werden.
+        Fahrer werden einem Team zugeordnet und die Software berechnet daraus die Mannschaftswertung.
+    </p>
+
+    <p>
+        Bereits zugeordnete Fahrer können nicht gleichzeitig in einem anderen Team verwendet werden.
+        Dadurch werden Doppelzuordnungen vermieden.
+    </p>
+</div>
+
+<div class="card help-section">
+    <h3>11. Ausgabe Monitor und Monitor</h3>
+
+    <p>
+        Unter <strong>Ausgabe Monitor</strong> wird festgelegt, welche Informationen auf dem Monitor angezeigt werden.
+        Dazu gehören Rennsteuerung, Klassen, Runden, Gesamtwertung, Mannschaftswertung, Statistik und LOGO!-Signal.
+    </p>
+
+    <p>
+        Der Bereich <strong>Monitor</strong> ist die eigentliche Live-Anzeige für einen Bildschirm oder TV.
+        Die Seite kann auf einem separaten Gerät oder direkt auf dem Raspberry Pi im Vollbildmodus angezeigt werden.
+    </p>
+
+    <p>
+        Die Monitor-Ausgabe ist für kompakte Anzeige optimiert und aktualisiert sich automatisch.
+    </p>
+</div>
+
+<div class="card help-section">
+    <h3>12. Einstellungen</h3>
+
+    <p>
+        Die Einstellungen enthalten wichtige System- und Verwaltungsfunktionen:
+    </p>
+
+    <ul>
+        <li><strong>Siemens LOGO! Verbindung:</strong> Verbindung und Statusprüfung.</li>
+        <li><strong>Signal-Mapping:</strong> Zuordnung der technischen Signale.</li>
+        <li><strong>Vereinslogo:</strong> Logo hochladen, anzeigen und in Exporte einbinden.</li>
+        <li><strong>ADAC Jugendkarte:</strong> Scan-/Erfassungsfunktion aktivieren.</li>
+        <li><strong>Datenbank-Sicherung:</strong> Datenbank exportieren oder importieren.</li>
+        <li><strong>Status / Diagnose:</strong> Systemstatus, Netzwerk, Speicher, Neustart und Diagnose.</li>
+    </ul>
+
+    <p>
+        Vor einem Wechsel auf einen anderen Raspberry Pi sollte immer ein Datenbankexport erstellt werden.
+        Beim Datenbankimport wird vorher automatisch ein Backup der aktuellen Datenbank angelegt.
+    </p>
+</div>
+
+<div class="card help-section">
+    <h3>13. Empfohlener Ablauf am Veranstaltungstag</h3>
+
+    <ol>
+        <li>Veranstaltung prüfen oder anlegen.</li>
+        <li>Teilnehmer erfassen und Teilnehmerliste kontrollieren.</li>
+        <li>ADAC Nummern, Jugendausweise und Klassen prüfen.</li>
+        <li>Nennschlusszeiten kontrollieren.</li>
+        <li>Startfreigabe je Startgruppe erteilen.</li>
+        <li>Rennbetrieb für die Klasse starten.</li>
+        <li>Läufe der Reihe nach fahren, speichern und bestätigen.</li>
+        <li>Nach Abschluss einer Runde die nächste Runde erzeugen.</li>
+        <li>Ergebnisse kontrollieren, anzeigen, drucken oder exportieren.</li>
+        <li>Mannschaftswertung prüfen.</li>
+        <li>Nach Veranstaltungsende Datenbank sichern.</li>
+    </ol>
+</div>
+
+<div class="card help-section">
+    <h3>14. Wichtige Hinweise</h3>
+
+    <ul>
+        <li>Die Software unterstützt die Zeitnahme, ersetzt aber keine Entscheidung der Rennleitung.</li>
+        <li>Reglements und Ausschreibungen sind immer maßgeblich.</li>
+        <li>Vor wichtigen Änderungen sollte ein Datenbankexport erstellt werden.</li>
+        <li>Eine geschlossene Veranstaltung sollte nur geschlossen werden, wenn keine Änderungen mehr nötig sind.</li>
+        <li>Beim Import einer Datenbank wird die aktuelle Datenbank ersetzt. Vorher wird ein Backup erstellt.</li>
+        <li>Bei technischen Problemen zuerst Status / Diagnose und die LOGO!-Statusprüfung nutzen.</li>
+    </ul>
+</div>
+
+{% endblock %}

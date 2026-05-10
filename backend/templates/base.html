@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <title>{% block title %}Quad Parallel Race{% endblock %}</title>
-    <link rel="stylesheet" href="/static/style.css?v=20260508-13">
+    <link rel="stylesheet" href="/static/style.css?v=20260510-01">
 </head>
 <body class="{% block body_class %}{% endblock %}">
+    {% set club_logo_path = get_club_logo_path() %}
+
     <div class="header" style="position: relative;">
         <a
             href="/ui/settings"
@@ -23,31 +25,39 @@
             ⚙
         </a>
 
-        <h1>
-            Quad Parallel Race
-            {% if active_event %}
-                &gt;&gt; {{ active_event.event_number }} – {{ active_event.name }}
-            {% endif %}
-        </h1>
+        <div class="site-header-content">
+            <div class="site-title-block">
+                <h1>
+                    Quad Parallel Race
+                    {% if active_event %}
+                        &gt;&gt; {{ active_event.event_number }} – {{ active_event.name }}
+                    {% endif %}
+                </h1>
 
-        {% if active_event %}
-            <div style="margin-top: 8px; font-size: 14px;">
-                Datum: <strong>{{ active_event.event_date or "-" }}</strong>
-                |
-                Uhrzeit: <strong>{{ current_time_string() }}</strong>
-                |
-                Ort: <strong>{{ active_event.location or "-" }}</strong>
-                |
-                Sektoren pro Bahn: <strong>{{ active_event.sectors_per_lane or 4 }}</strong>
+                {% if active_event %}
+                    <div style="margin-top: 8px; font-size: 14px;">
+                        Datum: <strong>{{ active_event.event_date or "-" }}</strong>
+                        |
+                        Uhrzeit: <strong>{{ current_time_string() }}</strong>
+                        |
+                        Ort: <strong>{{ active_event.location or "-" }}</strong>
+                        |
+                        Sektoren pro Bahn: <strong>{{ active_event.sectors_per_lane or 4 }}</strong>
 
-                {% if active_event.closed %}
-                    |
-                    <span style="color: #fecaca;">
-                        Veranstaltung geschlossen: {{ active_event.closed_reason or "-" }}
-                    </span>
+                        {% if active_event.closed %}
+                            |
+                            <span style="color: #fecaca;">
+                                Veranstaltung geschlossen: {{ active_event.closed_reason or "-" }}
+                            </span>
+                        {% endif %}
+                    </div>
                 {% endif %}
             </div>
-        {% endif %}
+
+            {% if club_logo_path %}
+                <img src="{{ club_logo_path }}" alt="Vereinslogo" class="site-logo">
+            {% endif %}
+        </div>
     </div>
 
     <div class="nav">
@@ -57,13 +67,15 @@
             <a href="/ui/events/{{ active_event.id }}/dashboard">Dashboard</a>
             <a href="/ui/events/{{ active_event.id }}/participants/new">Teilnehmer erfassen</a>
             <a href="/ui/events/{{ active_event.id }}/participants">Teilnehmerliste</a>
-            <a href="/ui/events/{{ active_event.id }}/registration">Nennfreigabe</a>
-            <a href="/ui/events/{{ active_event.id }}/classes">Läufe</a>
+            <a href="/ui/events/{{ active_event.id }}/registration">Startfreigabe</a>
+            <a href="/ui/events/{{ active_event.id }}/classes">Rennbetrieb</a>
             <a href="/ui/events/{{ active_event.id }}/results">Ergebnisse</a>
             <a href="/ui/events/{{ active_event.id }}/teams">Mannschaftswertung</a>
             <a href="/ui/events/{{ active_event.id }}/monitor-output">Ausgabe Monitor</a>
             <a href="/ui/events/{{ active_event.id }}/monitor">Monitor</a>
         {% endif %}
+
+        <a href="/ui/help">Hilfe</a>
     </div>
 
     {% if active_event %}

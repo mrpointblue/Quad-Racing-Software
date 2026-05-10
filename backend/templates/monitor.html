@@ -5,11 +5,17 @@
 {% block body_class %}monitor-body monitor-{{ monitor_data.display_setting.display_orientation or 'landscape' }}{% endblock %}
 
 {% block content %}
+{% set club_logo_path = get_club_logo_path() %}
 <div class="monitor-page">
     <div class="monitor-topbar">
-        <div>
+        <div class="monitor-title-row">
+            {% if club_logo_path %}
+                <img src="{{ club_logo_path }}" alt="Vereinslogo" class="monitor-logo">
+            {% endif %}
+            <div>
             <h1>Rennstatus</h1>
             <p id="monitor_event">—</p>
+            </div>
         </div>
         <div class="monitor-topbar-status">
             <div
@@ -160,7 +166,11 @@
                                 <td>
                                     {% for member in row.members %}
                                         {% if member.counted %}
-                                            #{{ member.start_number }} {{ member.driver }} · Kl. {{ member.race_class }} · {{ member.points }} Pkt.<br>
+                                            #{{ member.start_number }} {{ member.driver }} · Kl. {{ member.race_class }} · {{ member.points }} Pkt.
+                                            {% if member.status != "Gewertet" %}
+                                                · {{ member.status }}
+                                            {% endif %}
+                                            <br>
                                         {% endif %}
                                     {% endfor %}
                                 </td>
@@ -172,6 +182,92 @@
 
             {% if monitor_data.result_sections|length == 0 and monitor_data.overall_sections|length == 0 and monitor_data.team_results|length == 0 %}
                 Keine Monitor-Ausgabe ausgewählt
+            {% endif %}
+        </div>
+    </section>
+
+    <section
+        id="monitor_statistics_section"
+        class="monitor-panel monitor-statistics-section"
+        {% if not monitor_data.statistics %}hidden{% endif %}
+    >
+        <h2>Statistik</h2>
+        <div id="monitor_statistics" class="monitor-statistics-grid">
+            {% if monitor_data.statistics %}
+                {% set statistics = monitor_data.statistics %}
+
+                {% if statistics.best_driver %}
+                    <div class="monitor-stat-card">
+                        <div class="monitor-stat-label">Bester Fahrer</div>
+                        <div class="monitor-stat-value">{{ statistics.best_driver.driver }}</div>
+                        <div class="monitor-stat-detail">
+                            Kl. {{ statistics.best_driver.race_class }}
+                            · {{ statistics.best_driver.detail }}
+                            · {{ statistics.best_driver.value }}
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="monitor-stat-card">
+                        <div class="monitor-stat-label">Bester Fahrer</div>
+                        <div class="monitor-stat-value">—</div>
+                    </div>
+                {% endif %}
+
+                {% if statistics.fastest_lane_1 %}
+                    <div class="monitor-stat-card">
+                        <div class="monitor-stat-label">Schnellste Zeit Bahn 1</div>
+                        <div class="monitor-stat-value">{{ statistics.fastest_lane_1.value }}</div>
+                        <div class="monitor-stat-detail">{{ statistics.fastest_lane_1.driver }}</div>
+                        <div class="monitor-stat-sub">{{ statistics.fastest_lane_1.detail }}</div>
+                    </div>
+                {% else %}
+                    <div class="monitor-stat-card">
+                        <div class="monitor-stat-label">Schnellste Zeit Bahn 1</div>
+                        <div class="monitor-stat-value">—</div>
+                    </div>
+                {% endif %}
+
+                {% if statistics.fastest_lane_2 %}
+                    <div class="monitor-stat-card">
+                        <div class="monitor-stat-label">Schnellste Zeit Bahn 2</div>
+                        <div class="monitor-stat-value">{{ statistics.fastest_lane_2.value }}</div>
+                        <div class="monitor-stat-detail">{{ statistics.fastest_lane_2.driver }}</div>
+                        <div class="monitor-stat-sub">{{ statistics.fastest_lane_2.detail }}</div>
+                    </div>
+                {% else %}
+                    <div class="monitor-stat-card">
+                        <div class="monitor-stat-label">Schnellste Zeit Bahn 2</div>
+                        <div class="monitor-stat-value">—</div>
+                    </div>
+                {% endif %}
+
+                {% if statistics.most_penalties %}
+                    <div class="monitor-stat-card">
+                        <div class="monitor-stat-label">Meiste Fehlerpunkte</div>
+                        <div class="monitor-stat-value">{{ statistics.most_penalties.value }}</div>
+                        <div class="monitor-stat-detail">{{ statistics.most_penalties.driver }}</div>
+                        <div class="monitor-stat-sub">{{ statistics.most_penalties.detail }}</div>
+                    </div>
+                {% else %}
+                    <div class="monitor-stat-card">
+                        <div class="monitor-stat-label">Meiste Fehlerpunkte</div>
+                        <div class="monitor-stat-value">—</div>
+                    </div>
+                {% endif %}
+
+                {% if statistics.fewest_penalties %}
+                    <div class="monitor-stat-card">
+                        <div class="monitor-stat-label">Wenigste Fehlerpunkte</div>
+                        <div class="monitor-stat-value">{{ statistics.fewest_penalties.value }}</div>
+                        <div class="monitor-stat-detail">{{ statistics.fewest_penalties.driver }}</div>
+                        <div class="monitor-stat-sub">{{ statistics.fewest_penalties.detail }}</div>
+                    </div>
+                {% else %}
+                    <div class="monitor-stat-card">
+                        <div class="monitor-stat-label">Wenigste Fehlerpunkte</div>
+                        <div class="monitor-stat-value">—</div>
+                    </div>
+                {% endif %}
             {% endif %}
         </div>
     </section>
@@ -345,7 +441,8 @@
                     "#" + member.start_number +
                     " " + member.driver +
                     " · Kl. " + member.race_class +
-                    " · " + member.points + " Pkt."
+                    " · " + member.points + " Pkt." +
+                    (member.status && member.status !== "Gewertet" ? " · " + member.status : "")
                 ))
                 .join("<br>");
             const tr = document.createElement("tr");
@@ -407,6 +504,69 @@
         return wrapper;
     }
 
+    function appendStatisticCard(container, label, value, detail, sub) {
+        const card = document.createElement("div");
+        card.className = "monitor-stat-card";
+        card.innerHTML =
+            "<div class='monitor-stat-label'>" + label + "</div>" +
+            "<div class='monitor-stat-value'>" + (value || "—") + "</div>" +
+            (detail ? "<div class='monitor-stat-detail'>" + detail + "</div>" : "") +
+            (sub ? "<div class='monitor-stat-sub'>" + sub + "</div>" : "");
+        container.appendChild(card);
+    }
+
+    function renderMonitorStatistics(statistics) {
+        const section = document.getElementById("monitor_statistics_section");
+        const container = document.getElementById("monitor_statistics");
+
+        if (!section || !container) {
+            return;
+        }
+
+        container.innerHTML = "";
+        section.hidden = !statistics;
+
+        if (!statistics) {
+            return;
+        }
+
+        appendStatisticCard(
+            container,
+            "Bester Fahrer",
+            statistics.best_driver ? statistics.best_driver.driver : "—",
+            statistics.best_driver ? "Kl. " + statistics.best_driver.race_class + " · " + statistics.best_driver.detail + " · " + statistics.best_driver.value : "",
+            ""
+        );
+        appendStatisticCard(
+            container,
+            "Schnellste Zeit Bahn 1",
+            statistics.fastest_lane_1 ? statistics.fastest_lane_1.value : "—",
+            statistics.fastest_lane_1 ? statistics.fastest_lane_1.driver : "",
+            statistics.fastest_lane_1 ? statistics.fastest_lane_1.detail : ""
+        );
+        appendStatisticCard(
+            container,
+            "Schnellste Zeit Bahn 2",
+            statistics.fastest_lane_2 ? statistics.fastest_lane_2.value : "—",
+            statistics.fastest_lane_2 ? statistics.fastest_lane_2.driver : "",
+            statistics.fastest_lane_2 ? statistics.fastest_lane_2.detail : ""
+        );
+        appendStatisticCard(
+            container,
+            "Meiste Fehlerpunkte",
+            statistics.most_penalties ? statistics.most_penalties.value : "—",
+            statistics.most_penalties ? statistics.most_penalties.driver : "",
+            statistics.most_penalties ? statistics.most_penalties.detail : ""
+        );
+        appendStatisticCard(
+            container,
+            "Wenigste Fehlerpunkte",
+            statistics.fewest_penalties ? statistics.fewest_penalties.value : "—",
+            statistics.fewest_penalties ? statistics.fewest_penalties.driver : "",
+            statistics.fewest_penalties ? statistics.fewest_penalties.detail : ""
+        );
+    }
+
     function renderMonitorResults(resultSections, overallSections, teamResults) {
         const container = document.getElementById("monitor_results");
 
@@ -461,6 +621,7 @@
                 updateStarterGrid(data.current_run, data.next_runs);
                 renderCurrentRun(data.current_run);
                 renderMonitorResults(data.result_sections, data.overall_sections, data.team_results);
+                renderMonitorStatistics(data.statistics);
                 renderNextRuns(data.next_runs);
             })
             .catch(() => {

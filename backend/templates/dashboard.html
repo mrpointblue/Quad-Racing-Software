@@ -23,47 +23,72 @@
 </div>
 
 <div class="card">
-    <h2>Nennfreigabe</h2>
+    <h2>Startfreigabe</h2>
     <p>Status je Startgruppe</p>
 </div>
 
-<div class="grid">
-    {% for group in registration_groups %}
-    <div class="card">
+<div class="grid dashboard-registration-grid">
+    {% for group in dashboard_registration_groups %}
+    <div class="card dashboard-status-card">
         <h3>{{ group.name }}</h3>
 
-        <p>
-            Klassen:
-            <strong>{{ group.classes }}</strong>
-        </p>
-
-        {% if group.released %}
+        {% if group.status_type == "complete" %}
             <div class="success">
-                Freigegeben
+                Abgeschlossen
             </div>
-
-            <p>
-                Freigegeben am:<br>
-                <strong>{{ group.released_at or "-" }}</strong>
-            </p>
-
-            <p>
-                Freigegeben durch:<br>
-                <strong>{{ group.released_by or "-" }}</strong>
-            </p>
+        {% elif group.status_type == "released" %}
+            <div class="success">
+                Startfreigabe erteilt
+            </div>
         {% else %}
             <div class="error">
-                Noch nicht freigegeben
+                Startfreigabe noch nicht erteilt
             </div>
-
-            <p>
-                Rennbetrieb für diese Gruppe ist gesperrt.
-            </p>
-
-            <a class="button" href="/ui/registration">
-                Zur Nennfreigabe
-            </a>
         {% endif %}
+
+        <p class="dashboard-status-detail">
+            {% if group.status_type == "released" %}
+                Rennbetrieb offen
+            {% else %}
+                {{ group.detail_text }}
+            {% endif %}
+        </p>
+
+        <p>
+            Klassen abgeschlossen:<br>
+            <strong>{{ group.completed_classes }} / {{ group.total_classes }}</strong>
+        </p>
+
+        <div class="dashboard-class-progress">
+            {% for class_item in group.class_progress %}
+                <div class="dashboard-class-progress-row">
+                    <span>Klasse {{ class_item.race_class }}</span>
+
+                    {% if class_item.status_type == "complete" %}
+                        <span class="success">{{ class_item.status_label }}</span>
+                    {% else %}
+                        <span class="error">{{ class_item.status_label }}</span>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+
+        {% if group.registration_deadline %}
+            <p>
+                Nennschluss:<br>
+                <strong>{{ group.registration_deadline }} Uhr</strong>
+            </p>
+        {% endif %}
+
+        <div class="compact-info">
+            <a class="button small-button" href="/ui/events/{{ active_event.id }}/registration">
+                Zur Startfreigabe
+            </a>
+
+            <a class="button small-button" href="/ui/events/{{ active_event.id }}/classes">
+                Zum Rennbetrieb
+            </a>
+        </div>
     </div>
     {% endfor %}
 </div>

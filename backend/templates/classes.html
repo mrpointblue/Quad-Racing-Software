@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}Läufe{% if active_event %} - {{ active_event.event_number }}{% endif %}{% endblock %}
+{% block title %}Rennbetrieb{% if active_event %} - {{ active_event.event_number }}{% endif %}{% endblock %}
 
 {% block content %}
 <div class="card">
-    <h2>Läufe / Rennbetrieb</h2>
+    <h2>Rennbetrieb</h2>
 
     {% if active_event %}
         <p>
@@ -27,6 +27,14 @@
         {% if active_event.closed %}
             <div class="error">
                 Diese Veranstaltung ist geschlossen. Änderungen sind nicht mehr möglich.
+            </div>
+        {% endif %}
+
+        {% if tie_error %}
+            <div class="error">
+                <strong>Nicht aufgelöster Gleichstand erkannt.</strong><br>
+                Gesamtzeit und Fehlerpunkte sind identisch. Es erfolgt keine automatische Entscheidung durch die Software.
+                Die nächste Runde wurde nicht erzeugt. Die Rennleitung muss entscheiden; ggf. ist ein Stechen bzw. eine Wiederholung des Finallaufs erforderlich.
             </div>
         {% endif %}
     {% endif %}
@@ -54,7 +62,7 @@
             <p>
                 Teilnehmer: <strong>{{ item.participants_count }}</strong>
                 |
-                Nennfreigabe:
+                Startfreigabe:
                 <strong>{{ item.registration_group_name }}</strong>
                 |
                 Status:
@@ -72,7 +80,7 @@
 
         <div>
             {% if item.registration_released %}
-                <span class="success">Nennung freigegeben</span>
+                <span class="success">Startfreigabe erteilt</span>
             {% else %}
                 <span class="error">Nicht freigegeben</span>
             {% endif %}
@@ -98,10 +106,6 @@
                 Finale Export
             </a>
 
-            <button type="button" class="small-button print-button" onclick="window.print()">
-                Läufe Druck
-            </button>
-
             <a class="button small-button" href="/ui/events/{{ active_event.id }}/results/class/{{ item.race_class }}">
                 Ergebnis anzeigen
             </a>
@@ -116,8 +120,8 @@
                 {% if item.participants_count == 0 %}
                     <p>Keine Teilnehmer in dieser Klasse.</p>
                 {% elif not item.registration_released %}
-                    <p>Klasse kann erst nach Nennfreigabe gestartet werden.</p>
-                    <a class="button small-button" href="/ui/events/{{ active_event.id }}/registration">Zur Nennfreigabe</a>
+                    <p>Klasse kann erst nach Startfreigabe gestartet werden.</p>
+                    <a class="button small-button" href="/ui/events/{{ active_event.id }}/registration">Zur Startfreigabe</a>
                 {% elif not event_date_reached %}
                     <p>Klasse kann erst am Veranstaltungstag gestartet werden.</p>
                 {% elif item.event_closed %}
@@ -386,10 +390,14 @@
                                     <a class="button small-button red-button" href="/ui/events/{{ active_event.id }}/timekeeper/run/{{ run.id }}">
                                         Öffnen
                                     </a>
-                                {% else %}
-                                    <a class="button small-button" href="/ui/events/{{ active_event.id }}/timekeeper/run/{{ run.id }}">
-                                        Öffnen
+                                {% elif run_item.is_next_startable %}
+                                    <a class="button small-button next-run-button" href="/ui/events/{{ active_event.id }}/timekeeper/run/{{ run.id }}">
+                                        Öffnen / Starten
                                     </a>
+                                {% else %}
+                                    <button type="button" class="small-button disabled-button" disabled>
+                                        Start noch nicht möglich
+                                    </button>
                                 {% endif %}
                             </td>
                         </tr>
@@ -432,7 +440,8 @@
             return "—";
         }
 
-        const totalCentiseconds = Math.round(ms / 10);
+        const normalizedMs = Math.floor((ms + 5) / 10) * 10;
+        const totalCentiseconds = normalizedMs / 10;
         const minutes = Math.floor(totalCentiseconds / 6000);
         const seconds = Math.floor((totalCentiseconds % 6000) / 100);
         const hundredths = totalCentiseconds % 100;

@@ -17,336 +17,573 @@
     {% endif %}
 </div>
 
-<div class="card">
-    <h3>ADAC Jugendkarte</h3>
+<div class="card settings-accordion-card">
+    <button
+        type="button"
+        class="settings-accordion-header"
+        onclick="toggleSettingsAccordion('logo_connection')"
+    >
+        <span>Siemens LOGO! Verbindung</span>
+        <span class="settings-accordion-indicator" id="indicator_logo_connection">▼</span>
+    </button>
 
-    <p>
-        Vorbereitung für die spätere Jugendkarten-Prüfung. Der QR-Link wird nur lokal gespeichert,
-        es erfolgt keine externe Abfrage.
-    </p>
+    <div class="settings-accordion-body" id="accordion_logo_connection">
+        <form method="post" action="/ui/settings/logo">
+            <label>Siemens LOGO! aktivieren</label>
+            <select name="logo_enabled">
+                <option value="false" {% if settings.logo_enabled != "true" %}selected{% endif %}>Nein</option>
+                <option value="true" {% if settings.logo_enabled == "true" %}selected{% endif %}>Ja</option>
+            </select>
 
-    <form method="post" action="/ui/settings/youth-card">
-        <label>Jugendkarte scannen aktivieren</label>
-        <select name="youth_card_scan_enabled">
-            <option value="false" {% if settings.youth_card_scan_enabled != "true" %}selected{% endif %}>Nein</option>
-            <option value="true" {% if settings.youth_card_scan_enabled == "true" %}selected{% endif %}>Ja</option>
-        </select>
+            <label>Simulationsmodus</label>
+            <select name="logo_simulation_mode">
+                <option value="true" {% if settings.logo_simulation_mode == "true" %}selected{% endif %}>Ja</option>
+                <option value="false" {% if settings.logo_simulation_mode != "true" %}selected{% endif %}>Nein</option>
+            </select>
 
-        <button type="submit">Jugendkarten-Einstellung speichern</button>
-    </form>
+            <label>IP-Adresse</label>
+            <input
+                type="text"
+                name="logo_ip"
+                value="{{ settings.logo_ip }}"
+                placeholder="169.254.180.254"
+                required
+            >
+
+            <label>Port</label>
+            <input
+                type="number"
+                name="logo_port"
+                value="{{ settings.logo_port }}"
+                min="1"
+                max="65535"
+                required
+            >
+
+            <label>Timeout in ms</label>
+            <input
+                type="number"
+                name="logo_timeout_ms"
+                value="{{ settings.logo_timeout_ms }}"
+                min="100"
+                max="10000"
+                required
+            >
+
+            <label>Zugriffsart</label>
+            <select name="logo_access_mode">
+                <option value="logo_web" {% if settings.logo_access_mode == "logo_web" %}selected{% endif %}>LOGO Web / intern</option>
+                <option value="modbus_tcp" {% if settings.logo_access_mode == "modbus_tcp" %}selected{% endif %}>Modbus TCP</option>
+            </select>
+
+            <label>Passwort / optional</label>
+            <input
+                type="password"
+                name="logo_password"
+                value="{{ settings.logo_password }}"
+                placeholder="optional"
+            >
+
+            <button type="submit">Speichern</button>
+        </form>
+    </div>
 </div>
 
-<div class="card">
-    <h3>Siemens LOGO! Verbindung</h3>
+<div class="card settings-accordion-card">
+    <button
+        type="button"
+        class="settings-accordion-header"
+        onclick="toggleSettingsAccordion('signal_mapping')"
+    >
+        <span>Signal-Mapping</span>
+        <span class="settings-accordion-indicator" id="indicator_signal_mapping">▼</span>
+    </button>
 
-    <form method="post" action="/ui/settings/logo">
-        <label>Siemens LOGO! aktivieren</label>
-        <select name="logo_enabled">
-            <option value="false" {% if settings.logo_enabled != "true" %}selected{% endif %}>Nein</option>
-            <option value="true" {% if settings.logo_enabled == "true" %}selected{% endif %}>Ja</option>
-        </select>
+    <div class="settings-accordion-body" id="accordion_signal_mapping">
+        <form method="post" action="/ui/settings/logo-mapping">
+            <table class="compact-runs-table">
+                <thead>
+                    <tr>
+                        <th>Signal</th>
+                        <th>Range</th>
+                        <th>Address</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Start Button</td>
+                        <td><input type="number" name="logo_start_range" value="{{ settings.logo_start_range }}" required></td>
+                        <td><input type="number" name="logo_start_address" value="{{ settings.logo_start_address }}" required></td>
+                    </tr>
 
-        <label>Simulationsmodus</label>
-        <select name="logo_simulation_mode">
-            <option value="true" {% if settings.logo_simulation_mode == "true" %}selected{% endif %}>Ja</option>
-            <option value="false" {% if settings.logo_simulation_mode != "true" %}selected{% endif %}>Nein</option>
-        </select>
+                    <tr>
+                        <td>Reset Button</td>
+                        <td><input type="number" name="logo_reset_range" value="{{ settings.logo_reset_range }}" required></td>
+                        <td><input type="number" name="logo_reset_address" value="{{ settings.logo_reset_address }}" required></td>
+                    </tr>
 
-        <label>IP-Adresse</label>
-        <input
-            type="text"
-            name="logo_ip"
-            value="{{ settings.logo_ip }}"
-            placeholder="169.254.180.254"
-            required
-        >
+                    <tr>
+                        <td>Zeit Bahn 1</td>
+                        <td><input type="number" name="logo_time_lane_1_range" value="{{ settings.logo_time_lane_1_range }}" required></td>
+                        <td><input type="number" name="logo_time_lane_1_address" value="{{ settings.logo_time_lane_1_address }}" required></td>
+                    </tr>
 
-        <label>Port</label>
-        <input
-            type="number"
-            name="logo_port"
-            value="{{ settings.logo_port }}"
-            min="1"
-            max="65535"
-            required
-        >
+                    <tr>
+                        <td>Zeit Bahn 2</td>
+                        <td><input type="number" name="logo_time_lane_2_range" value="{{ settings.logo_time_lane_2_range }}" required></td>
+                        <td><input type="number" name="logo_time_lane_2_address" value="{{ settings.logo_time_lane_2_address }}" required></td>
+                    </tr>
 
-        <label>Timeout in ms</label>
-        <input
-            type="number"
-            name="logo_timeout_ms"
-            value="{{ settings.logo_timeout_ms }}"
-            min="100"
-            max="10000"
-            required
-        >
+                    <tr>
+                        <td>Ready</td>
+                        <td><input type="number" name="logo_ready_range" value="{{ settings.logo_ready_range }}" required></td>
+                        <td><input type="number" name="logo_ready_address" value="{{ settings.logo_ready_address }}" required></td>
+                    </tr>
 
-        <label>Zugriffsart</label>
-        <select name="logo_access_mode">
-            <option value="logo_web" {% if settings.logo_access_mode == "logo_web" %}selected{% endif %}>LOGO Web / intern</option>
-            <option value="modbus_tcp" {% if settings.logo_access_mode == "modbus_tcp" %}selected{% endif %}>Modbus TCP</option>
-        </select>
+                    <tr>
+                        <td>Go</td>
+                        <td><input type="number" name="logo_go_range" value="{{ settings.logo_go_range }}" required></td>
+                        <td><input type="number" name="logo_go_address" value="{{ settings.logo_go_address }}" required></td>
+                    </tr>
 
-        <label>Passwort / optional</label>
-        <input
-            type="password"
-            name="logo_password"
-            value="{{ settings.logo_password }}"
-            placeholder="optional"
-        >
+                    <tr>
+                        <td>Achtung</td>
+                        <td><input type="number" name="logo_attention_range" value="{{ settings.logo_attention_range }}" required></td>
+                        <td><input type="number" name="logo_attention_address" value="{{ settings.logo_attention_address }}" required></td>
+                    </tr>
 
-        <button type="submit">Speichern</button>
-    </form>
+                    <tr>
+                        <td>Lichtschranke Bahn 1</td>
+                        <td><input type="number" name="logo_light_barrier_1_range" value="{{ settings.logo_light_barrier_1_range }}" required></td>
+                        <td><input type="number" name="logo_light_barrier_1_address" value="{{ settings.logo_light_barrier_1_address }}" required></td>
+                    </tr>
+
+                    <tr>
+                        <td>Lichtschranke Bahn 2</td>
+                        <td><input type="number" name="logo_light_barrier_2_range" value="{{ settings.logo_light_barrier_2_range }}" required></td>
+                        <td><input type="number" name="logo_light_barrier_2_address" value="{{ settings.logo_light_barrier_2_address }}" required></td>
+                    </tr>
+
+                    <tr>
+                        <td>Fehler / Blockierung</td>
+                        <td><input type="number" name="logo_error_range" value="{{ settings.logo_error_range }}" required></td>
+                        <td><input type="number" name="logo_error_address" value="{{ settings.logo_error_address }}" required></td>
+                    </tr>
+
+                    <tr>
+                        <td>Fehlstart Bahn 1</td>
+                        <td><input type="number" name="logo_false_start_1_range" value="{{ settings.logo_false_start_1_range }}" required></td>
+                        <td><input type="number" name="logo_false_start_1_address" value="{{ settings.logo_false_start_1_address }}" required></td>
+                    </tr>
+
+                    <tr>
+                        <td>Fehlstart Bahn 2</td>
+                        <td><input type="number" name="logo_false_start_2_range" value="{{ settings.logo_false_start_2_range }}" required></td>
+                        <td><input type="number" name="logo_false_start_2_address" value="{{ settings.logo_false_start_2_address }}" required></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <button type="submit">Mapping speichern</button>
+        </form>
+    </div>
 </div>
 
-<div class="card">
-    <h3>Signal-Mapping</h3>
+<div class="card settings-accordion-card">
+    <button
+        type="button"
+        class="settings-accordion-header"
+        onclick="toggleSettingsAccordion('club_logo')"
+    >
+        <span>Vereinslogo</span>
+        <span class="settings-accordion-indicator" id="indicator_club_logo">▼</span>
+    </button>
 
-    <form method="post" action="/ui/settings/logo-mapping">
-        <table class="compact-runs-table">
-            <thead>
-                <tr>
-                    <th>Signal</th>
-                    <th>Range</th>
-                    <th>Address</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Start Button</td>
-                    <td><input type="number" name="logo_start_range" value="{{ settings.logo_start_range }}" required></td>
-                    <td><input type="number" name="logo_start_address" value="{{ settings.logo_start_address }}" required></td>
-                </tr>
+    <div class="settings-accordion-body" id="accordion_club_logo">
+        <p>
+            Empfohlen: PNG oder JPG mit transparentem oder hellem Hintergrund.
+            Das Logo wird automatisch skaliert.
+        </p>
 
-                <tr>
-                    <td>Reset Button</td>
-                    <td><input type="number" name="logo_reset_range" value="{{ settings.logo_reset_range }}" required></td>
-                    <td><input type="number" name="logo_reset_address" value="{{ settings.logo_reset_address }}" required></td>
-                </tr>
-
-                <tr>
-                    <td>Zeit Bahn 1</td>
-                    <td><input type="number" name="logo_time_lane_1_range" value="{{ settings.logo_time_lane_1_range }}" required></td>
-                    <td><input type="number" name="logo_time_lane_1_address" value="{{ settings.logo_time_lane_1_address }}" required></td>
-                </tr>
-
-                <tr>
-                    <td>Zeit Bahn 2</td>
-                    <td><input type="number" name="logo_time_lane_2_range" value="{{ settings.logo_time_lane_2_range }}" required></td>
-                    <td><input type="number" name="logo_time_lane_2_address" value="{{ settings.logo_time_lane_2_address }}" required></td>
-                </tr>
-
-                <tr>
-                    <td>Ready</td>
-                    <td><input type="number" name="logo_ready_range" value="{{ settings.logo_ready_range }}" required></td>
-                    <td><input type="number" name="logo_ready_address" value="{{ settings.logo_ready_address }}" required></td>
-                </tr>
-
-                <tr>
-                    <td>Go</td>
-                    <td><input type="number" name="logo_go_range" value="{{ settings.logo_go_range }}" required></td>
-                    <td><input type="number" name="logo_go_address" value="{{ settings.logo_go_address }}" required></td>
-                </tr>
-
-                <tr>
-                    <td>Achtung</td>
-                    <td><input type="number" name="logo_attention_range" value="{{ settings.logo_attention_range }}" required></td>
-                    <td><input type="number" name="logo_attention_address" value="{{ settings.logo_attention_address }}" required></td>
-                </tr>
-
-                <tr>
-                    <td>Lichtschranke Bahn 1</td>
-                    <td><input type="number" name="logo_light_barrier_1_range" value="{{ settings.logo_light_barrier_1_range }}" required></td>
-                    <td><input type="number" name="logo_light_barrier_1_address" value="{{ settings.logo_light_barrier_1_address }}" required></td>
-                </tr>
-
-                <tr>
-                    <td>Lichtschranke Bahn 2</td>
-                    <td><input type="number" name="logo_light_barrier_2_range" value="{{ settings.logo_light_barrier_2_range }}" required></td>
-                    <td><input type="number" name="logo_light_barrier_2_address" value="{{ settings.logo_light_barrier_2_address }}" required></td>
-                </tr>
-
-                <tr>
-                    <td>Fehler / Blockierung</td>
-                    <td><input type="number" name="logo_error_range" value="{{ settings.logo_error_range }}" required></td>
-                    <td><input type="number" name="logo_error_address" value="{{ settings.logo_error_address }}" required></td>
-                </tr>
-
-                <tr>
-                    <td>Fehlstart Bahn 1</td>
-                    <td><input type="number" name="logo_false_start_1_range" value="{{ settings.logo_false_start_1_range }}" required></td>
-                    <td><input type="number" name="logo_false_start_1_address" value="{{ settings.logo_false_start_1_address }}" required></td>
-                </tr>
-
-                <tr>
-                    <td>Fehlstart Bahn 2</td>
-                    <td><input type="number" name="logo_false_start_2_range" value="{{ settings.logo_false_start_2_range }}" required></td>
-                    <td><input type="number" name="logo_false_start_2_address" value="{{ settings.logo_false_start_2_address }}" required></td>
-                </tr>
-            </tbody>
-        </table>
-
-        <button type="submit">Mapping speichern</button>
-    </form>
-</div>
-
-<div class="card">
-    <h3>Status / Diagnose</h3>
-
-    <p>
-        Systemdaten:
-        <strong>Raspberry Pi</strong>
-    </p>
-
-    <p>
-        Konfiguration vollständig:
-        <strong>{{ logo_status.configuration_complete }}</strong>
-    </p>
-
-    <p>
-        Betriebsart:
-        <strong>{{ logo_status.mode }}</strong>
-    </p>
-
-    <p>
-        Verbunden via:
-        <strong>{{ system_status.network.active_connection }}</strong>
-    </p>
-
-    <p>
-        Ethernet:
-        <strong>{{ system_status.network.ethernet.status }}</strong>
-        · MAC:
-        <strong>{{ system_status.network.ethernet.mac_address }}</strong>
-        · IP:
-        <strong>{{ system_status.network.ethernet.ip_address }}</strong>
-    </p>
-
-    <p>
-        WLAN:
-        <strong>{{ system_status.network.wifi.status }}</strong>
-        · MAC:
-        <strong>{{ system_status.network.wifi.mac_address }}</strong>
-        · IP:
-        <strong>{{ system_status.network.wifi.ip_address }}</strong>
-        {% if system_status.network.wifi.connected %}
-            · Signal:
-            <strong>{{ system_status.network.wifi.signal_strength }}</strong>
-        {% endif %}
-    </p>
-
-    <p>
-        Letzter Prüfstatus:
-        {% if settings.logo_last_check_ok == "true" %}
-            <span class="success">OK</span>
-        {% elif settings.logo_last_check_ok == "false" %}
-            <span class="error">Fehler</span>
+        {% if settings.club_logo_path %}
+            <p>Aktuelles Logo:</p>
+            <img
+                src="{{ settings.club_logo_path }}"
+                alt="Vereinslogo"
+                class="settings-logo-preview"
+            >
+            <p>
+                Datei:
+                <strong>{{ settings.club_logo_original_filename or "-" }}</strong>
+                {% if settings.club_logo_uploaded_at %}
+                    · Hochgeladen:
+                    <strong>{{ settings.club_logo_uploaded_at }}</strong>
+                {% endif %}
+            </p>
         {% else %}
-            <strong>-</strong>
+            <p>Aktuell ist kein Vereinslogo hinterlegt.</p>
         {% endif %}
-    </p>
 
-    <p>
-        Letzter Check:
-        <strong>{{ settings.logo_last_check_at or "-" }}</strong>
-    </p>
+        <form method="post" action="/ui/settings/logo-upload" enctype="multipart/form-data">
+            <label>Logo-Datei</label>
+            <input
+                type="file"
+                name="club_logo"
+                accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+                required
+            >
 
-    <p>
-        Letzter Fehler:
-        <strong>{{ settings.logo_last_error or "-" }}</strong>
-    </p>
+            <button type="submit">Logo speichern</button>
+        </form>
 
-    <p>
-        Der Verbindungstest führt aktuell nur TCP-/Modbus-Verbindungstests aus.
-        Es werden keine Ausgänge geschaltet.
-    </p>
+        {% if settings.club_logo_path %}
+            <form method="post" action="/ui/settings/logo-delete">
+                <button
+                    type="submit"
+                    class="small-button red-button"
+                    onclick="return confirm('Vereinslogo wirklich entfernen?')"
+                >
+                    Logo entfernen
+                </button>
+            </form>
+        {% endif %}
+    </div>
+</div>
 
-    <hr>
+<div class="card settings-accordion-card">
+    <button
+        type="button"
+        class="settings-accordion-header"
+        onclick="toggleSettingsAccordion('youth_card')"
+    >
+        <span>ADAC Jugendkarte</span>
+        <span class="settings-accordion-indicator" id="indicator_youth_card">▼</span>
+    </button>
 
-    <p>
-        CPU-Auslastung:
-        <strong>
-            {% if system_status.cpu_usage_percent is none %}
-                -
-            {% else %}
-                {{ system_status.cpu_usage_percent }}%
+    <div class="settings-accordion-body" id="accordion_youth_card">
+        <p>
+            Vorbereitung für die spätere Jugendkarten-Prüfung. Der QR-Link wird nur lokal gespeichert,
+            es erfolgt keine externe Abfrage.
+        </p>
+
+        <form method="post" action="/ui/settings/youth-card">
+            <label>Jugendkarte scannen aktivieren</label>
+            <select name="youth_card_scan_enabled">
+                <option value="false" {% if settings.youth_card_scan_enabled != "true" %}selected{% endif %}>Nein</option>
+                <option value="true" {% if settings.youth_card_scan_enabled == "true" %}selected{% endif %}>Ja</option>
+            </select>
+
+            <button type="submit">Jugendkarten-Einstellung speichern</button>
+        </form>
+    </div>
+</div>
+
+<div class="card settings-accordion-card">
+    <button
+        type="button"
+        class="settings-accordion-header"
+        onclick="toggleSettingsAccordion('database_backup')"
+    >
+        <span>Datenbank-Sicherung</span>
+        <span class="settings-accordion-indicator" id="indicator_database_backup">▼</span>
+    </button>
+
+    <div class="settings-accordion-body" id="accordion_database_backup">
+        <p>
+            Hier kann die vollständige Datenbank exportiert oder auf einem anderen System wieder importiert werden.
+        </p>
+
+        <a class="button small-button" href="/ui/settings/database/export">
+            Datenbank exportieren
+        </a>
+
+        <hr>
+
+        <p class="error">
+            Achtung: Beim Import wird die aktuelle Datenbank ersetzt.
+            Vor dem Ersetzen wird automatisch ein Backup der aktuellen Datenbank erstellt.
+        </p>
+
+        <form
+            method="post"
+            action="/ui/settings/database/import"
+            enctype="multipart/form-data"
+            onsubmit="return confirm('Datenbank wirklich importieren? Die aktuelle Datenbank wird ersetzt. Vorher wird automatisch ein Backup erstellt.');"
+        >
+            <label>Datenbankdatei importieren</label>
+            <input
+                type="file"
+                name="database_file"
+                accept=".sqlite,.db"
+                required
+            >
+
+            <button type="submit" class="red-button">
+                Datenbank importieren
+            </button>
+        </form>
+
+        {% if database_backups %}
+            <h4>Letzte automatische Backups</h4>
+            <table class="compact-runs-table">
+                <thead>
+                    <tr>
+                        <th>Datei</th>
+                        <th>Geändert</th>
+                        <th>Größe</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for backup in database_backups %}
+                        <tr>
+                            <td>{{ backup.name }}</td>
+                            <td>{{ backup.modified_at }}</td>
+                            <td>{{ backup.size_mb }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card settings-accordion-card">
+    <button
+        type="button"
+        class="settings-accordion-header"
+        onclick="toggleSettingsAccordion('system_status')"
+    >
+        <span>Status / Diagnose</span>
+        <span class="settings-accordion-indicator" id="indicator_system_status">▼</span>
+    </button>
+
+    <div class="settings-accordion-body" id="accordion_system_status">
+        <p>
+            Systemdaten:
+            <strong>Raspberry Pi</strong>
+        </p>
+
+        <p>
+            Konfiguration vollständig:
+            <strong>{{ logo_status.configuration_complete }}</strong>
+        </p>
+
+        <p>
+            Betriebsart:
+            <strong>{{ logo_status.mode }}</strong>
+        </p>
+
+        <p>
+            Verbunden via:
+            <strong>{{ system_status.network.active_connection }}</strong>
+        </p>
+
+        <p>
+            Ethernet:
+            <strong>{{ system_status.network.ethernet.status }}</strong>
+            · MAC:
+            <strong>{{ system_status.network.ethernet.mac_address }}</strong>
+            · IP:
+            <strong>{{ system_status.network.ethernet.ip_address }}</strong>
+        </p>
+
+        <p>
+            WLAN:
+            <strong>{{ system_status.network.wifi.status }}</strong>
+            · MAC:
+            <strong>{{ system_status.network.wifi.mac_address }}</strong>
+            · IP:
+            <strong>{{ system_status.network.wifi.ip_address }}</strong>
+            {% if system_status.network.wifi.connected %}
+                · Signal:
+                <strong>{{ system_status.network.wifi.signal_strength }}</strong>
             {% endif %}
-        </strong>
-    </p>
+        </p>
 
-    <p>
-        CPU-Temperatur:
-        <strong>{{ system_status.cpu_temperature }}</strong>
-    </p>
+        <p>
+            Letzter Prüfstatus:
+            {% if settings.logo_last_check_ok == "true" %}
+                <span class="success">OK</span>
+            {% elif settings.logo_last_check_ok == "false" %}
+                <span class="error">Fehler</span>
+            {% else %}
+                <strong>-</strong>
+            {% endif %}
+        </p>
 
-    <p>
-        RAM frei:
-        <strong>{{ system_status.memory.free }}</strong>
-        von
-        <strong>{{ system_status.memory.total }}</strong>
-    </p>
+        <p>
+            Letzter Check:
+            <strong>{{ settings.logo_last_check_at or "-" }}</strong>
+        </p>
 
-    <p>
-        RAM belegt:
-        <strong>{{ system_status.memory.used }}</strong>
-        (<strong>{{ system_status.memory.used_percent }}%</strong>)
-    </p>
+        <p>
+            Letzter Fehler:
+            <strong>{{ settings.logo_last_error or "-" }}</strong>
+        </p>
 
-    <p>
-        Speicher frei:
-        <strong>{{ system_status.storage.free }}</strong>
-        von
-        <strong>{{ system_status.storage.total }}</strong>
-    </p>
+        <p>
+            Der Verbindungstest führt aktuell nur TCP-/Modbus-Verbindungstests aus.
+            Es werden keine Ausgänge geschaltet.
+        </p>
 
-    <p>
-        Speicher belegt:
-        <strong>{{ system_status.storage.used }}</strong>
-        (<strong>{{ system_status.storage.used_percent }}%</strong>)
-    </p>
+        <hr>
 
-    <form method="post" action="/ui/settings/logo/check" style="display:inline;">
-        <button type="submit" class="small-button">
-            Verbindung testen
-        </button>
-    </form>
+        <p>
+            CPU-Auslastung:
+            <strong>
+                {% if system_status.cpu_usage_percent is none %}
+                    -
+                {% else %}
+                    {{ system_status.cpu_usage_percent }}%
+                {% endif %}
+            </strong>
+        </p>
 
-    <form method="post" action="/ui/settings/logo/reset-status" style="display:inline;">
-        <button type="submit" class="small-button">
-            Status zurücksetzen
-        </button>
-    </form>
+        <p>
+            CPU-Temperatur:
+            <strong>{{ system_status.cpu_temperature }}</strong>
+        </p>
 
-    <form method="post" action="/ui/settings/system/restart" style="display:inline;">
-        <button
-            type="submit"
-            class="small-button red-button"
-            onclick="return confirm('Software wirklich neu starten? Die Oberfläche ist kurz nicht erreichbar.')"
-        >
-            Software Neustart
-        </button>
-    </form>
+        <p>
+            RAM frei:
+            <strong>{{ system_status.memory.free }}</strong>
+            von
+            <strong>{{ system_status.memory.total }}</strong>
+        </p>
 
-    <form method="post" action="/ui/settings/system/reboot" style="display:inline;">
-        <button
-            type="submit"
-            class="small-button red-button"
-            onclick="return confirm('Sind Sie sicher, dass Sie das System neu starten möchten? Der Raspberry Pi ist während des Neustarts nicht erreichbar.')"
-        >
-            System neu starten
-        </button>
-    </form>
+        <p>
+            RAM belegt:
+            <strong>{{ system_status.memory.used }}</strong>
+            (<strong>{{ system_status.memory.used_percent }}%</strong>)
+        </p>
+
+        <p>
+            Speicher frei:
+            <strong>{{ system_status.storage.free }}</strong>
+            von
+            <strong>{{ system_status.storage.total }}</strong>
+        </p>
+
+        <p>
+            Speicher belegt:
+            <strong>{{ system_status.storage.used }}</strong>
+            (<strong>{{ system_status.storage.used_percent }}%</strong>)
+        </p>
+
+        <form method="post" action="/ui/settings/logo/check" style="display:inline;">
+            <button type="submit" class="small-button">
+                Verbindung testen
+            </button>
+        </form>
+
+        <form method="post" action="/ui/settings/logo/reset-status" style="display:inline;">
+            <button type="submit" class="small-button">
+                Status zurücksetzen
+            </button>
+        </form>
+
+        <form method="post" action="/ui/settings/system/restart" style="display:inline;">
+            <button
+                type="submit"
+                class="small-button red-button"
+                onclick="return confirm('Software wirklich neu starten? Die Oberfläche ist kurz nicht erreichbar.')"
+            >
+                Software Neustart
+            </button>
+        </form>
+
+        <form method="post" action="/ui/settings/system/reboot" style="display:inline;">
+            <button
+                type="submit"
+                class="small-button red-button"
+                onclick="return confirm('Sind Sie sicher, dass Sie das System neu starten möchten? Der Raspberry Pi ist während des Neustarts nicht erreichbar.')"
+            >
+                System neu starten
+            </button>
+        </form>
+
+        <hr>
+
+        <p>
+            Diese Seite bereitet die Siemens LOGO!-Anbindung vor. Die echte Kommunikation mit der Anlage wird separat aktiviert.
+        </p>
+
+        <p>
+            Solange der Simulationsmodus aktiv ist, bleibt der Rennbetrieb softwareseitig nutzbar.
+        </p>
+    </div>
 </div>
 
-<div class="card">
-    <h3>Hinweis</h3>
+<script>
+    const defaultOpenSettingsAccordions = {
+        logo_connection: true,
+        signal_mapping: false,
+        club_logo: false,
+        youth_card: false,
+        database_backup: false,
+        system_status: true,
+    };
 
-    <p>
-        Diese Seite bereitet die Siemens LOGO!-Anbindung vor. Die echte Kommunikation mit der Anlage wird separat aktiviert.
-    </p>
+    function getSettingsAccordionStorageKey(id) {
+        return "quad_race_settings_accordion_" + id;
+    }
 
-    <p>
-        Solange der Simulationsmodus aktiv ist, bleibt der Rennbetrieb softwareseitig nutzbar.
-    </p>
-</div>
+    function setSettingsAccordionState(id, open) {
+        const body = document.getElementById("accordion_" + id);
+        const indicator = document.getElementById("indicator_" + id);
+
+        if (!body) {
+            return;
+        }
+
+        body.style.display = open ? "block" : "none";
+
+        if (indicator) {
+            indicator.innerText = open ? "▲" : "▼";
+        }
+
+        try {
+            localStorage.setItem(getSettingsAccordionStorageKey(id), open ? "open" : "closed");
+        } catch (error) {
+            return;
+        }
+    }
+
+    function toggleSettingsAccordion(id) {
+        const body = document.getElementById("accordion_" + id);
+
+        if (!body) {
+            return;
+        }
+
+        const isOpen = body.style.display !== "none";
+        setSettingsAccordionState(id, !isOpen);
+    }
+
+    function initializeSettingsAccordions() {
+        Object.keys(defaultOpenSettingsAccordions).forEach(function(id) {
+            let stored = null;
+
+            try {
+                stored = localStorage.getItem(getSettingsAccordionStorageKey(id));
+            } catch (error) {
+                stored = null;
+            }
+
+            if (stored === "open") {
+                setSettingsAccordionState(id, true);
+                return;
+            }
+
+            if (stored === "closed") {
+                setSettingsAccordionState(id, false);
+                return;
+            }
+
+            setSettingsAccordionState(id, defaultOpenSettingsAccordions[id]);
+        });
+    }
+
+    initializeSettingsAccordions();
+</script>
 {% endblock %}

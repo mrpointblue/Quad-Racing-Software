@@ -47,7 +47,7 @@
 
         <div>
             <a class="button small-button" href="/ui/events/{{ active_event.id }}/classes">
-                Zur Laufübersicht
+                Zur Rennbetriebsübersicht
             </a>
 
             {% if next_unconfirmed_run and next_unconfirmed_run.id != race_run.id %}
@@ -171,7 +171,8 @@
     <h3>Zeitnahme und Fehlerpunkte</h3>
 
     <p>
-        Die Zeit wird technisch in Millisekunden gespeichert, aber als <strong>MM:SS,HH</strong> angezeigt.
+        Die Zeit wird technisch in Millisekunden gespeichert. Für Anzeige und Wertung wird sie gemäß Reglement
+        auf 1/100 Sekunde gerundet und als <strong>MM:SS,HH</strong> angezeigt.
         Fehlerpunkte können auch nach Bestätigung angepasst werden und werden in 5er-Schritten erfasst.
     </p>
 
@@ -315,7 +316,8 @@
             return "—";
         }
 
-        const totalCentiseconds = Math.round(ms / 10);
+        const normalizedMs = Math.floor((ms + 5) / 10) * 10;
+        const totalCentiseconds = normalizedMs / 10;
         const minutes = Math.floor(totalCentiseconds / 6000);
         const seconds = Math.floor((totalCentiseconds % 6000) / 100);
         const hundredths = totalCentiseconds % 100;

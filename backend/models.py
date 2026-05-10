@@ -212,6 +212,7 @@ class RegistrationGroup(Base):
     group_key = Column(String, index=True, nullable=False)
     name = Column(String, nullable=False)
     classes = Column(String, nullable=False)
+    registration_deadline = Column(String, nullable=True)
 
     released = Column(Boolean, default=False)
     released_at = Column(String, nullable=True)
@@ -257,6 +258,7 @@ class MonitorDisplaySetting(Base):
     show_overall_results = Column(Boolean, default=False)
     show_team_results = Column(Boolean, default=False)
     show_logo_signal = Column(Boolean, default=False)
+    show_statistics = Column(Boolean, default=False)
     display_orientation = Column(String, default="landscape")
 
     updated_at = Column(String, nullable=True)

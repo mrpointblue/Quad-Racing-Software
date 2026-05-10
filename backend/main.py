@@ -1,21 +1,27 @@
 import shutil
 import os
 import socket
+import sqlite3
 import subprocess
 import threading
 import time
 
 from datetime import datetime, date
+from pathlib import Path
 from urllib.parse import quote
 
-from fastapi import FastAPI, Depends, HTTPException, Request, Form
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi import FastAPI, Depends, File, HTTPException, Request, Form, UploadFile
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from backend.database import Base, engine, get_db
+from backend.database import Base, DATABASE_FILE_PATH, DATA_DIR, SessionLocal, engine, get_db
 from backend.template_helpers import register_template_helpers
+from backend.time_utils import (
+    format_time_ms as format_centiseconds_time_ms,
+    normalize_time_to_centiseconds_ms,
+)
 from backend.models import (
     Event,
     SystemSetting,
@@ -40,20 +46,44 @@ from backend.round_logic import (
     round_exists,
     create_semifinal_pairings,
     create_final_pairings,
+    has_unresolved_ranking_ties,
 )
-from backend.results_logic import build_class_results, build_compact_round_results
+from backend.results_logic import (
+    build_class_results,
+    build_compact_round_results,
+    get_participant_status,
+)
 from backend.export_logic import build_class_export_rows, build_overall_rows
+from backend.statistics_logic import build_result_statistics
 
 
 EVENT_YEAR = datetime.now().year
+CLUB_LOGO_UPLOAD_DIR = Path("backend/static/uploads")
+CLUB_LOGO_ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg"}
+CLUB_LOGO_MAX_SIZE_BYTES = 2 * 1024 * 1024
+DATABASE_BACKUP_DIR = DATA_DIR / "backups"
+DATABASE_IMPORT_DIR = DATA_DIR / "imports"
+DATABASE_IMPORT_ALLOWED_EXTENSIONS = {".sqlite", ".db"}
+DATABASE_IMPORT_MAX_SIZE_BYTES = 100 * 1024 * 1024
+REQUIRED_DATABASE_TABLES = {
+    "events",
+    "participants",
+    "pairings",
+    "race_runs",
+    "run_results",
+    "system_settings",
+}
 
 
 app = FastAPI(
     title="Quad Parallel Race",
-    version="1.1.0",
+    version="1.3.0",
 )
 
 Base.metadata.create_all(bind=engine)
+CLUB_LOGO_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+DATABASE_BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+DATABASE_IMPORT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def ensure_schema_column(table_name: str, column_name: str, column_definition: str):
@@ -84,6 +114,18 @@ ensure_schema_column(
     table_name="monitor_display_settings",
     column_name="show_logo_signal",
     column_definition="BOOLEAN DEFAULT 0",
+)
+
+ensure_schema_column(
+    table_name="monitor_display_settings",
+    column_name="show_statistics",
+    column_definition="BOOLEAN DEFAULT 0",
+)
+
+ensure_schema_column(
+    table_name="registration_groups",
+    column_name="registration_deadline",
+    column_definition="VARCHAR",
 )
 
 for table_name in ["driver_profiles", "participants"]:
@@ -300,7 +342,7 @@ def create_registration_notification(
     group: RegistrationGroup,
 ):
     message = (
-        f"Nennfreigabe erfolgt: {group.name} wurde freigegeben. "
+        f"Startfreigabe erfolgt: {group.name} wurde freigegeben. "
         "Der Rennbetrieb kann gestartet werden."
     )
 
@@ -491,6 +533,7 @@ def ensure_registration_groups(
                 released=False,
                 released_at=None,
                 released_by=None,
+                registration_deadline=None,
                 release_revoked=False,
                 release_revoked_at=None,
                 release_revoked_by=None,
@@ -505,6 +548,95 @@ def ensure_registration_groups(
     ).order_by(
         RegistrationGroup.id
     ).all()
+
+
+def normalize_registration_deadline(value: str | None) -> str | None:
+    value = (value or "").strip()
+
+    if not value:
+        return None
+
+    parts = value.split(":")
+
+    if len(parts) < 2:
+        return None
+
+    try:
+        hour = int(parts[0])
+        minute = int(parts[1])
+    except ValueError:
+        return None
+
+    if hour < 0 or hour > 23 or minute < 0 or minute > 59:
+        return None
+
+    return f"{hour:02d}:{minute:02d}"
+
+
+def get_default_registration_deadlines_for_event_date(
+    event_date: str | None,
+) -> dict[str, str]:
+    parsed_date = parse_event_date(event_date)
+
+    if not parsed_date:
+        return {
+            "class_1_2": "",
+            "class_3_4": "",
+            "class_5": "",
+        }
+
+    if parsed_date.weekday() == 5:
+        return {
+            "class_1_2": "12:30",
+            "class_3_4": "14:30",
+            "class_5": "16:30",
+        }
+
+    if parsed_date.weekday() == 6:
+        return {
+            "class_1_2": "09:30",
+            "class_3_4": "11:30",
+            "class_5": "13:30",
+        }
+
+    return {
+        "class_1_2": "",
+        "class_3_4": "",
+        "class_5": "",
+    }
+
+
+def get_registration_deadlines_for_event(
+    db: Session,
+    event_id: int,
+) -> dict[str, str]:
+    groups = ensure_registration_groups(db, event_id)
+
+    return {
+        group.group_key: group.registration_deadline or ""
+        for group in groups
+    }
+
+
+def update_registration_group_deadlines(
+    db: Session,
+    event_id: int,
+    deadlines: dict[str, str],
+    commit: bool = True,
+):
+    ensure_registration_groups(db, event_id)
+
+    for group_key, deadline in deadlines.items():
+        group = db.query(RegistrationGroup).filter(
+            RegistrationGroup.event_id == event_id,
+            RegistrationGroup.group_key == group_key,
+        ).first()
+
+        if group:
+            group.registration_deadline = normalize_registration_deadline(deadline)
+
+    if commit:
+        db.commit()
 
 
 def get_registration_group_for_class(
@@ -524,7 +656,7 @@ def get_registration_group_for_class(
     if not group:
         raise HTTPException(
             status_code=500,
-            detail="Nennfreigabe-Gruppe nicht gefunden",
+            detail="Startfreigabe-Gruppe nicht gefunden",
         )
 
     return group
@@ -620,9 +752,11 @@ def build_participant_points(
                 "place": row["place"],
                 "points": get_points_table_c(
                     place=row["place"],
-                    has_result=True,
+                    has_result=not row.get("withdrawn", False),
                 ),
                 "total_display": row["total_display"],
+                "status": row.get("status") or get_participant_status(participant),
+                "withdrawn": row.get("withdrawn", False),
             }
 
     return points_by_participant
@@ -651,6 +785,8 @@ def build_team_standings(
                     "place": None,
                     "points": 0,
                     "total_display": "—",
+                    "status": get_participant_status(participant),
+                    "withdrawn": participant.withdrawn is True,
                 },
             )
 
@@ -663,6 +799,8 @@ def build_team_standings(
                     "place": participant_points["place"],
                     "points": participant_points["points"],
                     "total_display": participant_points["total_display"],
+                    "status": participant_points["status"],
+                    "withdrawn": participant_points["withdrawn"],
                     "counted": False,
                 }
             )
@@ -712,15 +850,7 @@ def build_team_standings(
 # ------------------------------------------------------------
 
 def format_time_ms(time_ms: int | None) -> str:
-    if time_ms is None:
-        return "—"
-
-    total_centiseconds = round(time_ms / 10)
-    minutes = total_centiseconds // 6000
-    seconds = (total_centiseconds % 6000) // 100
-    hundredths = total_centiseconds % 100
-
-    return f"{minutes:02d}:{seconds:02d},{hundredths:02d}"
+    return format_centiseconds_time_ms(time_ms)
 
 
 def get_penalty_for_sector(result: RunResult, sector: int) -> int:
@@ -742,7 +872,8 @@ def prepare_result_for_display(result: RunResult, sectors: list[int]) -> RunResu
     if result.participant and result.participant.withdrawn:
         valued_time_ms = None
     elif result.raw_time_ms is not None:
-        valued_time_ms = result.raw_time_ms + (total_penalty_seconds * 1000)
+        scoring_raw_time_ms = normalize_time_to_centiseconds_ms(result.raw_time_ms)
+        valued_time_ms = scoring_raw_time_ms + (total_penalty_seconds * 1000)
     else:
         valued_time_ms = None
 
@@ -837,7 +968,12 @@ def get_monitor_valued_time_ms(result: RunResult | None) -> int | None:
     if result.participant and result.participant.withdrawn:
         return None
 
-    return result.raw_time_ms + (get_monitor_penalty_sum(result) * 1000)
+    scoring_raw_time_ms = normalize_time_to_centiseconds_ms(result.raw_time_ms)
+
+    if scoring_raw_time_ms is None:
+        return None
+
+    return scoring_raw_time_ms + (get_monitor_penalty_sum(result) * 1000)
 
 
 def monitor_driver_name(participant: Participant | None) -> str:
@@ -914,6 +1050,42 @@ def get_monitor_runs(
 
     items.sort(
         key=lambda item: get_monitor_order_key(
+            race_run=item[0],
+            pairing=item[1],
+        )
+    )
+
+    return items
+
+
+def get_run_start_order_key(race_run: RaceRun, pairing: Pairing) -> tuple:
+    round_number, _round_label = get_round_display(race_run.round_name)
+
+    return (
+        round_number,
+        pairing.pairing_number,
+        race_run.run_number,
+    )
+
+
+def get_start_ordered_class_runs(
+    event_id: int,
+    race_class: int,
+    db: Session,
+) -> list[tuple[RaceRun, Pairing]]:
+    pairings = db.query(Pairing).filter(
+        Pairing.event_id == event_id,
+        Pairing.race_class == race_class,
+    ).all()
+
+    items: list[tuple[RaceRun, Pairing]] = []
+
+    for pairing in pairings:
+        for race_run in pairing.runs:
+            items.append((race_run, pairing))
+
+    items.sort(
+        key=lambda item: get_run_start_order_key(
             race_run=item[0],
             pairing=item[1],
         )
@@ -1083,7 +1255,7 @@ def get_monitor_live_result_runs(
                 }
                 participant_rows[row_key] = existing
 
-            existing["raw_time_ms"] += result.raw_time_ms
+            existing["raw_time_ms"] += normalize_time_to_centiseconds_ms(result.raw_time_ms) or 0
             existing["penalty"] += get_monitor_penalty_sum(result)
             existing["valued_time_ms"] += valued_time_ms
             existing["runs_count"] += 1
@@ -1100,19 +1272,29 @@ def get_monitor_live_result_runs(
         key=lambda row: (
             row["race_class"],
             row["valued_time_ms"],
+            row["penalty"],
             row["driver"],
         )
     )
 
     current_class = None
+    previous_key = None
     current_place = 0
+    class_position = 0
 
     for row in rows:
         if row["race_class"] != current_class:
             current_class = row["race_class"]
+            class_position = 1
             current_place = 1
+            previous_key = (row["race_class"], row["valued_time_ms"], row["penalty"])
         else:
-            current_place += 1
+            class_position += 1
+            key = (row["race_class"], row["valued_time_ms"], row["penalty"])
+
+            if key != previous_key:
+                current_place = class_position
+                previous_key = key
 
         row["place"] = current_place
 
@@ -1258,6 +1440,7 @@ def get_or_create_monitor_display_setting(
         show_overall_results=False,
         show_team_results=False,
         show_logo_signal=False,
+        show_statistics=False,
         display_orientation="landscape",
         updated_at=now_string(),
     )
@@ -1280,6 +1463,7 @@ def monitor_display_setting_payload(setting: MonitorDisplaySetting) -> dict:
         "show_overall_results": bool(setting.show_overall_results),
         "show_team_results": bool(setting.show_team_results),
         "show_logo_signal": bool(setting.show_logo_signal),
+        "show_statistics": bool(setting.show_statistics),
         "display_orientation": setting.display_orientation or "landscape",
     }
 
@@ -1403,6 +1587,8 @@ def build_monitor_team_rows(
                     "race_class": member["race_class"],
                     "place": member["place"],
                     "points": member["points"],
+                    "status": member["status"],
+                    "withdrawn": member["withdrawn"],
                     "counted": member["counted"],
                 }
                 for member in row["members"]
@@ -1492,6 +1678,14 @@ def build_monitor_output_payload(
         db=db,
         setting=setting,
     )
+    race_payload["statistics"] = (
+        build_result_statistics(
+            event=event,
+            db=db,
+        )
+        if setting.show_statistics
+        else None
+    )
     race_payload["live_results"] = []
 
     return race_payload
@@ -1565,6 +1759,87 @@ def ui_event_dashboard(
             Participant.active == True,
         ).count()
 
+    dashboard_registration_groups = []
+
+    for group in registration_groups:
+        race_classes = [
+            int(item.strip())
+            for item in (group.classes or "").split(",")
+            if item.strip().isdigit()
+        ]
+        completed_classes = 0
+        class_progress = []
+
+        for race_class in race_classes:
+            participants_count = class_counts.get(race_class, 0)
+            pairings = db.query(Pairing).filter(
+                Pairing.event_id == active_event.id,
+                Pairing.race_class == race_class,
+            ).all()
+            final_exists = round_exists(pairings, ROUND_FINAL)
+            final_complete = is_round_complete(pairings, ROUND_FINAL)
+            class_completed = final_exists and final_complete
+
+            if class_completed:
+                completed_classes += 1
+                class_status_label = "Abgeschlossen"
+                class_status_type = "complete"
+            elif participants_count == 0:
+                class_status_label = "Keine Teilnehmer"
+                class_status_type = "open"
+            elif not pairings:
+                class_status_label = "Noch nicht gestartet"
+                class_status_type = "open"
+            else:
+                class_status_label = "Offen"
+                class_status_type = "open"
+
+            class_progress.append(
+                {
+                    "race_class": race_class,
+                    "participants_count": participants_count,
+                    "completed": class_completed,
+                    "status_label": class_status_label,
+                    "status_type": class_status_type,
+                }
+            )
+
+        total_classes = len(race_classes)
+        all_classes_completed = (
+            total_classes > 0
+            and completed_classes == total_classes
+        )
+
+        if all_classes_completed:
+            status_label = "Abgeschlossen"
+            status_type = "complete"
+            detail_text = "Alle Klassen dieser Startgruppe sind abgeschlossen."
+        elif group.released:
+            status_label = "Startfreigabe erteilt"
+            status_type = "released"
+            detail_text = "Rennbetrieb offen."
+        else:
+            status_label = "Startfreigabe noch nicht erteilt"
+            status_type = "open"
+            detail_text = "Vorbereitung / Nennung noch offen."
+
+        dashboard_registration_groups.append(
+            {
+                "group_key": group.group_key,
+                "name": group.name,
+                "classes": group.classes,
+                "released": group.released,
+                "registration_deadline": group.registration_deadline,
+                "total_classes": total_classes,
+                "completed_classes": completed_classes,
+                "class_progress": class_progress,
+                "all_classes_completed": all_classes_completed,
+                "status_label": status_label,
+                "status_type": status_type,
+                "detail_text": detail_text,
+            }
+        )
+
     return templates.TemplateResponse(
         request=request,
         name="dashboard.html",
@@ -1575,6 +1850,7 @@ def ui_event_dashboard(
             "event_year": get_event_year(active_event),
             "current_time": now_string(),
             "registration_groups": registration_groups,
+            "dashboard_registration_groups": dashboard_registration_groups,
         },
     )
 
@@ -1617,6 +1893,23 @@ def ui_events(
     )
 
 
+@app.get("/ui/help")
+def ui_help(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    active_event = get_active_event(db)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="help.html",
+        context={
+            "active_event": active_event,
+            "event_year": get_event_year(active_event),
+        },
+    )
+
+
 @app.post("/ui/events/new")
 def ui_create_event(
     request: Request,
@@ -1626,6 +1919,9 @@ def ui_create_event(
     location: str = Form(""),
     organizer_club: str = Form(""),
     sectors_per_lane: int = Form(4),
+    registration_deadline_class_1_2: str = Form(""),
+    registration_deadline_class_3_4: str = Form(""),
+    registration_deadline_class_5: str = Form(""),
     db: Session = Depends(get_db),
 ):
     event_number = event_number.strip()
@@ -1694,6 +1990,23 @@ def ui_create_event(
 
     ensure_registration_groups(db, event.id)
 
+    registration_deadlines = {
+        "class_1_2": registration_deadline_class_1_2,
+        "class_3_4": registration_deadline_class_3_4,
+        "class_5": registration_deadline_class_5,
+    }
+
+    if not any((value or "").strip() for value in registration_deadlines.values()):
+        registration_deadlines = get_default_registration_deadlines_for_event_date(
+            event.event_date,
+        )
+
+    update_registration_group_deadlines(
+        db=db,
+        event_id=event.id,
+        deadlines=registration_deadlines,
+    )
+
     return RedirectResponse(
         url=f"/ui/events/{event.id}/dashboard",
         status_code=303,
@@ -1750,6 +2063,7 @@ def ui_edit_event(
         context={
             "active_event": event,
             "event": event,
+            "registration_deadlines": get_registration_deadlines_for_event(db, event.id),
             "error": None,
             "event_year": get_event_year(event),
         },
@@ -1766,6 +2080,9 @@ def ui_update_event(
     location: str = Form(""),
     organizer_club: str = Form(""),
     sectors_per_lane: int = Form(4),
+    registration_deadline_class_1_2: str = Form(""),
+    registration_deadline_class_3_4: str = Form(""),
+    registration_deadline_class_5: str = Form(""),
     db: Session = Depends(get_db),
 ):
     event = require_event(event_id, db)
@@ -1791,6 +2108,11 @@ def ui_update_event(
             context={
                 "active_event": event,
                 "event": event,
+                "registration_deadlines": {
+                    "class_1_2": normalize_registration_deadline(registration_deadline_class_1_2) or "",
+                    "class_3_4": normalize_registration_deadline(registration_deadline_class_3_4) or "",
+                    "class_5": normalize_registration_deadline(registration_deadline_class_5) or "",
+                },
                 "error": "Diese Veranstaltungsnummer ist bereits vergeben.",
                 "event_year": get_event_year(event),
             },
@@ -1802,6 +2124,17 @@ def ui_update_event(
     event.location = location.strip() or None
     event.organizer_club = organizer_club.strip() or None
     event.sectors_per_lane = sectors_per_lane
+
+    update_registration_group_deadlines(
+        db=db,
+        event_id=event.id,
+        deadlines={
+            "class_1_2": registration_deadline_class_1_2,
+            "class_3_4": registration_deadline_class_3_4,
+            "class_5": registration_deadline_class_5,
+        },
+        commit=False,
+    )
 
     db.commit()
 
@@ -1878,6 +2211,14 @@ def ui_delete_event(
 
     db.query(RegistrationGroup).filter(
         RegistrationGroup.event_id == event.id
+    ).delete()
+
+    db.query(RegistrationNotification).filter(
+        RegistrationNotification.event_id == event.id
+    ).delete()
+
+    db.query(MonitorDisplaySetting).filter(
+        MonitorDisplaySetting.event_id == event.id
     ).delete()
 
     db.query(TeamMember).filter(
@@ -2786,7 +3127,7 @@ def ui_revoke_withdraw_participant_legacy(
 
 
 # ------------------------------------------------------------
-# Nennfreigabe je Veranstaltung
+# Startfreigabe je Veranstaltung
 # ------------------------------------------------------------
 
 @app.get("/ui/registration")
@@ -2844,7 +3185,7 @@ def ui_event_release_registration_group(
     if not group:
         raise HTTPException(
             status_code=404,
-            detail="Nennfreigabe-Gruppe nicht gefunden",
+            detail="Startfreigabe-Gruppe nicht gefunden",
         )
 
     group.released = True
@@ -2905,7 +3246,7 @@ def ui_event_revoke_registration_group(
     if not group:
         raise HTTPException(
             status_code=404,
-            detail="Nennfreigabe-Gruppe nicht gefunden",
+            detail="Startfreigabe-Gruppe nicht gefunden",
         )
 
     if is_registration_group_race_started(group, db):
@@ -3167,6 +3508,7 @@ def ui_classes_redirect(
 def ui_event_classes(
     event_id: int,
     request: Request,
+    tie_error: str | None = None,
     db: Session = Depends(get_db),
 ):
     active_event = require_event(event_id, db)
@@ -3336,6 +3678,33 @@ def ui_event_classes(
                     }
                 )
 
+        start_ordered_run_items = sorted(
+            run_items,
+            key=lambda item: (
+                item["round_number"],
+                item["pairing"].pairing_number,
+                item["run"].run_number,
+            ),
+        )
+
+        next_startable_run_id = None
+
+        for run_item in start_ordered_run_items:
+            if not run_item["run"].confirmed:
+                next_startable_run_id = run_item["run"].id
+                break
+
+        for run_item in run_items:
+            run = run_item["run"]
+            run_item["is_next_startable"] = (
+                next_startable_run_id is not None
+                and run.id == next_startable_run_id
+            )
+            run_item["is_open_allowed"] = (
+                run.confirmed
+                or run_item["is_next_startable"]
+            )
+
         run_items = sorted(
             run_items,
             key=lambda item: (
@@ -3349,7 +3718,7 @@ def ui_event_classes(
         active_run = None
 
         for run_item in run_items:
-            if not run_item["run"].confirmed:
+            if run_item["is_next_startable"]:
                 active_run = run_item
                 break
 
@@ -3374,6 +3743,7 @@ def ui_event_classes(
             "active_run_by_class": active_run_by_class,
             "event_year": get_event_year(active_event),
             "event_date_reached": is_event_date_reached(active_event),
+            "tie_error": tie_error,
         },
     )
 
@@ -3492,6 +3862,16 @@ def ui_event_start_semifinal(
             status_code=303,
         )
 
+    if has_unresolved_ranking_ties(
+        participants=participants,
+        pairings=pairings,
+        included_rounds=[ROUND_PRELIMINARY],
+    ):
+        return RedirectResponse(
+            url=f"/ui/events/{active_event.id}/classes?tie_error=semifinal",
+            status_code=303,
+        )
+
     semifinal_pairings = create_semifinal_pairings(
         event_id=active_event.id,
         race_class=race_class,
@@ -3554,6 +3934,16 @@ def ui_event_start_final(
     if not is_round_complete(pairings, ROUND_SEMIFINAL):
         return RedirectResponse(
             url=f"/ui/events/{active_event.id}/classes",
+            status_code=303,
+        )
+
+    if has_unresolved_ranking_ties(
+        participants=participants,
+        pairings=pairings,
+        included_rounds=[ROUND_PRELIMINARY, ROUND_SEMIFINAL],
+    ):
+        return RedirectResponse(
+            url=f"/ui/events/{active_event.id}/classes?tie_error=final",
             status_code=303,
         )
 
@@ -3657,6 +4047,7 @@ async def ui_event_update_monitor_output(
     setting.display_rounds = ",".join(selected_rounds)
     setting.show_overall_results = form.get("show_overall_results") == "1"
     setting.show_team_results = form.get("show_team_results") == "1"
+    setting.show_statistics = form.get("show_statistics") == "1"
     setting.display_orientation = (
         "portrait"
         if form.get("display_orientation") == "portrait"
@@ -3831,8 +4222,9 @@ def ui_event_timekeeper_run(
         for result in results
     ]
 
-    run_items = get_monitor_runs(
+    run_items = get_start_ordered_class_runs(
         event_id=active_event.id,
+        race_class=race_run.race_class,
         db=db,
     )
     next_unconfirmed_item = pick_next_unconfirmed_run(run_items)
@@ -3888,8 +4280,9 @@ def ui_event_start_run(
         )
 
     next_unconfirmed_item = pick_next_unconfirmed_run(
-        get_monitor_runs(
+        get_start_ordered_class_runs(
             event_id=active_event.id,
+            race_class=race_run.race_class,
             db=db,
         )
     )
@@ -4654,6 +5047,12 @@ YOUTH_CARD_DEFAULT_SETTINGS = {
     "youth_card_scan_enabled": "false",
 }
 
+CLUB_LOGO_DEFAULT_SETTINGS = {
+    "club_logo_path": "",
+    "club_logo_original_filename": "",
+    "club_logo_uploaded_at": "",
+}
+
 
 def get_setting(
     db: Session,
@@ -4716,7 +5115,53 @@ def get_app_settings(db: Session) -> dict:
             default_value=default_value,
         )
 
+    for key, default_value in CLUB_LOGO_DEFAULT_SETTINGS.items():
+        settings[key] = get_setting(
+            db=db,
+            key=key,
+            default_value=default_value,
+        )
+
     return settings
+
+
+def get_club_logo_path_from_db(db: Session) -> str:
+    return get_setting(
+        db=db,
+        key="club_logo_path",
+        default_value="",
+    )
+
+
+def get_club_logo_path() -> str:
+    db = SessionLocal()
+
+    try:
+        return get_club_logo_path_from_db(db)
+    finally:
+        db.close()
+
+
+def get_club_logo_file_path_from_db(db: Session) -> str | None:
+    logo_path = get_club_logo_path_from_db(db)
+
+    if not logo_path:
+        return None
+
+    relative_path = logo_path.lstrip("/")
+
+    if not relative_path.startswith("static/"):
+        return None
+
+    file_path = Path("backend") / relative_path
+
+    if not file_path.exists():
+        return None
+
+    return str(file_path)
+
+
+templates.env.globals["get_club_logo_path"] = get_club_logo_path
 
 
 def save_logo_settings(
@@ -5231,6 +5676,97 @@ def reboot_system_delayed():
     )
 
 
+def remove_existing_club_logos():
+    CLUB_LOGO_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+    for logo_file in CLUB_LOGO_UPLOAD_DIR.glob("club_logo.*"):
+        if logo_file.is_file():
+            logo_file.unlink(missing_ok=True)
+
+
+def clear_club_logo_settings(db: Session):
+    set_setting(db, "club_logo_path", "")
+    set_setting(db, "club_logo_original_filename", "")
+    set_setting(db, "club_logo_uploaded_at", "")
+
+
+def validate_club_logo_upload(file: UploadFile, file_bytes: bytes) -> str:
+    original_filename = Path(file.filename or "").name
+    extension = Path(original_filename).suffix.lower()
+
+    if extension not in CLUB_LOGO_ALLOWED_EXTENSIONS:
+        raise ValueError("Ungültiger Dateityp. Erlaubt sind PNG, JPG und JPEG.")
+
+    if len(file_bytes) > CLUB_LOGO_MAX_SIZE_BYTES:
+        raise ValueError("Die Datei ist zu groß. Maximal erlaubt sind 2 MB.")
+
+    if not file_bytes:
+        raise ValueError("Die Datei ist leer.")
+
+    return extension
+
+
+def validate_database_upload(file: UploadFile, file_bytes: bytes) -> str:
+    original_filename = Path(file.filename or "").name
+    extension = Path(original_filename).suffix.lower()
+
+    if extension not in DATABASE_IMPORT_ALLOWED_EXTENSIONS:
+        raise ValueError("Ungültiger Dateityp. Erlaubt sind SQLite-Datenbanken.")
+
+    if len(file_bytes) > DATABASE_IMPORT_MAX_SIZE_BYTES:
+        raise ValueError("Die Datei ist zu groß.")
+
+    if not file_bytes:
+        raise ValueError("Die Datei ist leer.")
+
+    return extension
+
+
+def validate_sqlite_database(path: Path) -> bool:
+    try:
+        connection = sqlite3.connect(path)
+
+        try:
+            integrity_result = connection.execute(
+                "PRAGMA integrity_check;"
+            ).fetchone()
+
+            if not integrity_result or integrity_result[0] != "ok":
+                return False
+
+            table_rows = connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table';"
+            ).fetchall()
+            table_names = {row[0] for row in table_rows}
+        finally:
+            connection.close()
+    except sqlite3.DatabaseError:
+        return False
+
+    return REQUIRED_DATABASE_TABLES.issubset(table_names)
+
+
+def get_database_backup_items() -> list[dict]:
+    DATABASE_BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    backup_items = []
+
+    for backup_file in sorted(
+        DATABASE_BACKUP_DIR.glob("*.sqlite"),
+        key=lambda item: item.stat().st_mtime,
+        reverse=True,
+    )[:5]:
+        stat = backup_file.stat()
+        backup_items.append(
+            {
+                "name": backup_file.name,
+                "modified_at": datetime.fromtimestamp(stat.st_mtime).strftime("%d.%m.%Y %H:%M:%S"),
+                "size_mb": f"{stat.st_size / (1024 * 1024):.1f} MB",
+            }
+        )
+
+    return backup_items
+
+
 @app.get("/ui/settings")
 def ui_settings(
     request: Request,
@@ -5253,8 +5789,150 @@ def ui_settings(
             "system_status": system_status,
             "success": success,
             "error": error,
+            "database_backups": get_database_backup_items(),
             "event_year": get_event_year(active_event),
         },
+    )
+
+
+@app.get("/ui/settings/database/export")
+def ui_export_database():
+    if not DATABASE_FILE_PATH.exists():
+        return RedirectResponse(
+            url="/ui/settings?error=Datenbankdatei nicht gefunden",
+            status_code=303,
+        )
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"quad_race_backup_{timestamp}.sqlite"
+
+    return FileResponse(
+        path=DATABASE_FILE_PATH,
+        media_type="application/vnd.sqlite3",
+        filename=filename,
+    )
+
+
+@app.post("/ui/settings/database/import")
+async def ui_import_database(
+    database_file: UploadFile = File(...),
+):
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    try:
+        file_bytes = await database_file.read()
+        extension = validate_database_upload(
+            file=database_file,
+            file_bytes=file_bytes,
+        )
+    except ValueError as error:
+        return RedirectResponse(
+            url=f"/ui/settings?error={quote(str(error))}",
+            status_code=303,
+        )
+
+    DATABASE_IMPORT_DIR.mkdir(parents=True, exist_ok=True)
+    DATABASE_BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    import_path = DATABASE_IMPORT_DIR / f"import_{timestamp}{extension}"
+
+    try:
+        import_path.write_bytes(file_bytes)
+    except OSError:
+        return RedirectResponse(
+            url="/ui/settings?error=Datenbank konnte nicht importiert werden.",
+            status_code=303,
+        )
+
+    if not validate_sqlite_database(import_path):
+        import_path.unlink(missing_ok=True)
+
+        return RedirectResponse(
+            url="/ui/settings?error=Die Datei ist keine gültige Quad-Race-Datenbank.",
+            status_code=303,
+        )
+
+    backup_path = DATABASE_BACKUP_DIR / f"pre_import_backup_{timestamp}.sqlite"
+    replace_path = DATABASE_FILE_PATH.with_name(f"{DATABASE_FILE_PATH.name}.importing")
+
+    try:
+        engine.dispose()
+
+        if DATABASE_FILE_PATH.exists():
+            shutil.copy2(DATABASE_FILE_PATH, backup_path)
+
+        shutil.copy2(import_path, replace_path)
+        replace_path.replace(DATABASE_FILE_PATH)
+    except OSError:
+        replace_path.unlink(missing_ok=True)
+
+        return RedirectResponse(
+            url="/ui/settings?error=Datenbank konnte nicht importiert werden.",
+            status_code=303,
+        )
+
+    threading.Thread(
+        target=restart_quad_race_service_delayed,
+        daemon=True,
+    ).start()
+
+    return RedirectResponse(
+        url="/ui/settings?success=Datenbank wurde importiert. Anwendung wird neu gestartet.",
+        status_code=303,
+    )
+
+
+@app.post("/ui/settings/logo-upload")
+async def ui_upload_club_logo(
+    club_logo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    try:
+        file_bytes = await club_logo.read()
+        extension = validate_club_logo_upload(
+            file=club_logo,
+            file_bytes=file_bytes,
+        )
+    except ValueError as error:
+        return RedirectResponse(
+            url=f"/ui/settings?error={quote(str(error))}",
+            status_code=303,
+        )
+
+    CLUB_LOGO_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    remove_existing_club_logos()
+
+    target_path = CLUB_LOGO_UPLOAD_DIR / f"club_logo{extension}"
+
+    try:
+        target_path.write_bytes(file_bytes)
+    except OSError:
+        return RedirectResponse(
+            url="/ui/settings?error=Vereinslogo konnte nicht gespeichert werden",
+            status_code=303,
+        )
+
+    set_setting(db, "club_logo_path", f"/static/uploads/club_logo{extension}")
+    set_setting(db, "club_logo_original_filename", Path(club_logo.filename or "").name)
+    set_setting(db, "club_logo_uploaded_at", now_string())
+    db.commit()
+
+    return RedirectResponse(
+        url="/ui/settings?success=Vereinslogo gespeichert",
+        status_code=303,
+    )
+
+
+@app.post("/ui/settings/logo-delete")
+def ui_delete_club_logo(
+    db: Session = Depends(get_db),
+):
+    remove_existing_club_logos()
+    clear_club_logo_settings(db)
+    db.commit()
+
+    return RedirectResponse(
+        url="/ui/settings?success=Vereinslogo entfernt",
+        status_code=303,
     )
 
 

@@ -13,6 +13,10 @@
         </p>
     {% endif %}
 
+    <div class="hint">
+        Zeitwertung gemäß Reglement: Alle Zeiten werden für Anzeige und Wertung auf 1/100 Sekunde gerundet.
+    </div>
+
     <a class="button small-button" href="/ui/events/{{ active_event.id }}/results">
         Zurück zu Ergebnisse
     </a>
@@ -44,6 +48,26 @@
     </a>
 </div>
 
+{% if tie_warnings %}
+    <div class="card">
+        <div class="error">
+            <strong>Nicht aufgelöster Gleichstand erkannt.</strong><br>
+            Gesamtzeit und Fehlerpunkte sind identisch. Es erfolgt keine automatische Entscheidung durch die Software.
+            Die Rennleitung muss entscheiden; ggf. ist ein Stechen bzw. eine Wiederholung des Finallaufs erforderlich.
+
+            <ul>
+                {% for warning in tie_warnings %}
+                    <li>
+                        Klasse {{ warning.race_class }} · Platz {{ warning.place }} ·
+                        {{ warning.total_display }} · {{ warning.total_penalty }} FP:
+                        {{ warning.drivers|join(", ") }}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+{% endif %}
+
 <div class="card">
     {% if result_rows|length > 0 %}
         <table class="compact-runs-table">
@@ -53,6 +77,7 @@
                     <th>Startnr.</th>
                     <th>Fahrer</th>
                     <th>Verein</th>
+                    <th>Status</th>
 
                     <th>Viertelfinale Zeit</th>
                     <th>Viertelfinale FP</th>
@@ -78,6 +103,7 @@
                     <td>{{ row.start_number }}</td>
                     <td>{{ row.driver_name }}</td>
                     <td>{{ row.club }}</td>
+                    <td>{{ row.status }}</td>
 
                     <td>{{ row.preliminary.round_total_display }}</td>
                     <td>{{ row.preliminary.round_penalty }}</td>
@@ -101,4 +127,10 @@
         <p>Noch keine Ergebnisdaten vorhanden.</p>
     {% endif %}
 </div>
+
+{% if print_mode %}
+<script>
+    window.addEventListener("load", () => window.print());
+</script>
+{% endif %}
 {% endblock %}

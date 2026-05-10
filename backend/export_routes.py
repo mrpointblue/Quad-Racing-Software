@@ -1,11 +1,12 @@
 from datetime import datetime
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse, Response
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.models import Event, Pairing, Participant, Team
+from backend.models import Event, Pairing, Participant, SystemSetting, Team
 from backend.export_logic import (
     build_all_overall_xlsx,
     build_class_xlsx,
@@ -51,6 +52,27 @@ def build_xlsx_response(
             "Content-Disposition": f'attachment; filename="{filename}"'
         },
     )
+
+
+def get_club_logo_file_path(db: Session) -> str | None:
+    setting = db.query(SystemSetting).filter(
+        SystemSetting.key == "club_logo_path"
+    ).first()
+
+    if not setting or not setting.value:
+        return None
+
+    relative_path = setting.value.lstrip("/")
+
+    if not relative_path.startswith("static/"):
+        return None
+
+    file_path = Path("backend") / relative_path
+
+    if not file_path.exists():
+        return None
+
+    return str(file_path)
 
 
 # ------------------------------------------------------------

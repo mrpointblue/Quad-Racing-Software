@@ -6,8 +6,9 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
+DATABASE_FILE_PATH = DATA_DIR / "quad_race.sqlite"
 
-DATABASE_URL = "sqlite:///./data/quad_race.sqlite"
+DATABASE_URL = f"sqlite:///{DATABASE_FILE_PATH}"
 
 engine = create_engine(
     DATABASE_URL,

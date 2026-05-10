@@ -13,6 +13,10 @@
         </p>
     {% endif %}
 
+    <div class="hint">
+        Zeitwertung gemäß Reglement: Alle Zeiten werden für Anzeige und Wertung auf 1/100 Sekunde gerundet.
+    </div>
+
     <a class="button small-button" href="/ui/events/{{ active_event.id }}/results">
         Zurück zu Ergebnisse
     </a>
@@ -23,10 +27,6 @@
 
     <a class="button small-button" href="/ui/events/{{ active_event.id }}/export/class/{{ race_class }}/round/{{ round_key }}/xlsx">
         Export dieser Runde
-    </a>
-
-    <a class="button small-button print-link" href="/ui/events/{{ active_event.id }}/print/class/{{ race_class }}/round/{{ round_key }}">
-        Druck dieser Runde
     </a>
 
     {% if print_mode %}
@@ -52,6 +52,26 @@
     </a>
 </div>
 
+{% if tie_warnings %}
+    <div class="card">
+        <div class="error">
+            <strong>Nicht aufgelöster Gleichstand erkannt.</strong><br>
+            Gesamtzeit und Fehlerpunkte sind identisch. Es erfolgt keine automatische Entscheidung durch die Software.
+            Die Rennleitung muss entscheiden; ggf. ist ein Stechen bzw. eine Wiederholung des Finallaufs erforderlich.
+
+            <ul>
+                {% for warning in tie_warnings %}
+                    <li>
+                        Klasse {{ warning.race_class }} · {{ warning.round_label }} · Platz {{ warning.place }} ·
+                        {{ warning.total_display }} · {{ warning.total_penalty }} FP:
+                        {{ warning.drivers|join(", ") }}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+{% endif %}
+
 <div class="card">
     {% if result_rows|length > 0 %}
         <table class="compact-runs-table">
@@ -73,7 +93,12 @@
                     <tr>
                         <td><strong>{{ row.place }}</strong></td>
                         <td>{{ row.start_number }}</td>
-                        <td>{{ row.driver_name }}</td>
+                        <td>
+                            {{ row.driver_name }}
+                            {% if row.status and row.status != "Gewertet" %}
+                                <br><small>{{ row.status }}</small>
+                            {% endif %}
+                        </td>
                         <td>{{ row.club or "—" }}</td>
                         <td>{{ row.round_detail.run_1_raw_display or "—" }}</td>
                         <td>{{ row.round_detail.run_1_penalty }}</td>
@@ -88,4 +113,10 @@
         <p>Für diese Runde liegen noch keine Ergebnisdaten vor.</p>
     {% endif %}
 </div>
+
+{% if print_mode %}
+<script>
+    window.addEventListener("load", () => window.print());
+</script>
+{% endif %}
 {% endblock %}

@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="card">
-    <h2>Nennfreigabe</h2>
+    <h2>Startfreigabe</h2>
 
     {% if active_event %}
         <p>
@@ -12,7 +12,7 @@
     {% endif %}
 
     <p>
-        Jede Startgruppe hat einen eigenen Nennungsschluss und muss separat freigegeben werden.
+        Jede Startgruppe hat einen eigenen Nennungsschluss und benötigt eine separate Startfreigabe.
     </p>
 
     {% if active_event.closed %}
@@ -28,15 +28,33 @@
     <div class="card">
         <h3>{{ group.name }}</h3>
 
-        <p>
-            Klassen:
-            <strong>{{ group.classes }}</strong>
-        </p>
+        <div class="registration-deadline-box">
+            <p>
+                Nennschluss:<br>
+                {% if group.registration_deadline %}
+                    <strong>{{ group.registration_deadline }} Uhr</strong>
+                {% else %}
+                    <strong>Nicht festgelegt</strong>
+                {% endif %}
+            </p>
+
+            {% if group.registration_deadline %}
+                <div
+                    class="registration-deadline-timer"
+                    data-deadline="{{ group.registration_deadline }}"
+                    data-event-date="{{ active_event.event_date or '' }}"
+                >
+                    Wird berechnet …
+                </div>
+            {% else %}
+                <div class="hint">Keine Nennschlusszeit hinterlegt.</div>
+            {% endif %}
+        </div>
 
         {% if group.released %}
             <div class="success">
-                Nennung freigegeben.<br>
-                Rennbetrieb für diese Gruppe möglich.
+                Startfreigabe erteilt.<br>
+                Rennbetrieb für diese Gruppe freigegeben.
             </div>
 
             <p>
@@ -74,7 +92,7 @@
                     <button
                         type="submit"
                         class="red-button"
-                        onclick="return confirm('Nennfreigabe wirklich zurücknehmen?')"
+                        onclick="return confirm('Startfreigabe wirklich zurücknehmen?')"
                     >
                         Freigabe zurücknehmen
                     </button>
@@ -82,7 +100,7 @@
             {% endif %}
         {% else %}
             <div class="error">
-                Nennung noch nicht freigegeben.<br>
+                Startfreigabe noch nicht erteilt.<br>
                 Rennbetrieb für diese Gruppe gesperrt.
             </div>
 
@@ -114,7 +132,7 @@
                     >
 
                     <button type="submit">
-                        {{ group.name }} freigeben
+                        Startfreigabe erteilen
                     </button>
                 </form>
             {% endif %}
@@ -126,7 +144,7 @@
 <div class="card">
     <h3>Hinweis</h3>
     <p>
-        Die Zeitnahme kann eine Klasse erst starten, wenn die zugehörige Nennfreigabe erteilt wurde.
+        Die Zeitnahme kann eine Klasse erst starten, wenn die zugehörige Startfreigabe erteilt wurde.
     </p>
 
     <p>
@@ -134,9 +152,110 @@
     </p>
 
     <ul>
-        <li>Klasse 1 &amp; 2 → gemeinsame Nennfreigabe</li>
-        <li>Klasse 3 &amp; 4 → gemeinsame Nennfreigabe</li>
-        <li>Klasse 5 → eigene Nennfreigabe</li>
+        <li>Klasse 1 &amp; 2 → gemeinsame Startfreigabe</li>
+        <li>Klasse 3 &amp; 4 → gemeinsame Startfreigabe</li>
+        <li>Klasse 5 → eigene Startfreigabe</li>
     </ul>
 </div>
+
+<script>
+    function parseEventDate(value) {
+        if (!value) {
+            return null;
+        }
+
+        value = value.trim();
+
+        if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+            const parts = value.split("-");
+            return {
+                year: parseInt(parts[0], 10),
+                month: parseInt(parts[1], 10) - 1,
+                day: parseInt(parts[2], 10),
+            };
+        }
+
+        if (/^\d{2}\.\d{2}\.\d{4}$/.test(value)) {
+            const parts = value.split(".");
+            return {
+                year: parseInt(parts[2], 10),
+                month: parseInt(parts[1], 10) - 1,
+                day: parseInt(parts[0], 10),
+            };
+        }
+
+        return null;
+    }
+
+    function buildDeadlineDate(eventDateValue, deadlineValue) {
+        const parsedDate = parseEventDate(eventDateValue);
+        const timeParts = (deadlineValue || "").split(":");
+
+        if (!parsedDate || timeParts.length < 2) {
+            return null;
+        }
+
+        const hour = parseInt(timeParts[0], 10);
+        const minute = parseInt(timeParts[1], 10);
+
+        if (Number.isNaN(hour) || Number.isNaN(minute)) {
+            return null;
+        }
+
+        return new Date(
+            parsedDate.year,
+            parsedDate.month,
+            parsedDate.day,
+            hour,
+            minute,
+            0
+        );
+    }
+
+    function updateRegistrationDeadlineTimers() {
+        const timers = document.querySelectorAll(".registration-deadline-timer");
+
+        timers.forEach(function(timer) {
+            const deadline = timer.dataset.deadline || "";
+            const eventDate = timer.dataset.eventDate || "";
+            const deadlineDate = buildDeadlineDate(eventDate, deadline);
+
+            if (!deadlineDate) {
+                timer.innerText = "Nennschlusszeit kann nicht berechnet werden.";
+                timer.classList.add("error");
+                timer.classList.remove("success");
+                return;
+            }
+
+            const now = new Date();
+            const diffMs = deadlineDate.getTime() - now.getTime();
+
+            if (diffMs <= 0) {
+                timer.innerText = "Nennzeit überschritten";
+                timer.classList.add("error");
+                timer.classList.remove("success");
+                return;
+            }
+
+            const totalSeconds = Math.floor(diffMs / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+
+            timer.innerText =
+                "Noch " +
+                String(hours).padStart(2, "0") +
+                ":" +
+                String(minutes).padStart(2, "0") +
+                ":" +
+                String(seconds).padStart(2, "0");
+
+            timer.classList.add("success");
+            timer.classList.remove("error");
+        });
+    }
+
+    updateRegistrationDeadlineTimers();
+    setInterval(updateRegistrationDeadlineTimers, 1000);
+</script>
 {% endblock %}
