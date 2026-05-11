@@ -1276,6 +1276,17 @@ select {
     gap: 12px;
 }
 
+.monitor-portrait .monitor-grid #monitor_starter_grid {
+    display: flex !important;
+    gap: 16px !important;
+    width: 100% !important;
+}
+
+.monitor-portrait .monitor-grid #monitor_starter_grid .monitor-panel {
+    flex: 1 1 50% !important;
+    min-width: 0 !important;
+}
+
 .monitor-portrait .monitor-lanes {
     grid-template-columns: 1fr;
     gap: 12px;
@@ -2023,6 +2034,29 @@ select {
     line-height: 1.2;
     white-space: normal;
     position: static;
+}
+
+.qpr-eliminated-driver {
+  display: inline-block;
+  max-width: 220px;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+  line-height: 1.25;
+  padding: 8px 10px;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+}
+
+.qpr-driver-cell {
+  white-space: normal;
+  overflow: visible;
+  vertical-align: middle;
+}
+
+.qpr-driver-cell .qpr-eliminated-driver {
+  color: #b91c1c;
 }
 
 .compact-info .button {

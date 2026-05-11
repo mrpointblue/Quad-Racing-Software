@@ -80,7 +80,7 @@ REQUIRED_DATABASE_TABLES = {
 
 app = FastAPI(
     title="Quad Parallel Race",
-    version="1.4.1",
+    version="1.5.0",
 )
 
 Base.metadata.create_all(bind=engine)

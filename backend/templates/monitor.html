@@ -13,8 +13,8 @@
                 <img src="{{ club_logo_path }}" alt="Vereinslogo" class="monitor-logo">
             {% endif %}
             <div>
-            <h1>Rennstatus</h1>
-            <p id="monitor_event">—</p>
+                <h1>Rennstatus</h1>
+                <p id="monitor_event">—</p>
             </div>
         </div>
         <div class="monitor-topbar-status">
@@ -67,7 +67,11 @@
         </div>
     </section>
 
-    <div id="monitor_starter_grid" class="monitor-grid"{% if not monitor_data.current_run and monitor_data.next_runs|length == 0 %} hidden{% endif %}>
+    <div
+        id="monitor_starter_grid"
+        class="monitor-grid"
+        {% if not monitor_data.display_setting.show_race_control or (not monitor_data.current_run and monitor_data.next_runs|length == 0) %}hidden style="display:none"{% endif %}
+    >
         <section class="monitor-panel monitor-current">
             <h2>Aktuelle Paarung</h2>
             <div id="current_run_meta" class="monitor-meta">—</div>
@@ -101,7 +105,7 @@
             </div>
         </section>
 
-        <section class="monitor-panel">
+        <section class="monitor-panel" id="next_starter_section">
             <h2>Nächste Starter</h2>
             <div id="next_runs" class="monitor-next-list">—</div>
         </section>
@@ -307,6 +311,7 @@
 
 <script>
     const monitorEventId = {{ active_event.id }};
+    let monitorShowRaceControl = {{ "true" if monitor_data.display_setting.show_race_control else "false" }};
 
     function text(id, value) {
         const element = document.getElementById(id);
@@ -327,6 +332,91 @@
 
     function cleanDriverName(driver) {
         return String(driver || "—").replace("#", "");
+    }
+
+    function updateStarterGrid(data) {
+        const grid = document.getElementById("monitor_starter_grid");
+
+        if (!grid) {
+            return;
+        }
+
+        monitorShowRaceControl = Boolean(
+            data.display_setting && data.display_setting.show_race_control
+        );
+
+        if (!monitorShowRaceControl) {
+            grid.hidden = true;
+            grid.style.display = "none";
+            return;
+        }
+
+        const hasCurrentRun = Boolean(data.current_run);
+        const hasNextRuns = Boolean(data.next_runs && data.next_runs.length > 0);
+
+        if (!hasCurrentRun && !hasNextRuns) {
+            grid.hidden = true;
+            grid.style.display = "none";
+            return;
+        }
+
+        grid.hidden = false;
+        grid.style.display = "";
+    }
+
+    function applyPortraitLayout() {
+        const body = document.body;
+        const starterGrid = document.getElementById("monitor_starter_grid");
+        const nextStarterSection = document.getElementById("next_starter_section");
+        const nextRunsElement = document.getElementById("next_runs");
+
+        if (!monitorShowRaceControl) {
+            if (starterGrid) {
+                starterGrid.hidden = true;
+                starterGrid.style.display = "none";
+            }
+            return;
+        }
+
+        if (!starterGrid || starterGrid.hidden || starterGrid.style.display === "none") {
+            return;
+        }
+
+        if (nextStarterSection && nextRunsElement) {
+            const nextText = nextRunsElement.textContent || nextRunsElement.innerText || "";
+
+            if (nextText.includes("Keine weiteren Starter")) {
+                nextStarterSection.style.display = "none";
+            } else {
+                nextStarterSection.style.display = "";
+            }
+        }
+
+        if (body && body.classList.contains("monitor-portrait") && starterGrid) {
+            const nextStarterVisible = nextStarterSection && nextStarterSection.style.display !== "none";
+
+            if (nextStarterVisible) {
+                starterGrid.style.display = "flex";
+                starterGrid.style.gap = "16px";
+                starterGrid.style.width = "100%";
+
+                const panels = starterGrid.querySelectorAll(".monitor-panel");
+                panels.forEach((panel) => {
+                    panel.style.flex = "1 1 50%";
+                    panel.style.minWidth = "0";
+                });
+            } else {
+                starterGrid.style.display = "grid";
+                starterGrid.style.gap = "";
+                starterGrid.style.width = "";
+
+                const panels = starterGrid.querySelectorAll(".monitor-panel");
+                panels.forEach((panel) => {
+                    panel.style.flex = "";
+                    panel.style.minWidth = "";
+                });
+            }
+        }
     }
 
     function renderCurrentRun(run) {
@@ -407,7 +497,6 @@
         wrapper.appendChild(headline);
 
         const runs = section.rows || [];
-
         const table = document.createElement("table");
         table.className = "monitor-results-table monitor-race-results-table";
         table.innerHTML =
@@ -477,6 +566,7 @@
                     (member.status && member.status !== "Gewertet" ? " · " + member.status : "")
                 ))
                 .join("<br>");
+
             const tr = document.createElement("tr");
             tr.innerHTML =
                 "<td><strong>" + row.place + "</strong></td>" +
@@ -692,40 +782,35 @@
         }
     }
 
-    function updateStarterGrid(currentRun, nextRuns) {
-        const grid = document.getElementById("monitor_starter_grid");
-
-        if (!grid) {
-            return;
-        }
-
-        const hasCurrentRun = Boolean(currentRun);
-        const hasNextRuns = Boolean(nextRuns && nextRuns.length > 0);
-        grid.hidden = !hasCurrentRun && !hasNextRuns;
-    }
-
     function pollMonitor() {
         fetch("/api/events/" + monitorEventId + "/monitor")
             .then((response) => response.json())
             .then((data) => {
                 document.body.classList.toggle("monitor-portrait", data.display_setting.display_orientation === "portrait");
                 document.body.classList.toggle("monitor-landscape", data.display_setting.display_orientation !== "portrait");
+
                 text("monitor_event", data.event.event_number + " · " + data.event.name + " · " + data.event.organizer_club);
                 text("monitor_time", data.server_time);
+
                 renderLogoSignal(data.logo_signal);
-                updateStarterGrid(data.current_run, data.next_runs);
+                updateStarterGrid(data);
                 renderCurrentRun(data.current_run);
                 renderMonitorResults(data.result_sections, data.overall_sections, data.team_results);
                 renderMonitorStatistics(data.statistics);
                 renderMarshalQr(data.marshal_qr);
                 renderNextRuns(data.next_runs);
+                applyPortraitLayout();
             })
             .catch(() => {
                 text("monitor_results", "Monitor-Daten konnten nicht geladen werden.");
             });
     }
 
-    pollMonitor();
+    document.addEventListener("DOMContentLoaded", () => {
+        pollMonitor();
+        applyPortraitLayout();
+    });
+
     setInterval(pollMonitor, 2000);
 </script>
 {% endblock %}

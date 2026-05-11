@@ -213,22 +213,18 @@
                                 <strong>{{ round_number }}.{{ run.run_number }}</strong>
                             </td>
 
-                            <td>
+                            <td class="qpr-driver-cell">
                                 {% if lane_a %}
+                                    #{{ lane_a.participant.start_number }}
+                                    {{ lane_a.participant.first_name }}
+                                    {{ lane_a.participant.last_name }}
                                     {% if lane_a.participant.withdrawn %}
-                                        <span class="error">
-                                            #{{ lane_a.participant.start_number }}
-                                            {{ lane_a.participant.first_name }}
-                                            {{ lane_a.participant.last_name }}
-                                            – Ausgeschieden
+                                        <br><span class="qpr-eliminated-driver">
+                                            Ausgeschieden
                                             {% if lane_a.participant.withdrawn_reason %}
                                                 / {{ lane_a.participant.withdrawn_reason }}
                                             {% endif %}
                                         </span>
-                                    {% else %}
-                                        #{{ lane_a.participant.start_number }}
-                                        {{ lane_a.participant.first_name }}
-                                        {{ lane_a.participant.last_name }}
                                     {% endif %}
                                 {% else %}
                                     —
@@ -287,22 +283,18 @@
                                 <td>—</td>
                             {% endif %}
 
-                            <td>
+                            <td class="qpr-driver-cell">
                                 {% if lane_b %}
+                                    #{{ lane_b.participant.start_number }}
+                                    {{ lane_b.participant.first_name }}
+                                    {{ lane_b.participant.last_name }}
                                     {% if lane_b.participant.withdrawn %}
-                                        <span class="error">
-                                            #{{ lane_b.participant.start_number }}
-                                            {{ lane_b.participant.first_name }}
-                                            {{ lane_b.participant.last_name }}
-                                            – Ausgeschieden
+                                        <br><span class="qpr-eliminated-driver">
+                                            Ausgeschieden
                                             {% if lane_b.participant.withdrawn_reason %}
                                                 / {{ lane_b.participant.withdrawn_reason }}
                                             {% endif %}
                                         </span>
-                                    {% else %}
-                                        #{{ lane_b.participant.start_number }}
-                                        {{ lane_b.participant.first_name }}
-                                        {{ lane_b.participant.last_name }}
                                     {% endif %}
                                 {% else %}
                                     —
