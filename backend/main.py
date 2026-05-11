@@ -1072,6 +1072,10 @@ def get_monitor_valued_time_ms(result: RunResult | None, db: Session) -> int | N
 def monitor_driver_name(participant: Participant | None) -> str:
     if participant is None:
         return "-"
+    
+    # Don't show eliminated drivers in monitor
+    if participant.withdrawn:
+        return "-"
 
     return f"#{participant.start_number} {participant.first_name} {participant.last_name}"
 
@@ -1100,6 +1104,49 @@ def monitor_run_payload(
 ) -> dict:
     lane_a_result, lane_b_result = get_lane_results_for_run(race_run)
     round_number, round_label = get_round_display(race_run.round_name)
+
+    # Send to startdisplay if configured
+    try:
+        # Check if participants are eliminated and exclude them
+        lane_a_number = None
+        lane_b_number = None
+        
+        if lane_a_result and lane_a_result.participant and not lane_a_result.participant.withdrawn:
+            lane_a_number = lane_a_result.participant.start_number
+        
+        if lane_b_result and lane_b_result.participant and not lane_b_result.participant.withdrawn:
+            lane_b_number = lane_b_result.participant.start_number
+        
+        # Always save what would be sent for status display
+        db_status = SessionLocal()
+        try:
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            set_setting(db_status, "startdisplay_last_send", now)
+            set_setting(db_status, "startdisplay_last_lane_a", str(lane_a_number or ""))
+            set_setting(db_status, "startdisplay_last_lane_b", str(lane_b_number or ""))
+            set_setting(db_status, "startdisplay_last_test_payload", f"A:{lane_a_number or '-'} B:{lane_b_number or '-'}")
+            
+            # Debug logging to verify data capture
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Startdisplay would send: Lane A={lane_a_number}, Lane B={lane_b_number}")
+            
+            db_status.commit()
+        finally:
+            db_status.close()
+        
+        # Send asynchronously to avoid blocking race operations
+        import threading
+        threading.Thread(
+            target=send_start_display_numbers,
+            args=(lane_a_number, lane_b_number),
+            daemon=True
+        ).start()
+    except Exception as e:
+        # Log error but don't break monitor functionality
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error sending to startdisplay: {e}")
 
     return {
         "id": race_run.id,
@@ -1455,6 +1502,19 @@ def build_monitor_payload(
         current_payload = None
         current_run = None
         current_round_number = None
+        
+        # Send idle state to startdisplay when no current run
+        try:
+            import threading
+            threading.Thread(
+                target=send_start_display_numbers,
+                args=(None, None),
+                daemon=True
+            ).start()
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error sending idle to startdisplay: {e}")
 
     logo_settings = get_logo_settings(db)
 
@@ -5402,6 +5462,19 @@ CLUB_LOGO_DEFAULT_SETTINGS = {
     "club_logo_uploaded_at": "",
 }
 
+STARTDISPLAY_DEFAULT_SETTINGS = {
+    "startdisplay_enabled": "false",
+    "startdisplay_host": "",
+    "startdisplay_port": "80",
+    "startdisplay_endpoint": "/display",
+    "startdisplay_last_send": "",
+    "startdisplay_last_success": "",
+    "startdisplay_last_error": "",
+    "startdisplay_last_lane_a": "",
+    "startdisplay_last_lane_b": "",
+    "startdisplay_last_test_payload": "",
+}
+
 
 def get_setting(
     db: Session,
@@ -5471,6 +5544,13 @@ def get_app_settings(db: Session) -> dict:
             default_value=default_value,
         )
 
+    for key, default_value in STARTDISPLAY_DEFAULT_SETTINGS.items():
+        settings[key] = get_setting(
+            db=db,
+            key=key,
+            default_value=default_value,
+        )
+
     return settings
 
 
@@ -5480,6 +5560,86 @@ def get_club_logo_path_from_db(db: Session) -> str:
         key="club_logo_path",
         default_value="",
     )
+
+
+# Startdisplay Service Functions
+def send_start_display_numbers(lane_a_number: int | None, lane_b_number: int | None) -> bool:
+    """Send start numbers to ESP32 display"""
+    db = SessionLocal()
+    try:
+        # Get settings
+        enabled = get_setting(db, "startdisplay_enabled", "false")
+        if enabled != "true":
+            return True  # Not an error, just not enabled
+        
+        host = get_setting(db, "startdisplay_host", "").strip()
+        if not host:
+            return True  # Not configured
+        
+        port = get_setting(db, "startdisplay_port", "80").strip()
+        endpoint = get_setting(db, "startdisplay_endpoint", "/display").strip()
+        
+        # Build URL
+        if host.startswith("http://"):
+            host = host[7:]
+        elif host.startswith("https://"):
+            host = host[8:]
+        
+        url = f"http://{host}:{port}{endpoint}"
+        
+        # Build payload
+        if lane_a_number is not None and lane_b_number is not None:
+            payload = {
+                "mode": "start_numbers",
+                "lane_a_start_number": lane_a_number,
+                "lane_b_start_number": lane_b_number
+            }
+        else:
+            payload = {
+                "mode": "idle",
+                "lane_a_start_number": None,
+                "lane_b_start_number": None
+            }
+        
+        # Save status
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        set_setting(db, "startdisplay_last_send", now)
+        set_setting(db, "startdisplay_last_lane_a", str(lane_a_number or ""))
+        set_setting(db, "startdisplay_last_lane_b", str(lane_b_number or ""))
+        
+        # Send request
+        import httpx
+        import json
+        headers = {"Content-Type": "application/json"}
+        data = json.dumps(payload)
+        
+        with httpx.Client(timeout=1.0) as client:
+            response = client.post(url, data=data, headers=headers)
+            
+            if response.status_code == 200:
+                set_setting(db, "startdisplay_last_success", now)
+                set_setting(db, "startdisplay_last_error", "")
+                return True
+            else:
+                error_msg = f"HTTP {response.status_code}: {response.text}"
+                set_setting(db, "startdisplay_last_error", error_msg)
+                return False
+                
+    except httpx.TimeoutException:
+        error_msg = "Timeout after 1s"
+        set_setting(db, "startdisplay_last_error", error_msg)
+        return False
+    except httpx.ConnectError:
+        error_msg = "Connection failed"
+        set_setting(db, "startdisplay_last_error", error_msg)
+        return False
+    except Exception as e:
+        error_msg = f"Error: {str(e)}"
+        set_setting(db, "startdisplay_last_error", error_msg)
+        return False
+    finally:
+        db.commit()
+        db.close()
 
 
 def get_club_logo_path() -> str:
@@ -6501,6 +6661,100 @@ def ui_logo_reset_status(
         url="/ui/settings?success=LOGO-Status zurückgesetzt",
         status_code=303,
     )
+
+
+@app.post("/ui/settings/startdisplay")
+def ui_save_startdisplay_settings(
+    startdisplay_enabled: str = Form("false"),
+    startdisplay_host: str = Form(""),
+    startdisplay_port: str = Form("80"),
+    startdisplay_endpoint: str = Form("/display"),
+    db: Session = Depends(get_db),
+):
+    set_setting(db, "startdisplay_enabled", startdisplay_enabled)
+    set_setting(db, "startdisplay_host", startdisplay_host.strip())
+    set_setting(db, "startdisplay_port", startdisplay_port.strip())
+    set_setting(db, "startdisplay_endpoint", startdisplay_endpoint.strip())
+    db.commit()
+
+    return RedirectResponse(
+        url="/ui/settings?success=Startdisplay-Einstellungen gespeichert",
+        status_code=303,
+    )
+
+
+@app.post("/ui/settings/startdisplay/test")
+def ui_test_startdisplay_connection(
+    db: Session = Depends(get_db),
+):
+    try:
+        import httpx
+        import json
+        
+        enabled = get_setting(db, "startdisplay_enabled", "false")
+        if enabled != "true":
+            return RedirectResponse(
+                url="/ui/settings?error=Startdisplay nicht aktiviert",
+                status_code=303,
+            )
+        
+        host = get_setting(db, "startdisplay_host", "").strip()
+        if not host:
+            return RedirectResponse(
+                url="/ui/settings?error=Kein Host konfiguriert",
+                status_code=303,
+            )
+        
+        port = get_setting(db, "startdisplay_port", "80").strip()
+        endpoint = get_setting(db, "startdisplay_endpoint", "/display").strip()
+        
+        # Build URL
+        if host.startswith("http://"):
+            host = host[7:]
+        elif host.startswith("https://"):
+            host = host[8:]
+        
+        url = f"http://{host}:{port}{endpoint}"
+        
+        # Send test payload
+        test_payload = {
+            "mode": "start_numbers",
+            "lane_a_start_number": 23,
+            "lane_b_start_number": 54
+        }
+        
+        headers = {"Content-Type": "application/json"}
+        data = json.dumps(test_payload)
+        
+        with httpx.Client(timeout=1.0) as client:
+            response = client.post(url, data=data, headers=headers)
+            
+            if response.status_code == 200:
+                return RedirectResponse(
+                    url="/ui/settings?success=Verbindung zum Startdisplay erfolgreich",
+                    status_code=303,
+                )
+            else:
+                return RedirectResponse(
+                    url=f"/ui/settings?error=Verbindung zum Startdisplay fehlgeschlagen: HTTP {response.status_code}",
+                    status_code=303,
+                )
+                
+    except httpx.TimeoutException:
+        return RedirectResponse(
+            url="/ui/settings?error=Verbindung zum Startdisplay fehlgeschlagen: Timeout",
+            status_code=303,
+        )
+    except httpx.ConnectError:
+        return RedirectResponse(
+            url="/ui/settings?error=Verbindung zum Startdisplay fehlgeschlagen: Verbindung fehlgeschlagen",
+            status_code=303,
+        )
+    except Exception as e:
+        return RedirectResponse(
+            url=f"/ui/settings?error=Verbindung zum Startdisplay fehlgeschlagen: {str(e)}",
+            status_code=303,
+        )
 
 
 @app.post("/ui/settings/system/restart")

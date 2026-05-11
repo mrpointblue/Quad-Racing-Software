@@ -193,6 +193,133 @@
     <button
         type="button"
         class="settings-accordion-header"
+        onclick="toggleSettingsAccordion('marshals')"
+    >
+        <span>Streckenpostenfunktion</span>
+        <span class="settings-accordion-indicator" id="indicator_marshals">▼</span>
+    </button>
+
+    <div class="settings-accordion-body" id="accordion_marshals">
+        {% if active_event %}
+            <p>
+                Veranstaltung:
+                <strong>{{ active_event.event_number }} · {{ active_event.name }}</strong>
+            </p>
+            <p>
+                Anzahl Positionen:
+                <strong>{{ active_event.sectors_per_lane or 1 }}</strong>
+            </p>
+            <p class="hint">
+                Die Anzahl Positionen kommt aus den Veranstaltungsvorgaben. Die digitale Streckenpostenfunktion ist optional.
+                Wenn sie deaktiviert ist, werden Fehlerpunkte ausschließlich durch die Zeitnahme erfasst.
+            </p>
+
+            <form method="post" action="/ui/settings/marshals">
+                <input type="hidden" name="event_id" value="{{ active_event.id }}">
+                <label class="choice-row">
+                    <input
+                        type="checkbox"
+                        name="marshal_enabled"
+                        value="1"
+                        {% if active_event.marshal_enabled %}checked{% endif %}
+                    >
+                    <span>Digitale Streckenposten aktivieren</span>
+                </label>
+
+                <button type="submit">Streckenposten-Einstellung speichern</button>
+            </form>
+        {% else %}
+            <p>Keine aktive Veranstaltung vorhanden.</p>
+            <p class="hint">Die Streckenpostenfunktion wird je Veranstaltung aktiviert.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card settings-accordion-card">
+    <button
+        type="button"
+        class="settings-accordion-header"
+        onclick="toggleSettingsAccordion('startdisplay')"
+    >
+        <span>Startdisplay</span>
+        <span class="settings-accordion-indicator" id="indicator_startdisplay">▼</span>
+    </button>
+
+    <div class="settings-accordion-body" id="accordion_startdisplay">
+        <form method="post" action="/ui/settings/startdisplay">
+            <label>Startdisplay aktivieren</label>
+            <select name="startdisplay_enabled">
+                <option value="false" {% if settings.startdisplay_enabled != "true" %}selected{% endif %}>Nein</option>
+                <option value="true" {% if settings.startdisplay_enabled == "true" %}selected{% endif %}>Ja</option>
+            </select>
+
+            <label>ESP32 Host/IP</label>
+            <input
+                type="text"
+                name="startdisplay_host"
+                value="{{ settings.startdisplay_host or "" }}"
+                placeholder="z.B. quad-startdisplay.local oder 192.168.178.80"
+            >
+
+            <label>ESP32 Port</label>
+            <input
+                type="text"
+                name="startdisplay_port"
+                value="{{ settings.startdisplay_port or "80" }}"
+                placeholder="80"
+            >
+
+            <label>ESP32 Pfad/Endpoint</label>
+            <input
+                type="text"
+                name="startdisplay_endpoint"
+                value="{{ settings.startdisplay_endpoint or "/display" }}"
+                placeholder="/display"
+            >
+
+            <button type="submit" class="button">Speichern</button>
+        </form>
+
+        <hr>
+
+        <div style="margin-bottom: 16px;">
+            <strong>Status:</strong>
+            <div style="margin-top: 8px; font-size: 14px;">
+                <div>Aktiviert: <strong>{{ "Ja" if settings.startdisplay_enabled == "true" else "Nein" }}</strong></div>
+                <div>Letzter Sendeversuch: <strong>{{ settings.startdisplay_last_send or "-" }}</strong></div>
+                <div>Letzter Erfolg: <strong>{{ settings.startdisplay_last_success or "-" }}</strong></div>
+                <div>Letzter Fehler: <strong>{{ settings.startdisplay_last_error or "-" }}</strong></div>
+                <div>Zuletzt gesendet: <strong>A:{{ settings.startdisplay_last_lane_a or "-" }} B:{{ settings.startdisplay_last_lane_b or "-" }}</strong></div>
+                <div>Test-Payload: <strong>{{ settings.startdisplay_last_test_payload or "A:- B:-" }}</strong></div>
+            </div>
+        </div>
+
+        <form method="post" action="/ui/settings/startdisplay/test" style="display:inline;">
+            <button type="submit" class="small-button">
+                Verbindung testen
+            </button>
+        </form>
+
+        <hr>
+
+        <p class="hint">
+            Das Startdisplay zeigt die aktuellen Startnummern für Bahn A (links) und Bahn B (rechts) auf einer externen LED-Matrix an.
+        </p>
+
+        <p class="hint">
+            Die Anzeige ist nur aktiv, wenn ein Host/IP konfiguriert ist und die Funktion aktiviert wurde.
+        </p>
+
+        <p class="hint">
+            Bei Verbindungsproblemen wird der Rennbetrieb nicht beeinträchtigt.
+        </p>
+    </div>
+</div>
+
+<div class="card settings-accordion-card">
+    <button
+        type="button"
+        class="settings-accordion-header"
         onclick="toggleSettingsAccordion('club_logo')"
     >
         <span>Vereinslogo</span>
@@ -278,51 +405,6 @@
     </div>
 </div>
 
-<div class="card settings-accordion-card">
-    <button
-        type="button"
-        class="settings-accordion-header"
-        onclick="toggleSettingsAccordion('marshals')"
-    >
-        <span>Streckenpostenfunktion</span>
-        <span class="settings-accordion-indicator" id="indicator_marshals">▼</span>
-    </button>
-
-    <div class="settings-accordion-body" id="accordion_marshals">
-        {% if active_event %}
-            <p>
-                Veranstaltung:
-                <strong>{{ active_event.event_number }} · {{ active_event.name }}</strong>
-            </p>
-            <p>
-                Anzahl Positionen:
-                <strong>{{ active_event.sectors_per_lane or 1 }}</strong>
-            </p>
-            <p class="hint">
-                Die Anzahl Positionen kommt aus den Veranstaltungsvorgaben. Die digitale Streckenpostenfunktion ist optional.
-                Wenn sie deaktiviert ist, werden Fehlerpunkte ausschließlich durch die Zeitnahme erfasst.
-            </p>
-
-            <form method="post" action="/ui/settings/marshals">
-                <input type="hidden" name="event_id" value="{{ active_event.id }}">
-                <label>
-                    <input
-                        type="checkbox"
-                        name="marshal_enabled"
-                        value="1"
-                        {% if active_event.marshal_enabled %}checked{% endif %}
-                    >
-                    Digitale Streckenposten aktivieren
-                </label>
-
-                <button type="submit">Streckenposten-Einstellung speichern</button>
-            </form>
-        {% else %}
-            <p>Keine aktive Veranstaltung vorhanden.</p>
-            <p class="hint">Die Streckenpostenfunktion wird je Veranstaltung aktiviert.</p>
-        {% endif %}
-    </div>
-</div>
 
 <div class="card settings-accordion-card">
     <button
@@ -560,6 +642,7 @@
     </div>
 </div>
 
+
 <script>
     const defaultOpenSettingsAccordions = {
         logo_connection: true,
@@ -569,6 +652,7 @@
         marshals: false,
         database_backup: false,
         system_status: true,
+        startdisplay: false,
     };
 
     function getSettingsAccordionStorageKey(id) {

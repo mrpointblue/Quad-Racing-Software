@@ -380,6 +380,18 @@ Korrekturen in Version 1.4.1:
 - Ergebnisnavigation vereinheitlicht: Viertelfinale, Halbfinale, Finale, Gesamtwertung, Export und Druck.
 - Mobile Streckenposten-Eingabe springt beim Hochzählen der Fehlerpunkte nicht mehr durch Auto-Aktualisierung zurück auf 0.
 
+Neue Funktionen in Version 1.4.2:
+
+- ESP32-LED-Matrix-Startdisplay-Integration für externe Anzeige der aktuellen Startnummern
+- Konfiguration in den Settings unter "Startdisplay" mit Host/IP, Port und Endpoint
+- Automatische Synchronisation mit Monitor-Daten: Bahn A (links) und Bahn B (rechts)
+- Ausgeschiedene Fahrer werden nicht mehr auf dem Startdisplay angezeigt
+- Test-Verbindungsfunktion für ESP32-Konnektivität
+- Statusanzeige mit letztem Sendeversuch, Erfolg und Fehlerprotokoll
+- Asynchrone Kommunikation ohne Blockierung des Rennbetriebs
+- JSON-Payload: `{"mode": "start_numbers", "lane_a_start_number": 23, "lane_b_start_number": 54}`
+- Idle-Modus: `{"mode": "idle", "lane_a_start_number": null, "lane_b_start_number": null}`
+
 Wichtige Korrekturen seit Version 1.3.0:
 
 - Zeitwertung erfolgt für Anzeige, Wertung, Export, Monitor und Paarungslogik auf 1/100 Sekunde.
