@@ -385,12 +385,18 @@ Neue Funktionen in Version 1.4.2:
 - ESP32-LED-Matrix-Startdisplay-Integration für externe Anzeige der aktuellen Startnummern
 - Konfiguration in den Settings unter "Startdisplay" mit Host/IP, Port und Endpoint
 - Automatische Synchronisation mit Monitor-Daten: Bahn A (links) und Bahn B (rechts)
-- Ausgeschiedene Fahrer werden nicht mehr auf dem Startdisplay angezeigt
-- Test-Verbindungsfunktion für ESP32-Konnektivität
-- Statusanzeige mit letztem Sendeversuch, Erfolg und Fehlerprotokoll
+- Ausgeschiedene Fahrer werden nicht mehr auf dem Startdisplay und Monitor angezeigt
+- Test-Verbindungsfunktion für ESP32-Konnektivität mit Statusprotokoll
 - Asynchrone Kommunikation ohne Blockierung des Rennbetriebs
 - JSON-Payload: `{"mode": "start_numbers", "lane_a_start_number": 23, "lane_b_start_number": 54}`
 - Idle-Modus: `{"mode": "idle", "lane_a_start_number": null, "lane_b_start_number": null}`
+
+UI-Verbesserungen in Version 1.4.2:
+
+- Hilfe-/Anleitungsseite mit aufklappbaren Kacheln für bessere Übersichtlichkeit
+- Settings-Reihenfolge optimiert: Signal-Mapping → Streckenpostenfunktion → Startdisplay
+- Konsistente Checkbox-Styling mit choice-row Klasse
+- Verbesserte Statusanzeige für Startdisplay-Konfiguration
 
 Wichtige Korrekturen seit Version 1.3.0:
 
