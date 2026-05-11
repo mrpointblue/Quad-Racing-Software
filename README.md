@@ -204,43 +204,42 @@ git push
 
 ---
 
-# Autostart über systemd
+# Automatisierte Installation als Dienst (systemd)
 
-Optional kann die Software als Dienst eingerichtet werden, damit sie automatisch beim Start des Raspberry Pi läuft.
+Die Software kann als Hintergrunddienst eingerichtet werden, damit sie automatisch beim Start des Raspberry Pi lädt und bei Fehlern neu startet.
 
 ---
 
-## 1. systemd-Service erstellen
+## 1. Automatische Installation
+
+Führe das Installations-Script aus. Dieses prüft die Python-Version, erstellt die virtuelle Umgebung, installiert alle Abhängigkeiten und registriert den systemd-Dienst:
 
 ```bash
-sudo nano /etc/systemd/system/quad-race.service
+cd /home/pi/Quad-Racing-Software
+chmod +x scripts/install_service.sh
+./scripts/install_service.sh
 ```
 
-Diesen Inhalt einfügen:
+---
 
-```ini
-[Unit]
-Description=Quad Racing Software
-After=network.target
+## 2. Dienst-Verwaltung
 
-[Service]
-User=pi
-WorkingDirectory=/home/pi/Quad-Racing-Software
-ExecStart=/home/pi/Quad-Racing-Software/venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000
-Restart=always
-RestartSec=5
+Nach der Installation kann der Dienst mit folgenden Befehlen gesteuert werden:
 
-[Install]
-WantedBy=multi-user.target
-```
+**Status prüfen:**
+`sudo systemctl status quad-race.service`
 
-Speichern mit:
+**Dienst neu starten:**
+`sudo systemctl restart quad-race.service`
 
-```text
-STRG + O
-Enter
-STRG + X
-```
+**Dienst stoppen:**
+`sudo systemctl stop quad-race.service`
+
+**Dienst starten:**
+`sudo systemctl start quad-race.service`
+
+**Echtzeit-Logs anzeigen:**
+`journalctl -u quad-race.service -f`
 
 ---
 
