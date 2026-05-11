@@ -12,7 +12,12 @@ Diese Anleitung beschreibt, wie die Quad Racing Software auf einem Raspberry Pi 
 
 ## 1. System vorbereiten
 
-Auf dem Raspberry Pi zuerst das System aktualisieren und die benötigten Pakete installieren:
+Die Software benötigt zwingend **Python 3.10 oder höher**.
+Empfohlene Umgebung: **Raspberry Pi OS Bookworm** (enthält Python 3.11).
+
+*Wichtiger Hinweis: Ältere Systeme wie Raspberry Pi OS Bullseye (Python 3.9) werden ausdrücklich nicht unterstützt.*
+
+System aktualisieren und Pakete installieren:
 
 ```bash
 sudo apt update
