@@ -243,48 +243,6 @@ Nach der Installation kann der Dienst mit folgenden Befehlen gesteuert werden:
 
 ---
 
-## 2. Dienst aktivieren
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable quad-race
-sudo systemctl start quad-race
-```
-
----
-
-## 3. Dienststatus prüfen
-
-```bash
-sudo systemctl status quad-race
-```
-
----
-
-## 4. Logs anzeigen
-
-```bash
-journalctl -u quad-race -f
-```
-
----
-
-## 5. Dienst neu starten
-
-```bash
-sudo systemctl restart quad-race
-```
-
----
-
-## 6. Dienst stoppen
-
-```bash
-sudo systemctl stop quad-race
-```
-
----
-
 # Hinweise zur Siemens LOGO / Zeitmessanlage (Achtung, derzeit noch nicht implementiert)
 
 Die Anbindung an die Siemens LOGO beziehungsweise Zeitmessanlage erfolgt lokal über die Konfiguration der jeweiligen Installation.
