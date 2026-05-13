@@ -2,6 +2,12 @@
 
 Dieses Verzeichnis enthält die Firmware für das optionale WLAN-Startdisplay der Quad Parallel Race Software.
 
+## Hardware
+
+Dieses Projekt ist für ein **64x32 LED Display mit HUB75 Anschluss** ausgelegt.
+
+Das Display wird direkt an den ESP32 angeschlossen und zeigt Startnummern für zwei Rennbahnen an.
+
 ## Funktion
 
 Das Startdisplay zeigt die Startnummern der aktuellen Paarung an:
