@@ -214,17 +214,14 @@ def normalize_station_type(value: str | None) -> str | None:
     return value.strip().lower() if value else None
 
 
-def get_lane_driver_id(run: RaceRun, lane: str) -> int | None:
-    return run.lane_a_driver_id if lane == "A" else run.lane_b_driver_id
-
-
 def get_lane_driver(run: RaceRun, lane: str, db: Session) -> Participant | None:
-    driver_id = get_lane_driver_id(run, lane)
+    result_lane = "lane_a" if lane == "A" else "lane_b"
+    result = next((r for r in run.results if r.lane == result_lane), None)
 
-    if not driver_id:
+    if not result or result.participant_id is None:
         return None
 
-    return db.query(Participant).filter(Participant.id == driver_id).first()
+    return db.query(Participant).filter(Participant.id == result.participant_id).first()
 
 
 def get_marshal_round_number(round_name: str | None) -> int:
@@ -242,15 +239,34 @@ def get_marshal_run_label(run: RaceRun) -> str:
 
 
 def get_current_run_for_lane(event_id: int, lane: str, db: Session):
-    lane_driver_column = (
-        RaceRun.lane_a_driver_id if lane == "A" else RaceRun.lane_b_driver_id
-    )
+    result_lane = "lane_a" if lane == "A" else "lane_b"
+
+    # 1. Priorität: Der vom Zeitnehmer aktiv gesetzte Lauf (Startdisplay/Monitor Fokus)
+    # Dies stellt sicher, dass der Streckenposten dem Zeitnehmer folgt, sobald ein Lauf geöffnet wird.
+    active_run_id_str = db.query(SystemSetting).filter(SystemSetting.key == "startdisplay_active_run_id").first()
+    if active_run_id_str and active_run_id_str.value:
+        try:
+            active_run_id = int(active_run_id_str.value)
+            active_run = db.query(RaceRun).filter(
+                RaceRun.id == active_run_id,
+                RaceRun.event_id == event_id,
+                RaceRun.confirmed == False
+            ).join(RunResult).filter(
+                RunResult.lane == result_lane,
+                RunResult.participant_id.isnot(None)
+            ).first()
+            if active_run:
+                return active_run
+        except (ValueError, TypeError):
+            pass
 
     running_run = db.query(RaceRun).filter(
         RaceRun.event_id == event_id,
-        lane_driver_column.isnot(None),
         RaceRun.confirmed == False,
         RaceRun.status.in_(["running", "started", "finished"]),
+    ).join(RunResult).filter(
+        RunResult.lane == result_lane,
+        RunResult.participant_id.isnot(None)
     ).order_by(
         RaceRun.id.desc(),
     ).first()
@@ -260,8 +276,10 @@ def get_current_run_for_lane(event_id: int, lane: str, db: Session):
 
     return db.query(RaceRun).filter(
         RaceRun.event_id == event_id,
-        lane_driver_column.isnot(None),
         RaceRun.confirmed == False,
+    ).join(RunResult).filter(
+        RunResult.lane == result_lane,
+        RunResult.participant_id.isnot(None)
     ).order_by(
         RaceRun.id.asc(),
     ).first()

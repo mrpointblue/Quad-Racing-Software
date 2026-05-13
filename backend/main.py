@@ -1105,49 +1105,6 @@ def monitor_run_payload(
     lane_a_result, lane_b_result = get_lane_results_for_run(race_run)
     round_number, round_label = get_round_display(race_run.round_name)
 
-    # Send to startdisplay if configured
-    try:
-        # Check if participants are eliminated and exclude them
-        lane_a_number = None
-        lane_b_number = None
-        
-        if lane_a_result and lane_a_result.participant and not lane_a_result.participant.withdrawn:
-            lane_a_number = lane_a_result.participant.start_number
-        
-        if lane_b_result and lane_b_result.participant and not lane_b_result.participant.withdrawn:
-            lane_b_number = lane_b_result.participant.start_number
-        
-        # Always save what would be sent for status display
-        db_status = SessionLocal()
-        try:
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            set_setting(db_status, "startdisplay_last_send", now)
-            set_setting(db_status, "startdisplay_last_lane_a", str(lane_a_number or ""))
-            set_setting(db_status, "startdisplay_last_lane_b", str(lane_b_number or ""))
-            set_setting(db_status, "startdisplay_last_test_payload", f"A:{lane_a_number or '-'} B:{lane_b_number or '-'}")
-            
-            # Debug logging to verify data capture
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.info(f"Startdisplay would send: Lane A={lane_a_number}, Lane B={lane_b_number}")
-            
-            db_status.commit()
-        finally:
-            db_status.close()
-        
-        # Send asynchronously to avoid blocking race operations
-        import threading
-        threading.Thread(
-            target=send_start_display_numbers,
-            args=(lane_a_number, lane_b_number),
-            daemon=True
-        ).start()
-    except Exception as e:
-        # Log error but don't break monitor functionality
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Error sending to startdisplay: {e}")
-
     return {
         "id": race_run.id,
         "race_class": race_run.race_class,
@@ -1241,7 +1198,6 @@ def pick_next_unconfirmed_run(
     for race_run, pairing in run_items:
         if not race_run.confirmed:
             return race_run, pairing
-
     return None
 
 
@@ -1264,14 +1220,22 @@ def build_run_navigation_payload(
 
 def pick_monitor_current_run(
     run_items: list[tuple[RaceRun, Pairing]],
+    active_run_id: int | None = None,
 ) -> tuple[RaceRun, Pairing] | None:
-    for status in ["running", "finished", "ready"]:
-        for race_run, pairing in run_items:
-            if not race_run.confirmed and race_run.status == status:
-                return race_run, pairing
+    """
+    Der Monitor darf nur den vom Zeitnehmer aktiv gesetzten Lauf anzeigen.
+
+    Wichtig:
+    - Kein Fallback auf irgendeinen unbestätigten Lauf.
+    - Nach Abschluss einer Klasse wird startdisplay_active_run_id geleert.
+    - Wenn keine aktive Lauf-ID gesetzt ist, muss der Monitor leer bleiben.
+    - Bestätigte Läufe dürfen niemals erneut als aktuelle Paarung angezeigt werden.
+    """
+    if not active_run_id:
+        return None
 
     for race_run, pairing in run_items:
-        if not race_run.confirmed:
+        if race_run.id == active_run_id and not race_run.confirmed:
             return race_run, pairing
 
     return None
@@ -1283,13 +1247,27 @@ def pick_monitor_next_runs(
     current_run_id: int | None,
     limit: int = 3,
 ) -> list[dict]:
+    """
+    Nächste Starter nur anzeigen, wenn ein aktueller Lauf aktiv gesetzt ist.
+
+    Wenn keine aktive Paarung existiert, darf auch keine Vorschau aus alten
+    oder fremden Klassen angezeigt werden.
+    """
+    if current_run_id is None:
+        return []
+
     next_runs = []
+    current_found = False
 
     for race_run, pairing in run_items:
-        if race_run.confirmed:
+        if race_run.id == current_run_id:
+            current_found = True
             continue
 
-        if current_run_id is not None and race_run.id == current_run_id:
+        if not current_found:
+            continue
+
+        if race_run.confirmed:
             continue
 
         next_runs.append(monitor_run_payload(race_run, pairing, db))
@@ -1482,12 +1460,15 @@ def build_monitor_payload(
     if setting is None:
         setting = get_or_create_monitor_display_setting(event, db)
 
+    active_run_id_str = get_setting(db, "startdisplay_active_run_id")
+    active_run_id = int(active_run_id_str) if active_run_id_str and active_run_id_str.isdigit() else None
+
     run_items = get_monitor_runs(
         event_id=event.id,
         db=db,
     )
 
-    current_item = pick_monitor_current_run(run_items)
+    current_item = pick_monitor_current_run(run_items, active_run_id=active_run_id)
     current_run_id = None
 
     if current_item is not None:
@@ -1502,19 +1483,6 @@ def build_monitor_payload(
         current_payload = None
         current_run = None
         current_round_number = None
-        
-        # Send idle state to startdisplay when no current run
-        try:
-            import threading
-            threading.Thread(
-                target=send_start_display_numbers,
-                args=(None, None),
-                daemon=True
-            ).start()
-        except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error sending idle to startdisplay: {e}")
 
     logo_settings = get_logo_settings(db)
 
@@ -4710,7 +4678,17 @@ def ui_event_start_run(
         race_run.traffic_light_status = "green"
         race_run.started_at = now_string()
 
+        set_setting(db, "startdisplay_active_event_id", str(active_event.id))
+        set_setting(db, "startdisplay_active_run_id", str(race_run.id))
+        set_setting(db, "startdisplay_active_set_at", now_string())
+
         db.commit()
+
+        threading.Thread(
+            target=send_start_display_for_run,
+            args=(active_event.id, race_run.id),
+            daemon=True
+        ).start()
 
     return RedirectResponse(
         url=f"/ui/events/{active_event.id}/timekeeper/run/{run_id}",
@@ -4763,6 +4741,13 @@ def ui_event_reset_run(
 
         db.commit()
 
+        # Update Startdisplay
+        threading.Thread(
+            target=send_start_display_for_run,
+            args=(active_event.id, race_run.id),
+            daemon=True
+        ).start()
+
     return RedirectResponse(
         url=f"/ui/events/{active_event.id}/timekeeper/run/{run_id}",
         status_code=303,
@@ -4813,7 +4798,18 @@ def ui_event_repeat_run(
         results=results,
     )
 
+    set_setting(db, "startdisplay_active_event_id", str(active_event.id))
+    set_setting(db, "startdisplay_active_run_id", str(race_run.id))
+    set_setting(db, "startdisplay_active_set_at", now_string())
+
     db.commit()
+
+    # Update Startdisplay (Resend current run)
+    threading.Thread(
+        target=send_start_display_for_run,
+        args=(active_event.id, race_run.id),
+        daemon=True
+    ).start()
 
     return RedirectResponse(
         url=f"/ui/events/{active_event.id}/timekeeper/run/{run_id}",
@@ -4963,6 +4959,15 @@ async def ui_event_save_run(
 
     db.commit()
 
+    # Startdisplay nur bei unbestätigten Läufen aktualisieren.
+    # Bestätigte Läufe dürfen die Anzeige nicht wieder überschreiben.
+    if not race_run.confirmed:
+        threading.Thread(
+            target=send_start_display_for_run,
+            args=(active_event.id, race_run.id),
+            daemon=True
+        ).start()
+
     return RedirectResponse(
         url=f"/ui/events/{active_event.id}/timekeeper/run/{run_id}?saved=1",
         status_code=303,
@@ -5018,6 +5023,38 @@ def ui_event_confirm_run(
     race_run.traffic_light_status = "off"
 
     db.commit()
+
+    run_items = get_start_ordered_class_runs(
+        active_event.id,
+        race_run.race_class,
+        db,
+    )
+    next_item = pick_next_unconfirmed_run(run_items)
+
+    if next_item:
+        next_run, _ = next_item
+
+        set_setting(db, "startdisplay_active_event_id", str(active_event.id))
+        set_setting(db, "startdisplay_active_run_id", str(next_run.id))
+        set_setting(db, "startdisplay_active_set_at", now_string())
+        db.commit()
+
+        threading.Thread(
+            target=send_start_display_for_run,
+            args=(active_event.id, next_run.id),
+            daemon=True
+        ).start()
+    else:
+        set_setting(db, "startdisplay_active_event_id", "")
+        set_setting(db, "startdisplay_active_run_id", "")
+        set_setting(db, "startdisplay_active_set_at", "")
+        db.commit()
+
+        threading.Thread(
+            target=send_start_display_numbers,
+            args=(None, None),
+            daemon=True
+        ).start()
 
     return RedirectResponse(
         url=f"/ui/events/{active_event.id}/timekeeper/run/{run_id}",
@@ -5472,6 +5509,7 @@ STARTDISPLAY_DEFAULT_SETTINGS = {
     "startdisplay_last_error": "",
     "startdisplay_last_lane_a": "",
     "startdisplay_last_lane_b": "",
+    "startdisplay_last_payload": "",
     "startdisplay_last_test_payload": "",
 }
 
@@ -5588,17 +5626,17 @@ def send_start_display_numbers(lane_a_number: int | None, lane_b_number: int | N
         url = f"http://{host}:{port}{endpoint}"
         
         # Build payload
-        if lane_a_number is not None and lane_b_number is not None:
+        if lane_a_number is not None or lane_b_number is not None:
             payload = {
                 "mode": "start_numbers",
-                "lane_a_start_number": lane_a_number,
-                "lane_b_start_number": lane_b_number
+                "lane_a_start_number": str(lane_a_number) if lane_a_number is not None else "",
+                "lane_b_start_number": str(lane_b_number) if lane_b_number is not None else "",
             }
         else:
             payload = {
                 "mode": "idle",
-                "lane_a_start_number": None,
-                "lane_b_start_number": None
+                "lane_a_start_number": "",
+                "lane_b_start_number": ""
             }
         
         # Save status
@@ -5606,7 +5644,6 @@ def send_start_display_numbers(lane_a_number: int | None, lane_b_number: int | N
         set_setting(db, "startdisplay_last_send", now)
         set_setting(db, "startdisplay_last_lane_a", str(lane_a_number or ""))
         set_setting(db, "startdisplay_last_lane_b", str(lane_b_number or ""))
-        
         # Send request
         import httpx
         import json
@@ -5619,6 +5656,7 @@ def send_start_display_numbers(lane_a_number: int | None, lane_b_number: int | N
             if response.status_code == 200:
                 set_setting(db, "startdisplay_last_success", now)
                 set_setting(db, "startdisplay_last_error", "")
+                set_setting(db, "startdisplay_last_payload", f"A:{lane_a_number or '-'} B:{lane_b_number or '-'}")
                 return True
             else:
                 error_msg = f"HTTP {response.status_code}: {response.text}"
@@ -5628,10 +5666,12 @@ def send_start_display_numbers(lane_a_number: int | None, lane_b_number: int | N
     except httpx.TimeoutException:
         error_msg = "Timeout after 1s"
         set_setting(db, "startdisplay_last_error", error_msg)
+        set_setting(db, "startdisplay_last_payload", f"A:{lane_a_number or '-'} B:{lane_b_number or '-'}")
         return False
     except httpx.ConnectError:
         error_msg = "Connection failed"
         set_setting(db, "startdisplay_last_error", error_msg)
+        set_setting(db, "startdisplay_last_payload", f"A:{lane_a_number or '-'} B:{lane_b_number or '-'}")
         return False
     except Exception as e:
         error_msg = f"Error: {str(e)}"
@@ -5639,6 +5679,34 @@ def send_start_display_numbers(lane_a_number: int | None, lane_b_number: int | N
         return False
     finally:
         db.commit()
+        db.close()
+
+
+def send_start_display_for_run(event_id: int, run_id: int) -> bool:
+    """Send start numbers of a specific run to the display"""
+    db = SessionLocal()
+    try:
+        race_run = db.query(RaceRun).filter(
+            RaceRun.event_id == event_id,
+            RaceRun.id == run_id,
+        ).first()
+
+        if not race_run:
+            return False
+
+        lane_a_result, lane_b_result = get_lane_results_for_run(race_run)
+
+        lane_a_number = None
+        lane_b_number = None
+
+        if lane_a_result and lane_a_result.participant and not lane_a_result.participant.withdrawn:
+            lane_a_number = lane_a_result.participant.start_number
+
+        if lane_b_result and lane_b_result.participant and not lane_b_result.participant.withdrawn:
+            lane_b_number = lane_b_result.participant.start_number
+
+        return send_start_display_numbers(lane_a_number, lane_b_number)
+    finally:
         db.close()
 
 
@@ -6729,14 +6797,24 @@ def ui_test_startdisplay_connection(
         with httpx.Client(timeout=1.0) as client:
             response = client.post(url, data=data, headers=headers)
             
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            set_setting(db, "startdisplay_last_send", now)
+            
             if response.status_code == 200:
+                set_setting(db, "startdisplay_last_success", now)
+                set_setting(db, "startdisplay_last_error", "")
+                set_setting(db, "startdisplay_last_test_payload", "A:23 B:54")
+                db.commit()
                 return RedirectResponse(
                     url="/ui/settings?success=Verbindung zum Startdisplay erfolgreich",
                     status_code=303,
                 )
             else:
+                error_msg = f"HTTP {response.status_code}: {response.text}"
+                set_setting(db, "startdisplay_last_error", error_msg)
+                db.commit()
                 return RedirectResponse(
-                    url=f"/ui/settings?error=Verbindung zum Startdisplay fehlgeschlagen: HTTP {response.status_code}",
+                    url=f"/ui/settings?error=Verbindung zum Startdisplay fehlgeschlagen: {error_msg}",
                     status_code=303,
                 )
                 
