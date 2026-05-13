@@ -291,6 +291,20 @@ Wichtig ist, dass der Raspberry Pi und das Anzeigegerät im gleichen Netzwerk si
 
 ---
 
+# ESP32 Startdisplay
+
+Der Code für das optionale ESP32 LED-Matrix-Startdisplay liegt unter:
+
+esp32/startdisplay/
+
+Das Startdisplay wird über die Einstellungen der Software per HTTP angebunden und zeigt die aktuellen Startnummern für Bahn A und Bahn B an.
+
+Weitere Hinweise befinden sich in:
+
+esp32/startdisplay/README.md
+
+---
+
 # Projektstand / Version 1.4.1
 
 Dieser Stand basiert auf Version 1.4.1 der Quad Parallel Race Software.
