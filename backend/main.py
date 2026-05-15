@@ -1223,19 +1223,19 @@ def pick_monitor_current_run(
     active_run_id: int | None = None,
 ) -> tuple[RaceRun, Pairing] | None:
     """
-    Der Monitor darf nur den vom Zeitnehmer aktiv gesetzten Lauf anzeigen.
+    Aktuellen Monitor-Lauf bestimmen.
 
-    Wichtig:
-    - Kein Fallback auf irgendeinen unbestätigten Lauf.
-    - Nach Abschluss einer Klasse wird startdisplay_active_run_id geleert.
-    - Wenn keine aktive Lauf-ID gesetzt ist, muss der Monitor leer bleiben.
-    - Bestätigte Läufe dürfen niemals erneut als aktuelle Paarung angezeigt werden.
+    Die aktiv gesetzte Lauf-ID hat Vorrang. Wenn keine aktive ID gesetzt ist,
+    zeigt der Monitor den ersten unbestätigten Lauf in fachlicher Reihenfolge.
+    Dadurch bleibt die Monitoranzeige auch vor dem Drücken von START nutzbar.
     """
-    if not active_run_id:
-        return None
+    if active_run_id:
+        for race_run, pairing in run_items:
+            if race_run.id == active_run_id and not race_run.confirmed:
+                return race_run, pairing
 
     for race_run, pairing in run_items:
-        if race_run.id == active_run_id and not race_run.confirmed:
+        if not race_run.confirmed:
             return race_run, pairing
 
     return None
@@ -4581,21 +4581,27 @@ def ui_event_timekeeper_run(
         RunResult.lane,
     ).all()
 
-    run_penalties = db.query(RunPenalty).filter(
-        RunPenalty.event_id == active_event.id,
-        RunPenalty.run_id == race_run.id,
-    ).all()
+    marshal_enabled = bool(active_event.marshal_enabled)
+    run_penalties = []
+
+    if marshal_enabled:
+        run_penalties = db.query(RunPenalty).filter(
+            RunPenalty.event_id == active_event.id,
+            RunPenalty.run_id == race_run.id,
+        ).all()
 
     prepared_results = []
 
     for result in results:
         prepared_result = prepare_result_for_display(result, sectors)
-        prepared_result.digital_penalty_statuses = build_digital_penalty_statuses(
-            race_run=race_run,
-            result=result,
-            sectors=sectors,
-            run_penalties=run_penalties,
-        )
+        prepared_result.digital_penalty_statuses = []
+        if marshal_enabled:
+            prepared_result.digital_penalty_statuses = build_digital_penalty_statuses(
+                race_run=race_run,
+                result=result,
+                sectors=sectors,
+                run_penalties=run_penalties,
+            )
         prepared_results.append(prepared_result)
 
     run_items = get_start_ordered_class_runs(
@@ -4628,6 +4634,7 @@ def ui_event_timekeeper_run(
             "race_run": race_run,
             "results": prepared_results,
             "sectors": sectors,
+            "marshal_enabled": marshal_enabled,
             "next_unconfirmed_run": next_unconfirmed_payload,
             "is_next_startable_run": is_next_startable_run,
             "start_error": request.query_params.get("start_error"),

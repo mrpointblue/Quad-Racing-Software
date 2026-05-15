@@ -216,14 +216,20 @@
 
             <form method="post" action="/ui/settings/marshals">
                 <input type="hidden" name="event_id" value="{{ active_event.id }}">
-                <label class="choice-row">
+                <label class="settings-toggle-row">
                     <input
                         type="checkbox"
                         name="marshal_enabled"
                         value="1"
                         {% if active_event.marshal_enabled %}checked{% endif %}
                     >
-                    <span>Digitale Streckenposten aktivieren</span>
+                    <span class="settings-toggle-track">
+                        <span class="settings-toggle-knob"></span>
+                    </span>
+                    <span class="settings-toggle-text">
+                        <strong>Digitale Streckenposten aktivieren</strong>
+                        <small>Mobile Eingabe und QR-Codes nur bei aktivierter Funktion freigeben.</small>
+                    </span>
                 </label>
 
                 <button type="submit">Streckenposten-Einstellung speichern</button>
