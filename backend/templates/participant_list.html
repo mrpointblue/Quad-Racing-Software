@@ -123,7 +123,7 @@
 
                     <td>
                         {% if participant.withdrawn %}
-                            <span class="error">
+                            <span class="status-badge status-badge-withdrawn">
                                 Ausgeschieden
                                 {% if participant.withdrawn_reason %}
                                     – {{ participant.withdrawn_reason }}
@@ -131,10 +131,10 @@
                             </span>
                             {% if participant.withdrawn_at %}
                                 <br>
-                                <small>{{ participant.withdrawn_at }}</small>
+                                <small class="status-meta">{{ participant.withdrawn_at }}</small>
                             {% endif %}
                         {% else %}
-                            <span class="success">Aktiv</span>
+                            <span class="status-badge status-badge-active">Aktiv</span>
                         {% endif %}
                     </td>
 

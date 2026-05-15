@@ -30,7 +30,7 @@
                 <div class="marshal-station-name">{{ station.name }}</div>
                 <div class="marshal-station-actions">
                     <a href="{{ station.url }}" class="button small-button">Bedienoberfläche öffnen</a>
-                    <a href="/ui/events/{{ event.id }}/marshal/qr?type={{ station.type }}&lane={{ station.lane }}{% if station.sector %}&sector={{ station.sector }}{% endif %}" class="button small-button">QR-Code anzeigen</a>
+                    <a href="/ui/events/{{ event.id }}/marshal/qr?type={{ station.type }}{% if station.lane %}&lane={{ station.lane }}{% endif %}{% if station.sector %}&sector={{ station.sector }}{% endif %}" class="button small-button">QR-Code anzeigen</a>
                     <button
                         type="button"
                         class="small-button"
@@ -38,7 +38,7 @@
                     >
                         Auf Monitor anzeigen
                     </button>
-                    <a href="/ui/events/{{ event.id }}/marshal/qr/print?type={{ station.type }}&lane={{ station.lane }}{% if station.sector %}&sector={{ station.sector }}{% endif %}" class="button small-button">Drucken</a>
+                    <a href="/ui/events/{{ event.id }}/marshal/qr/print?type={{ station.type }}{% if station.lane %}&lane={{ station.lane }}{% endif %}{% if station.sector %}&sector={{ station.sector }}{% endif %}" class="button small-button">Drucken</a>
                 </div>
             </div>
         {% endfor %}

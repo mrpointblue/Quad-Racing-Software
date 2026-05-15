@@ -110,7 +110,8 @@
     margin: 22px 0;
 }
 
-.counter #points {
+.counter #points,
+.counter [id^="points-"] {
     min-width: 110px;
     font-size: 56px;
     font-weight: 900;
@@ -766,6 +767,58 @@ select {
 .compact-runs-table th {
     text-align: left;
     background: #f3f4f6;
+}
+
+.qpr-driver-cell {
+    line-height: 1.35;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    max-width: 100%;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.2;
+    white-space: normal;
+}
+
+.qpr-eliminated-driver {
+    display: inline-block;
+    width: fit-content;
+    max-width: 100%;
+    margin-top: 6px;
+    padding: 5px 9px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 900;
+    line-height: 1.2;
+    white-space: normal;
+    color: #991b1b;
+    background: #fee2e2;
+    border: 2px solid #dc2626;
+}
+
+.status-badge-withdrawn {
+    color: #991b1b;
+    background: #fee2e2;
+    border: 1px solid #fca5a5;
+}
+
+.status-badge-active {
+    color: #166534;
+    background: #dcfce7;
+    border: 1px solid #86efac;
+}
+
+.status-meta {
+    display: block;
+    margin-top: 4px;
+    color: #6b7280;
+    line-height: 1.2;
 }
 
 .small-button {
@@ -1733,6 +1786,14 @@ select {
 .run-title-row h2 {
     margin-top: 0;
     margin-bottom: 6px;
+}
+
+.run-header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .run-control-grid {

@@ -10,12 +10,56 @@
     <main class="marshal-page">
     <section class="marshal-card marshal-center-card">
         {% if type == 'general' %}
-        <h1>Start-/Zielposten</h1>
-        <div class="marshal-station-title">Bahn {{ lane }}</div>
+            <h1>Start-/Zielposten</h1>
+            <div class="marshal-station-title">Bahn A und Bahn B</div>
+
+            {% for entry in lane_entries %}
+                <div class="marshal-info-card" id="info-lane-{{ entry.lane }}">
+                    <h2>Bahn {{ entry.lane }}</h2>
+                    {% if entry.run and entry.driver %}
+                        <p><strong>Lauf:</strong> {{ entry.run_label }}</p>
+                        <p><strong>Klasse:</strong> Klasse {{ entry.run.race_class }}</p>
+                        <p><strong>Startnummer:</strong> {{ entry.driver.start_number }}</p>
+                        <p><strong>Fahrername:</strong> {{ entry.driver.first_name }} {{ entry.driver.last_name }}</p>
+                    {% else %}
+                        <div class="marshal-warning">Für diese Bahn ist aktuell kein Lauf aktiv.</div>
+                    {% endif %}
+                </div>
+
+                {% if entry.run and entry.driver %}
+                    {% if not entry.can_edit %}
+                        <div class="marshal-warning">
+                            Der Lauf wurde durch die Zeitnahme bestätigt. Eine Korrektur ist nicht mehr möglich. Bitte Rücksprache mit der Zeitnahme halten.
+                        </div>
+                    {% else %}
+                        <div class="penalty-input marshal-penalty-input" id="penalty-input-{{ entry.lane }}">
+                            <h2>Fehlerpunkte Bahn {{ entry.lane }}</h2>
+                            <div class="counter">
+                                <button class="marshal-counter-button" onclick="changeLanePoints('{{ entry.lane }}', -5)">-</button>
+                                <span id="points-{{ entry.lane }}">{{ entry.current_points }}</span>
+                                <button class="marshal-counter-button" onclick="changeLanePoints('{{ entry.lane }}', 5)">+</button>
+                            </div>
+                            <button id="submit-btn-{{ entry.lane }}" class="marshal-primary-button" onclick="submitLanePenalty('{{ entry.lane }}')">Übermitteln</button>
+                        </div>
+                    {% endif %}
+
+                    <div id="success-message-{{ entry.lane }}" class="marshal-success" style="display: none;">
+                        <h2>Fehlerpunkte übermittelt</h2>
+                        <p><strong>Lauf:</strong> {{ entry.run_label }}</p>
+                        <p><strong>Klasse:</strong> Klasse {{ entry.run.race_class }}</p>
+                        <p><strong>Bahn:</strong> {{ entry.lane }}</p>
+                        <p><strong>Startnummer:</strong> {{ entry.driver.start_number }}</p>
+                        <p><strong>Fahrername:</strong> {{ entry.driver.first_name }} {{ entry.driver.last_name }}</p>
+                        <p><strong>Punkte:</strong> <span id="submitted-points-{{ entry.lane }}"></span></p>
+                        {% if entry.can_edit %}
+                            <button class="marshal-secondary-button" onclick="correctLane('{{ entry.lane }}')">Korrigieren</button>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            {% endfor %}
         {% else %}
         <h1>Streckenposten</h1>
         <div class="marshal-station-title">Bahn {{ lane }} / Position {{ sector }}</div>
-        {% endif %}
 
         <div class="marshal-info-card">
             <h2>Aktueller Lauf</h2>
@@ -54,10 +98,162 @@
                 <button class="marshal-secondary-button" onclick="correct()">Korrigieren</button>
             {% endif %}
         </div>
+        {% endif %}
     </section>
     </main>
 
     <script>
+        {% if type == 'general' %}
+        const laneState = {
+            {% for entry in lane_entries %}
+            "{{ entry.lane }}": {
+                currentPoints: {{ entry.current_points }},
+                lastServerPoints: {{ entry.current_points }},
+                canEdit: {{ entry.can_edit|tojson }},
+                currentRunId: {% if entry.run %}{{ entry.run.id }}{% else %}null{% endif %},
+                hasSubmitted: {{ entry.has_submission|tojson }},
+                localDirty: false
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        };
+
+        function updateLanePointsDisplay(lane) {
+            const element = document.getElementById("points-" + lane);
+            if (element) {
+                element.textContent = laneState[lane].currentPoints;
+            }
+        }
+
+        function changeLanePoints(lane, delta) {
+            const state = laneState[lane];
+
+            if (!state || !state.canEdit) {
+                return;
+            }
+
+            state.currentPoints = Math.max(0, state.currentPoints + delta);
+            state.currentPoints = Math.round(state.currentPoints / 5) * 5;
+            state.localDirty = state.currentPoints !== state.lastServerPoints;
+            updateLanePointsDisplay(lane);
+        }
+
+        async function submitLanePenalty(lane) {
+            const state = laneState[lane];
+
+            if (!state || !state.canEdit || !state.currentRunId) {
+                return;
+            }
+
+            const payload = {
+                penalty_type: "general",
+                lane: lane,
+                points: state.currentPoints,
+                user: "marshal"
+            };
+
+            try {
+                const response = await fetch("/api/events/{{ event.id }}/runs/" + state.currentRunId + "/penalties", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    const input = document.getElementById("penalty-input-" + lane);
+                    const success = document.getElementById("success-message-" + lane);
+                    const submitted = document.getElementById("submitted-points-" + lane);
+
+                    if (input) {
+                        input.style.display = "none";
+                    }
+
+                    if (success) {
+                        success.style.display = "block";
+                    }
+
+                    if (submitted) {
+                        submitted.textContent = state.currentPoints;
+                    }
+
+                    state.hasSubmitted = true;
+                    state.lastServerPoints = state.currentPoints;
+                    state.localDirty = false;
+                } else {
+                    alert("Fehler beim Übermitteln");
+                }
+            } catch (error) {
+                alert("Netzwerkfehler");
+            }
+        }
+
+        function correctLane(lane) {
+            const input = document.getElementById("penalty-input-" + lane);
+            const success = document.getElementById("success-message-" + lane);
+            const state = laneState[lane];
+
+            if (success) {
+                success.style.display = "none";
+            }
+
+            if (input) {
+                input.style.display = "block";
+            }
+
+            if (state) {
+                state.localDirty = false;
+                state.lastServerPoints = state.currentPoints;
+            }
+        }
+
+        async function pollGeneralLane(lane) {
+            const state = laneState[lane];
+
+            if (!state) {
+                return;
+            }
+
+            try {
+                const response = await fetch(
+                    "/api/events/{{ event.id }}/marshal/current-run?type=general&lane=" + lane,
+                    {cache: "no-store"}
+                );
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (!data.has_current_run && state.currentRunId !== null) {
+                    window.location.reload();
+                    return;
+                }
+
+                if (data.has_current_run && data.run_id !== state.currentRunId) {
+                    window.location.reload();
+                    return;
+                }
+
+                if (data.has_current_run && !data.can_edit && state.canEdit) {
+                    window.location.reload();
+                    return;
+                }
+
+                if (data.has_current_run && typeof data.current_points === "number" && !state.localDirty && data.current_points !== state.currentPoints) {
+                    state.currentPoints = data.current_points;
+                    state.lastServerPoints = data.current_points;
+                    updateLanePointsDisplay(lane);
+                }
+            } catch (error) {
+                return;
+            }
+        }
+
+        setInterval(function() {
+            pollGeneralLane("A");
+            pollGeneralLane("B");
+        }, 5000);
+        {% else %}
         let currentPoints = {{ current_points }};
         let lastServerPoints = {{ current_points }};
         let canEdit = {{ can_edit|tojson }};
@@ -162,6 +358,7 @@
         }
 
         setInterval(pollCurrentRun, 5000);
+        {% endif %}
     </script>
 </body>
 </html>

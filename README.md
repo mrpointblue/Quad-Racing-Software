@@ -305,9 +305,9 @@ esp32/startdisplay/README.md
 
 ---
 
-# Projektstand / Version 1.4.1
+# Projektstand / Version 1.5.0
 
-Dieser Stand basiert auf Version 1.4.1 der Quad Parallel Race Software.
+Dieser Stand basiert auf Version 1.5.0 der Quad Parallel Race Software.
 
 Kernpunkte:
 
@@ -373,6 +373,18 @@ UI-Verbesserungen in Version 1.4.2:
 - Settings-Reihenfolge optimiert: Signal-Mapping → Streckenpostenfunktion → Startdisplay
 - Konsistente Checkbox-Styling mit choice-row Klasse
 - Verbesserte Statusanzeige für Startdisplay-Konfiguration
+
+Korrekturen und Erweiterungen in Version 1.5.0:
+
+- Monitor zeigt die aktuelle Paarung auch vor dem Drücken von START, solange ein nächster unbestätigter Lauf vorhanden ist.
+- Digitale Streckenposten bleiben strikt optional; bei deaktivierter Funktion werden mobile Eingaben, QR-Code-Seiten und digitale Meldungen in der Zeitnahme ausgeblendet.
+- Start-/Zielposten ist fachlich korrekt als eine gemeinsame Station umgesetzt und erfasst allgemeine Fehlerpunkte für Bahn A und Bahn B auf einer gemeinsamen mobilen Seite.
+- Sektor-/Positionsposten bleiben bahn- und positionsbezogen.
+- Marshal-Eingaben sind an die aktuelle Paarung gebunden; ein späterer Lauf kann nicht vorzeitig durch eine Marshal-Station bearbeitet werden.
+- Ausgabe Monitor kann Streckenposten-QR-Codes zeitlich begrenzt anzeigen und automatisch zurücksetzen.
+- Zeitnahme zeigt den nächsten Lauf im Kopfbereich klarer neben der Rennbetriebsübersicht.
+- Ausgeschiedene Teilnehmer werden in Rennbetrieb und Teilnehmerliste deutlicher als Status-Badge dargestellt.
+- Einstellungen enthalten eine besser lesbare Aktivierung für die digitale Streckenpostenfunktion.
 
 Wichtige Korrekturen seit Version 1.3.0:
 

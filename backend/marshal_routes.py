@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 
 from backend.database import get_db
-from backend.models import Event, RaceRun, RunPenalty, RunResult, Participant, RegistrationGroup, SystemSetting
+from backend.models import Event, Pairing, RaceRun, RunPenalty, RunResult, Participant, RegistrationGroup, SystemSetting
 from backend.template_helpers import register_template_helpers
 
 router = APIRouter()
@@ -71,7 +71,7 @@ def sync_penalty_to_run_result(
 
 def get_station_label(penalty_type: str, lane: str, sector: int | None = None) -> str:
     if penalty_type == "general":
-        return f"Start-/Zielposten Bahn {lane}"
+        return "Start-/Zielposten"
 
     return f"Bahn {lane} / Position {sector}"
 
@@ -83,8 +83,10 @@ def get_base_url(request: Request) -> str:
 def get_station_url(event_id: int, penalty_type: str, lane: str, sector: int | None, base_url: str = "") -> str:
     params = {
         "type": penalty_type,
-        "lane": lane,
     }
+
+    if penalty_type != "general":
+        params["lane"] = lane
 
     if penalty_type == "sector":
         params["sector"] = str(sector)
@@ -101,17 +103,17 @@ def build_marshal_stations(event: Event, request: Request | None = None) -> list
     base_url = get_base_url(request) if request else ""
     stations = []
 
-    for lane in ["A", "B"]:
-        url = get_station_url(event.id, "general", lane, None, base_url)
-        stations.append({
-            "name": get_station_label("general", lane),
-            "url": get_station_url(event.id, "general", lane, None),
-            "absolute_url": url,
-            "type": "general",
-            "lane": lane,
-            "sector": None,
-        })
+    url = get_station_url(event.id, "general", "", None, base_url)
+    stations.append({
+        "name": get_station_label("general", ""),
+        "url": get_station_url(event.id, "general", "", None),
+        "absolute_url": url,
+        "type": "general",
+        "lane": "",
+        "sector": None,
+    })
 
+    for lane in ["A", "B"]:
         for sector in range(1, get_position_count(event) + 1):
             url = get_station_url(event.id, "sector", lane, sector, base_url)
             stations.append({
@@ -143,12 +145,13 @@ def build_marshal_qr_context(
     event: Event,
     request: Request,
     penalty_type: str,
-    lane: str,
+    lane: str | None,
     sector: int | None,
     print_mode: bool,
 ) -> dict:
-    absolute_url = get_station_url(event.id, penalty_type, lane, sector, get_base_url(request))
-    station_label = get_station_label(penalty_type, lane, sector)
+    normalized_lane = lane or ""
+    absolute_url = get_station_url(event.id, penalty_type, normalized_lane, sector, get_base_url(request))
+    station_label = get_station_label(penalty_type, normalized_lane, sector)
 
     return {
         "request": request,
@@ -224,6 +227,14 @@ def get_lane_driver(run: RaceRun, lane: str, db: Session) -> Participant | None:
     return db.query(Participant).filter(Participant.id == result.participant_id).first()
 
 
+def run_has_lane_driver(run: RaceRun, lane: str) -> bool:
+    result_lane = "lane_a" if lane == "A" else "lane_b"
+    return any(
+        result.lane == result_lane and result.participant_id is not None
+        for result in run.results
+    )
+
+
 def get_marshal_round_number(round_name: str | None) -> int:
     if round_name == "halbfinale":
         return 2
@@ -238,51 +249,68 @@ def get_marshal_run_label(run: RaceRun) -> str:
     return f"{get_marshal_round_number(run.round_name)}.{run.run_number}"
 
 
-def get_current_run_for_lane(event_id: int, lane: str, db: Session):
-    result_lane = "lane_a" if lane == "A" else "lane_b"
+def get_marshal_run_order_key(race_run: RaceRun, pairing: Pairing) -> tuple:
+    return (
+        get_marshal_round_number(race_run.round_name),
+        race_run.race_class,
+        pairing.pairing_number,
+        race_run.run_number,
+    )
 
-    # 1. Priorität: Der vom Zeitnehmer aktiv gesetzte Lauf (Startdisplay/Monitor Fokus)
-    # Dies stellt sicher, dass der Streckenposten dem Zeitnehmer folgt, sobald ein Lauf geöffnet wird.
-    active_run_id_str = db.query(SystemSetting).filter(SystemSetting.key == "startdisplay_active_run_id").first()
+
+def get_ordered_marshal_runs(event_id: int, db: Session) -> list[tuple[RaceRun, Pairing]]:
+    pairings = db.query(Pairing).filter(
+        Pairing.event_id == event_id,
+    ).all()
+
+    items: list[tuple[RaceRun, Pairing]] = []
+
+    for pairing in pairings:
+        for race_run in pairing.runs:
+            items.append((race_run, pairing))
+
+    items.sort(
+        key=lambda item: get_marshal_run_order_key(
+            race_run=item[0],
+            pairing=item[1],
+        )
+    )
+
+    return items
+
+
+def get_current_marshal_run(event_id: int, db: Session) -> RaceRun | None:
+    active_run_id_str = db.query(SystemSetting).filter(
+        SystemSetting.key == "startdisplay_active_run_id",
+    ).first()
+
     if active_run_id_str and active_run_id_str.value:
         try:
             active_run_id = int(active_run_id_str.value)
             active_run = db.query(RaceRun).filter(
                 RaceRun.id == active_run_id,
                 RaceRun.event_id == event_id,
-                RaceRun.confirmed == False
-            ).join(RunResult).filter(
-                RunResult.lane == result_lane,
-                RunResult.participant_id.isnot(None)
+                RaceRun.confirmed == False,
             ).first()
             if active_run:
                 return active_run
         except (ValueError, TypeError):
             pass
 
-    running_run = db.query(RaceRun).filter(
-        RaceRun.event_id == event_id,
-        RaceRun.confirmed == False,
-        RaceRun.status.in_(["running", "started", "finished"]),
-    ).join(RunResult).filter(
-        RunResult.lane == result_lane,
-        RunResult.participant_id.isnot(None)
-    ).order_by(
-        RaceRun.id.desc(),
-    ).first()
+    for race_run, _pairing in get_ordered_marshal_runs(event_id, db):
+        if not race_run.confirmed:
+            return race_run
 
-    if running_run:
-        return running_run
+    return None
 
-    return db.query(RaceRun).filter(
-        RaceRun.event_id == event_id,
-        RaceRun.confirmed == False,
-    ).join(RunResult).filter(
-        RunResult.lane == result_lane,
-        RunResult.participant_id.isnot(None)
-    ).order_by(
-        RaceRun.id.asc(),
-    ).first()
+
+def get_current_run_for_lane(event_id: int, lane: str, db: Session):
+    current_run = get_current_marshal_run(event_id, db)
+
+    if not current_run or not run_has_lane_driver(current_run, lane):
+        return None
+
+    return current_run
 
 
 def get_penalty_record(
@@ -328,11 +356,12 @@ def get_penalty_status(run: RaceRun, penalty: RunPenalty | None) -> str:
 
 def build_marshal_status_rows(event: Event, db: Session) -> list[dict]:
     rows = []
+    current_run = get_current_marshal_run(event.id, db)
 
     for lane in ["A", "B"]:
-        run = get_current_run_for_lane(event.id, lane, db)
+        run = current_run
 
-        if not run:
+        if not run or not run_has_lane_driver(run, lane):
             continue
 
         driver = get_lane_driver(run, lane, db)
@@ -448,14 +477,68 @@ def ui_marshal_station(
     if type not in ["sector", "general"]:
         raise HTTPException(status_code=400, detail="Ungültiger Typ")
 
+    if type == "general":
+        lane_entries = []
+
+        for general_lane in ["A", "B"]:
+            lane_run = get_current_run_for_lane(event_id, general_lane, db)
+            lane_driver = get_lane_driver(lane_run, general_lane, db) if lane_run else None
+            penalty = None
+
+            if lane_run and lane_driver:
+                penalty = get_penalty_record(
+                    event_id=event_id,
+                    run_id=lane_run.id,
+                    lane=general_lane,
+                    penalty_type="general",
+                    sector=None,
+                    db=db,
+                )
+
+            lane_entries.append(
+                {
+                    "lane": general_lane,
+                    "run": lane_run,
+                    "run_label": get_marshal_run_label(lane_run) if lane_run else "",
+                    "driver": lane_driver,
+                    "current_points": penalty.points if penalty else 0,
+                    "has_submission": penalty is not None,
+                    "can_edit": bool(lane_run and not lane_run.confirmed),
+                }
+            )
+
+        if not any(entry["run"] and entry["driver"] for entry in lane_entries):
+            return templates.TemplateResponse(
+                request=request,
+                name="marshal_no_run.html",
+                context={
+                    "request": request,
+                    "event": event,
+                    "lane": "",
+                    "type": type,
+                    "sector": None,
+                    "station_label": get_station_label(type, "", None),
+                    "start_approval_status": get_start_approval_status(event, db),
+                },
+            )
+
+        return templates.TemplateResponse(
+            request=request,
+            name="marshal_input.html",
+            context={
+                "request": request,
+                "event": event,
+                "type": type,
+                "sector": None,
+                "lane_entries": lane_entries,
+            },
+        )
+
     if lane not in ["A", "B"]:
         raise HTTPException(status_code=400, detail="Ungültige Bahn")
 
     if type == "sector" and (sector is None or sector < 1 or sector > get_position_count(event)):
         raise HTTPException(status_code=400, detail="Ungültige Position")
-
-    if type == "general":
-        sector = None
 
     # Get current run
     run = get_current_run_for_lane(event_id, lane, db)
@@ -548,6 +631,13 @@ def api_save_penalty(
 
     if lane not in ["A", "B"]:
         raise HTTPException(status_code=400, detail="Ungültige Bahn")
+
+    current_station_run = get_current_run_for_lane(event_id, lane, db)
+    if not current_station_run or current_station_run.id != run.id:
+        raise HTTPException(
+            status_code=400,
+            detail="Dieser Lauf ist für diese Station aktuell nicht aktiv.",
+        )
 
     if points < 0:
         raise HTTPException(status_code=400, detail="Punkte müssen >= 0 sein")
@@ -701,7 +791,7 @@ def api_get_current_run(
             "marshal_enabled": True,
             "race_active": False,
             "has_current_run": False,
-            "message": "Noch kein Rennbetrieb aktiv.",
+            "message": "Für diese Station ist aktuell kein Lauf aktiv.",
             "start_approval_status": get_start_approval_status(event, db),
         }
 
@@ -748,7 +838,7 @@ def ui_marshal_qr(
     event_id: int,
     request: Request,
     type: str = Query(...),
-    lane: str = Query(...),
+    lane: str = Query(None),
     sector: int = Query(None),
     db: Session = Depends(get_db),
 ):
@@ -765,13 +855,17 @@ def ui_marshal_qr(
             },
         )
 
-    if penalty_type not in ["sector", "general"] or lane not in ["A", "B"]:
+    if penalty_type not in ["sector", "general"]:
         raise HTTPException(status_code=400, detail="Ungültige Station")
 
-    if penalty_type == "sector" and (sector is None or sector < 1 or sector > get_position_count(event)):
-        raise HTTPException(status_code=400, detail="Ungültige Position")
+    if penalty_type == "sector":
+        if lane not in ["A", "B"]:
+            raise HTTPException(status_code=400, detail="Ungültige Bahn")
 
-    if penalty_type == "general":
+        if sector is None or sector < 1 or sector > get_position_count(event):
+            raise HTTPException(status_code=400, detail="Ungültige Position")
+    else:
+        lane = ""
         sector = None
 
     return templates.TemplateResponse(
@@ -786,7 +880,7 @@ def ui_marshal_qr_print(
     event_id: int,
     request: Request,
     type: str = Query(...),
-    lane: str = Query(...),
+    lane: str = Query(None),
     sector: int = Query(None),
     db: Session = Depends(get_db),
 ):
@@ -803,13 +897,17 @@ def ui_marshal_qr_print(
             },
         )
 
-    if penalty_type not in ["sector", "general"] or lane not in ["A", "B"]:
+    if penalty_type not in ["sector", "general"]:
         raise HTTPException(status_code=400, detail="Ungültige Station")
 
-    if penalty_type == "sector" and (sector is None or sector < 1 or sector > get_position_count(event)):
-        raise HTTPException(status_code=400, detail="Ungültige Position")
+    if penalty_type == "sector":
+        if lane not in ["A", "B"]:
+            raise HTTPException(status_code=400, detail="Ungültige Bahn")
 
-    if penalty_type == "general":
+        if sector is None or sector < 1 or sector > get_position_count(event):
+            raise HTTPException(status_code=400, detail="Ungültige Position")
+    else:
+        lane = ""
         sector = None
 
     return templates.TemplateResponse(
@@ -902,10 +1000,13 @@ def api_show_marshal_qr_on_monitor(
     lane = payload.get("lane")
     sector = payload.get("sector")
 
-    if penalty_type not in ["sector", "general"] or lane not in ["A", "B"]:
+    if penalty_type not in ["sector", "general"]:
         raise HTTPException(status_code=400, detail="Ungültige Station")
 
     if penalty_type == "sector":
+        if lane not in ["A", "B"]:
+            raise HTTPException(status_code=400, detail="Ungültige Bahn")
+
         try:
             sector = int(sector)
         except (TypeError, ValueError):
@@ -914,6 +1015,7 @@ def api_show_marshal_qr_on_monitor(
         if sector < 1 or sector > get_position_count(event):
             raise HTTPException(status_code=400, detail="Ungültige Position")
     else:
+        lane = ""
         sector = None
 
     absolute_url = get_station_url(event.id, penalty_type, lane, sector, get_base_url(request))

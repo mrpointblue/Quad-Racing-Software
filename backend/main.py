@@ -1866,8 +1866,10 @@ def get_monitor_marshal_qr_payload(event: Event, db: Session) -> dict | None:
         for station in build_marshal_station_options(event):
             params = {
                 "type": station["type"],
-                "lane": station["lane"],
             }
+
+            if station["lane"]:
+                params["lane"] = station["lane"]
 
             if station["sector"]:
                 params["sector"] = station["sector"]
@@ -1909,18 +1911,16 @@ def get_monitor_marshal_qr_payload(event: Event, db: Session) -> dict | None:
 
 def build_marshal_station_options(event: Event) -> list[dict]:
     position_count = max(1, int(event.sectors_per_lane or 1))
-    stations = []
+    stations = [
+        {
+            "type": "general",
+            "lane": "",
+            "sector": "",
+            "label": "Start-/Zielposten",
+        }
+    ]
 
     for lane in ["A", "B"]:
-        stations.append(
-            {
-                "type": "general",
-                "lane": lane,
-                "sector": "",
-                "label": f"Start-/Zielposten Bahn {lane}",
-            }
-        )
-
         for sector in range(1, position_count + 1):
             stations.append(
                 {

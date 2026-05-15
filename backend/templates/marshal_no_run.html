@@ -11,9 +11,9 @@
     <section class="marshal-card marshal-center-card">
         <h1>Streckenposten</h1>
         <div class="marshal-station-title">{{ station_label }}</div>
-        <div class="marshal-warning">Noch kein Rennbetrieb aktiv.</div>
+        <div class="marshal-warning">Für diese Station ist aktuell kein Lauf aktiv.</div>
         <p>
-            Es ist aktuell noch kein Lauf für diese Veranstaltung gestartet oder vorbereitet.
+            Bitte warten, bis diese Bahn in der aktuellen Paarung besetzt ist.
         </p>
         <div class="marshal-info-card">
             <strong>Startfreigabe:</strong>
@@ -26,10 +26,10 @@
     </main>
 
     <script>
-        async function pollCurrentRun() {
+        async function pollCurrentRunForLane(lane) {
             try {
                 const response = await fetch(
-                    "/api/events/{{ event.id }}/marshal/current-run?type={{ type }}&lane={{ lane }}{% if sector %}&sector={{ sector }}{% endif %}",
+                    "/api/events/{{ event.id }}/marshal/current-run?type={{ type }}&lane=" + lane + "{% if sector %}&sector={{ sector }}{% endif %}",
                     {cache: "no-store"}
                 );
 
@@ -45,6 +45,15 @@
             } catch (error) {
                 return;
             }
+        }
+
+        function pollCurrentRun() {
+            {% if type == "general" and not lane %}
+                pollCurrentRunForLane("A");
+                pollCurrentRunForLane("B");
+            {% else %}
+                pollCurrentRunForLane("{{ lane }}");
+            {% endif %}
         }
 
         setInterval(pollCurrentRun, 5000);

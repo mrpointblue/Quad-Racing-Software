@@ -45,19 +45,19 @@
             {% endif %}
         </div>
 
-        <div>
-            <a class="button small-button" href="/ui/events/{{ active_event.id }}/classes">
-                Zur Rennbetriebsübersicht
-            </a>
-
+        <div class="run-header-actions">
             {% if next_unconfirmed_run and next_unconfirmed_run.id != race_run.id %}
-                <a class="button small-button" href="/ui/events/{{ active_event.id }}/timekeeper/run/{{ next_unconfirmed_run.id }}">
+                <a class="button small-button {% if race_run.confirmed %}next-run-button{% endif %}" href="/ui/events/{{ active_event.id }}/timekeeper/run/{{ next_unconfirmed_run.id }}">
                     Nächster Lauf
                     · {{ next_unconfirmed_run.round_label }}
                     · Klasse {{ next_unconfirmed_run.race_class }}
                     · {{ next_unconfirmed_run.round_number }}.{{ next_unconfirmed_run.run_number }}
                 </a>
             {% endif %}
+
+            <a class="button small-button" href="/ui/events/{{ active_event.id }}/classes">
+                Zur Rennbetriebsübersicht
+            </a>
 
             <a class="button small-button" href="/ui/events/{{ active_event.id }}/timekeeper/class/{{ race_run.race_class }}">
                 Klasse {{ race_run.race_class }}
