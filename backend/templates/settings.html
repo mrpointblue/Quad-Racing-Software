@@ -35,18 +35,15 @@
                 <option value="true" {% if settings.logo_enabled == "true" %}selected{% endif %}>Ja</option>
             </select>
 
-            <label>Simulationsmodus</label>
-            <select name="logo_simulation_mode">
-                <option value="true" {% if settings.logo_simulation_mode == "true" %}selected{% endif %}>Ja</option>
-                <option value="false" {% if settings.logo_simulation_mode != "true" %}selected{% endif %}>Nein</option>
-            </select>
+            <input type="hidden" name="logo_simulation_mode" value="false">
+            <input type="hidden" name="logo_access_mode" value="modbus_tcp">
 
             <label>IP-Adresse</label>
             <input
                 type="text"
                 name="logo_ip"
                 value="{{ settings.logo_ip }}"
-                placeholder="169.254.180.254"
+                placeholder="192.168.2.20"
                 required
             >
 
@@ -70,21 +67,100 @@
                 required
             >
 
-            <label>Zugriffsart</label>
-            <select name="logo_access_mode">
-                <option value="logo_web" {% if settings.logo_access_mode == "logo_web" %}selected{% endif %}>LOGO Web / intern</option>
-                <option value="modbus_tcp" {% if settings.logo_access_mode == "modbus_tcp" %}selected{% endif %}>Modbus TCP</option>
-            </select>
-
-            <label>Passwort / optional</label>
+            <label>Polling-Intervall in ms</label>
             <input
-                type="password"
-                name="logo_password"
-                value="{{ settings.logo_password }}"
-                placeholder="optional"
+                type="number"
+                name="logo_poll_interval_ms"
+                value="{{ settings.logo_poll_interval_ms }}"
+                min="200"
+                max="5000"
+                required
+            >
+
+            <label>Holding Register Startadresse Zeitwerte V0/V4</label>
+            <input
+                type="number"
+                name="logo_time_register_start"
+                value="{{ settings.logo_time_register_start }}"
+                min="0"
+                required
+            >
+
+            <label>Coil-Startadresse Q1-Q3</label>
+            <input
+                type="number"
+                name="logo_output_coil_start"
+                value="{{ settings.logo_output_coil_start }}"
+                min="0"
+                required
+            >
+
+            <label>Coil-Startadresse M1-M6</label>
+            <input
+                type="number"
+                name="logo_marker_coil_start"
+                value="{{ settings.logo_marker_coil_start }}"
+                min="0"
+                required
+            >
+
+            <label>WEB Start Merker M7</label>
+            <input
+                type="number"
+                name="logo_web_start_coil"
+                value="{{ settings.logo_web_start_coil }}"
+                min="0"
+                placeholder="8262"
+            >
+
+            <label>WEB Reset Merker M9</label>
+            <input
+                type="number"
+                name="logo_web_reset_coil"
+                value="{{ settings.logo_web_reset_coil }}"
+                min="0"
+                placeholder="8264"
+            >
+
+            <label>Impulsdauer Start/Reset in Sekunden</label>
+            <input
+                type="text"
+                name="logo_pulse_duration"
+                value="{{ settings.logo_pulse_duration }}"
+                placeholder="0.2"
             >
 
             <button type="submit">Speichern</button>
+        </form>
+
+        <hr>
+
+        <div class="logo-hardware-status-grid">
+            <div>
+                <strong>Verbindungsstatus:</strong>
+                {{ logo_hardware_status.message }}
+            </div>
+            <div>Zeit Bahn A: <strong>{% if logo_hardware_status.times.lane_a_seconds is not none %}{{ "%.2f"|format(logo_hardware_status.times.lane_a_seconds) }} s / {{ logo_hardware_status.times.lane_a_display }}{% else %}-{% endif %}</strong></div>
+            <div>Zeit Bahn B: <strong>{% if logo_hardware_status.times.lane_b_seconds is not none %}{{ "%.2f"|format(logo_hardware_status.times.lane_b_seconds) }} s / {{ logo_hardware_status.times.lane_b_display }}{% else %}-{% endif %}</strong></div>
+            <div>Q1 Gelb: <strong>{{ "AN" if logo_hardware_status.outputs.yellow else "AUS" }}</strong></div>
+            <div>Q2 Grün: <strong>{{ "AN" if logo_hardware_status.outputs.green else "AUS" }}</strong></div>
+            <div>Q3 Rot: <strong>{{ "AN" if logo_hardware_status.outputs.red else "AUS" }}</strong></div>
+            <div>M1 Betrieb Bahn A: <strong>{{ "AN" if logo_hardware_status.markers.lane_a_running else "AUS" }}</strong></div>
+            <div>M2 Betrieb Bahn B: <strong>{{ "AN" if logo_hardware_status.markers.lane_b_running else "AUS" }}</strong></div>
+            <div>M3 Reset möglich: <strong>{{ "JA" if logo_hardware_status.markers.reset_available else "NEIN" }}</strong></div>
+            <div>M4 Fehlstart Bahn A: <strong>{{ "JA" if logo_hardware_status.markers.false_start_a else "NEIN" }}</strong></div>
+            <div>M5 Fehlstart Bahn B: <strong>{{ "JA" if logo_hardware_status.markers.false_start_b else "NEIN" }}</strong></div>
+            <div>M6 Störung Lichtschranke: <strong>{{ "JA" if logo_hardware_status.markers.light_barrier_fault else "NEIN" }}</strong></div>
+        </div>
+
+        <form method="post" action="/ui/settings/logo/check" style="display:inline;">
+            <button type="submit" class="small-button">Verbindung testen</button>
+        </form>
+        <form method="post" action="/ui/settings/logo/web-start" style="display:inline;">
+            <button type="submit" class="small-button">WEB Start testen</button>
+        </form>
+        <form method="post" action="/ui/settings/logo/web-reset" style="display:inline;">
+            <button type="submit" class="small-button">WEB Reset testen</button>
         </form>
     </div>
 </div>
@@ -100,92 +176,39 @@
     </button>
 
     <div class="settings-accordion-body" id="accordion_signal_mapping">
-        <form method="post" action="/ui/settings/logo-mapping">
-            <table class="compact-runs-table">
-                <thead>
-                    <tr>
-                        <th>Signal</th>
-                        <th>Range</th>
-                        <th>Address</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Start Button</td>
-                        <td><input type="number" name="logo_start_range" value="{{ settings.logo_start_range }}" required></td>
-                        <td><input type="number" name="logo_start_address" value="{{ settings.logo_start_address }}" required></td>
-                    </tr>
+        <table class="compact-runs-table">
+            <thead>
+                <tr>
+                    <th>LOGO Signal</th>
+                    <th>Funktion</th>
+                    <th>Modbus / Hinweis</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>I1</td><td>Lichtschranke Bahn A</td><td>Hardware-Eingang</td></tr>
+                <tr><td>I2</td><td>Lichtschranke Bahn B</td><td>Hardware-Eingang</td></tr>
+                <tr><td>I3</td><td>Start Hardware Backup</td><td>Hardware-Eingang</td></tr>
+                <tr><td>I4</td><td>Reset Hardware Backup</td><td>Hardware-Eingang</td></tr>
+                <tr><td>M7</td><td>WEB Start</td><td>Coil 8262</td></tr>
+                <tr><td>M8</td><td>Reserviert / Anlaufmerker</td><td>Coil 8263, wird nicht verwendet</td></tr>
+                <tr><td>M9</td><td>WEB Reset</td><td>Coil 8264</td></tr>
+                <tr><td>Q1</td><td>Gelb</td><td>Coil {{ settings.logo_output_coil_start|int }}</td></tr>
+                <tr><td>Q2</td><td>Grün</td><td>Coil {{ settings.logo_output_coil_start|int + 1 }}</td></tr>
+                <tr><td>Q3</td><td>Rot</td><td>Coil {{ settings.logo_output_coil_start|int + 2 }}</td></tr>
+                <tr><td>M1</td><td>Betrieb Bahn A</td><td>Coil {{ settings.logo_marker_coil_start|int }}</td></tr>
+                <tr><td>M2</td><td>Betrieb Bahn B</td><td>Coil {{ settings.logo_marker_coil_start|int + 1 }}</td></tr>
+                <tr><td>M3</td><td>Reset möglich</td><td>Coil {{ settings.logo_marker_coil_start|int + 2 }}</td></tr>
+                <tr><td>M4</td><td>Fehlstart Bahn A</td><td>Coil {{ settings.logo_marker_coil_start|int + 3 }}</td></tr>
+                <tr><td>M5</td><td>Fehlstart Bahn B</td><td>Coil {{ settings.logo_marker_coil_start|int + 4 }}</td></tr>
+                <tr><td>M6</td><td>Störung Lichtschranke</td><td>Coil {{ settings.logo_marker_coil_start|int + 5 }}</td></tr>
+                <tr><td>V0/V4</td><td>Zeit Bahn A/B in Hundertstelsekunden</td><td>Holding Register {{ settings.logo_time_register_start }} bis {{ settings.logo_time_register_start|int + 3 }}</td></tr>
+            </tbody>
+        </table>
 
-                    <tr>
-                        <td>Reset Button</td>
-                        <td><input type="number" name="logo_reset_range" value="{{ settings.logo_reset_range }}" required></td>
-                        <td><input type="number" name="logo_reset_address" value="{{ settings.logo_reset_address }}" required></td>
-                    </tr>
-
-                    <tr>
-                        <td>Zeit Bahn 1</td>
-                        <td><input type="number" name="logo_time_lane_1_range" value="{{ settings.logo_time_lane_1_range }}" required></td>
-                        <td><input type="number" name="logo_time_lane_1_address" value="{{ settings.logo_time_lane_1_address }}" required></td>
-                    </tr>
-
-                    <tr>
-                        <td>Zeit Bahn 2</td>
-                        <td><input type="number" name="logo_time_lane_2_range" value="{{ settings.logo_time_lane_2_range }}" required></td>
-                        <td><input type="number" name="logo_time_lane_2_address" value="{{ settings.logo_time_lane_2_address }}" required></td>
-                    </tr>
-
-                    <tr>
-                        <td>Ready</td>
-                        <td><input type="number" name="logo_ready_range" value="{{ settings.logo_ready_range }}" required></td>
-                        <td><input type="number" name="logo_ready_address" value="{{ settings.logo_ready_address }}" required></td>
-                    </tr>
-
-                    <tr>
-                        <td>Go</td>
-                        <td><input type="number" name="logo_go_range" value="{{ settings.logo_go_range }}" required></td>
-                        <td><input type="number" name="logo_go_address" value="{{ settings.logo_go_address }}" required></td>
-                    </tr>
-
-                    <tr>
-                        <td>Achtung</td>
-                        <td><input type="number" name="logo_attention_range" value="{{ settings.logo_attention_range }}" required></td>
-                        <td><input type="number" name="logo_attention_address" value="{{ settings.logo_attention_address }}" required></td>
-                    </tr>
-
-                    <tr>
-                        <td>Lichtschranke Bahn 1</td>
-                        <td><input type="number" name="logo_light_barrier_1_range" value="{{ settings.logo_light_barrier_1_range }}" required></td>
-                        <td><input type="number" name="logo_light_barrier_1_address" value="{{ settings.logo_light_barrier_1_address }}" required></td>
-                    </tr>
-
-                    <tr>
-                        <td>Lichtschranke Bahn 2</td>
-                        <td><input type="number" name="logo_light_barrier_2_range" value="{{ settings.logo_light_barrier_2_range }}" required></td>
-                        <td><input type="number" name="logo_light_barrier_2_address" value="{{ settings.logo_light_barrier_2_address }}" required></td>
-                    </tr>
-
-                    <tr>
-                        <td>Fehler / Blockierung</td>
-                        <td><input type="number" name="logo_error_range" value="{{ settings.logo_error_range }}" required></td>
-                        <td><input type="number" name="logo_error_address" value="{{ settings.logo_error_address }}" required></td>
-                    </tr>
-
-                    <tr>
-                        <td>Fehlstart Bahn 1</td>
-                        <td><input type="number" name="logo_false_start_1_range" value="{{ settings.logo_false_start_1_range }}" required></td>
-                        <td><input type="number" name="logo_false_start_1_address" value="{{ settings.logo_false_start_1_address }}" required></td>
-                    </tr>
-
-                    <tr>
-                        <td>Fehlstart Bahn 2</td>
-                        <td><input type="number" name="logo_false_start_2_range" value="{{ settings.logo_false_start_2_range }}" required></td>
-                        <td><input type="number" name="logo_false_start_2_address" value="{{ settings.logo_false_start_2_address }}" required></td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <button type="submit">Mapping speichern</button>
-        </form>
+        <p class="hint">
+            WEB Start wird über M7 gepulst, WEB Reset über M9. M8 wird nicht verwendet.
+            Q-Ausgänge werden von der Software nur gelesen und nicht manuell überschrieben.
+        </p>
     </div>
 </div>
 

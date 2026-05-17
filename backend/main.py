@@ -21,8 +21,10 @@ from sqlalchemy.orm import Session
 from backend.database import Base, DATABASE_FILE_PATH, DATA_DIR, SessionLocal, engine, get_db
 from backend.template_helpers import register_template_helpers
 from backend.time_utils import (
+    format_time_input_code,
     format_time_ms as format_centiseconds_time_ms,
     normalize_time_to_centiseconds_ms,
+    parse_time_input_to_ms,
 )
 from backend.models import (
     Event,
@@ -58,6 +60,7 @@ from backend.results_logic import (
 )
 from backend.export_logic import build_class_export_rows, build_overall_rows
 from backend.statistics_logic import build_result_statistics
+from backend.services.logo_client import build_logo_client
 
 
 EVENT_YEAR = datetime.now().year
@@ -80,7 +83,7 @@ REQUIRED_DATABASE_TABLES = {
 
 app = FastAPI(
     title="Quad Parallel Race",
-    version="1.5.0",
+    version="1.6.0",
 )
 
 Base.metadata.create_all(bind=engine)
@@ -176,6 +179,7 @@ for table_name in ["driver_profiles", "participants"]:
 app.mount("/static", StaticFiles(directory="backend/static"), name="static")
 templates = Jinja2Templates(directory="backend/templates")
 register_template_helpers(templates)
+templates.env.globals["format_time_input_code"] = format_time_input_code
 
 
 REGISTRATION_GROUPS = [
@@ -1430,7 +1434,20 @@ def build_monitor_logo_signal_payload(
     visible = bool(setting.show_logo_signal)
     status = "off"
 
-    if visible and current_run is not None:
+    logo_status = None
+
+    if visible and settings.get("logo_enabled") == "true":
+        logo_status = build_logo_client(settings).read_status()
+        outputs = logo_status.get("outputs", {})
+
+        if outputs.get("red"):
+            status = "red"
+        elif outputs.get("yellow"):
+            status = "orange"
+        elif outputs.get("green"):
+            status = "green"
+
+    if status == "off" and visible and current_run is not None:
         status = current_run.traffic_light_status or "off"
 
     if status == "yellow":
@@ -1449,6 +1466,7 @@ def build_monitor_logo_signal_payload(
             "off": "AUS",
         }.get(status, "AUS"),
         "mode": settings.get("logo_access_mode") or "inactive",
+        "hardware": logo_status,
     }
 
 
@@ -4624,6 +4642,12 @@ def ui_event_timekeeper_run(
         next_unconfirmed_run is not None
         and next_unconfirmed_run.id == race_run.id
     )
+    logo_settings = get_logo_settings(db)
+    logo_poll_interval_ms = int(logo_settings.get("logo_poll_interval_ms") or 200)
+    logo_status = build_logo_client(logo_settings).read_status()
+
+    if not logo_status.get("ok"):
+        logo_poll_interval_ms = max(3000, logo_poll_interval_ms)
 
     return templates.TemplateResponse(
         request=request,
@@ -4635,9 +4659,12 @@ def ui_event_timekeeper_run(
             "results": prepared_results,
             "sectors": sectors,
             "marshal_enabled": marshal_enabled,
+            "logo_status": logo_status,
+            "logo_poll_interval_ms": logo_poll_interval_ms,
             "next_unconfirmed_run": next_unconfirmed_payload,
             "is_next_startable_run": is_next_startable_run,
             "start_error": request.query_params.get("start_error"),
+            "time_error": request.query_params.get("time_error"),
             "saved_notice": request.query_params.get("saved") == "1",
             "event_year": get_event_year(active_event),
         },
@@ -4697,6 +4724,11 @@ def ui_event_start_run(
             daemon=True
         ).start()
 
+        threading.Thread(
+            target=pulse_logo_web_start_background,
+            daemon=True,
+        ).start()
+
     return RedirectResponse(
         url=f"/ui/events/{active_event.id}/timekeeper/run/{run_id}",
         status_code=303,
@@ -4753,6 +4785,11 @@ def ui_event_reset_run(
             target=send_start_display_for_run,
             args=(active_event.id, race_run.id),
             daemon=True
+        ).start()
+
+        threading.Thread(
+            target=pulse_logo_web_reset_background,
+            daemon=True,
         ).start()
 
     return RedirectResponse(
@@ -4938,10 +4975,13 @@ async def ui_event_save_run(
             if raw_time_value is None or str(raw_time_value).strip() == "":
                 result.raw_time_ms = None
             else:
-                new_time_ms = max(0, int(raw_time_value))
-
-                if new_time_ms > 0:
-                    result.raw_time_ms = new_time_ms
+                try:
+                    result.raw_time_ms = parse_time_input_to_ms(raw_time_value)
+                except ValueError:
+                    return RedirectResponse(
+                        url=f"/ui/events/{active_event.id}/timekeeper/run/{run_id}?time_error=invalid",
+                        status_code=303,
+                    )
 
         for sector in range(1, 11):
             penalty_value = form.get(f"sector_{sector}_penalty_{result.id}")
@@ -5448,12 +5488,21 @@ def list_pairings_by_class(
 
 LOGO_DEFAULT_SETTINGS = {
     "logo_enabled": "false",
-    "logo_simulation_mode": "true",
-    "logo_ip": "169.254.180.254",
+    "logo_simulation_mode": "false",
+    "logo_ip": "192.168.2.20",
     "logo_port": "502",
-    "logo_timeout_ms": "2000",
-    "logo_access_mode": "logo_web",
+    "logo_timeout_ms": "1000",
+    "logo_poll_interval_ms": "200",
+    "logo_access_mode": "modbus_tcp",
     "logo_password": "",
+
+    "logo_time_register_start": "0",
+    "logo_output_coil_start": "8192",
+    "logo_marker_coil_start": "8256",
+    "logo_web_start_coil": "8262",
+    "logo_web_reset_coil": "8264",
+    "logo_pulse_duration": "0.2",
+    "logo_pulse_duration_ms": "200",
 
     "logo_start_range": "132",
     "logo_start_address": "24",
@@ -5569,7 +5618,41 @@ def get_logo_settings(db: Session) -> dict:
             default_value=default_value,
         )
 
+    if not str(settings.get("logo_web_start_coil", "")).strip():
+        settings["logo_web_start_coil"] = LOGO_DEFAULT_SETTINGS["logo_web_start_coil"]
+
+    if not str(settings.get("logo_web_reset_coil", "")).strip():
+        settings["logo_web_reset_coil"] = LOGO_DEFAULT_SETTINGS["logo_web_reset_coil"]
+
     return settings
+
+
+def get_logo_status_payload(db: Session) -> dict:
+    return build_logo_client(get_logo_settings(db)).read_status()
+
+
+def pulse_logo_web_start(db: Session) -> dict:
+    return build_logo_client(get_logo_settings(db)).pulse_web_start()
+
+
+def pulse_logo_web_reset(db: Session) -> dict:
+    return build_logo_client(get_logo_settings(db)).pulse_web_reset()
+
+
+def pulse_logo_web_start_background():
+    db = SessionLocal()
+    try:
+        pulse_logo_web_start(db)
+    finally:
+        db.close()
+
+
+def pulse_logo_web_reset_background():
+    db = SessionLocal()
+    try:
+        pulse_logo_web_reset(db)
+    finally:
+        db.close()
 
 
 def get_app_settings(db: Session) -> dict:
@@ -5768,30 +5851,9 @@ def build_logo_status(settings: dict) -> dict:
         "logo_port",
         "logo_timeout_ms",
         "logo_access_mode",
-        "logo_start_range",
-        "logo_start_address",
-        "logo_reset_range",
-        "logo_reset_address",
-        "logo_time_lane_1_range",
-        "logo_time_lane_1_address",
-        "logo_time_lane_2_range",
-        "logo_time_lane_2_address",
-        "logo_ready_range",
-        "logo_ready_address",
-        "logo_go_range",
-        "logo_go_address",
-        "logo_attention_range",
-        "logo_attention_address",
-        "logo_light_barrier_1_range",
-        "logo_light_barrier_1_address",
-        "logo_light_barrier_2_range",
-        "logo_light_barrier_2_address",
-        "logo_error_range",
-        "logo_error_address",
-        "logo_false_start_1_range",
-        "logo_false_start_1_address",
-        "logo_false_start_2_range",
-        "logo_false_start_2_address",
+        "logo_time_register_start",
+        "logo_output_coil_start",
+        "logo_marker_coil_start",
     ]
 
     configuration_complete = "Ja"
@@ -5803,10 +5865,8 @@ def build_logo_status(settings: dict) -> dict:
 
     if settings.get("logo_enabled") != "true":
         mode = "LOGO deaktiviert"
-    elif settings.get("logo_simulation_mode") == "true":
-        mode = "Simulationsmodus"
     else:
-        mode = "Echte LOGO-Anbindung vorbereitet"
+        mode = "Modbus TCP aktiv"
 
     return {
         "configuration_complete": configuration_complete,
@@ -6361,6 +6421,7 @@ def ui_settings(
     active_event = get_active_event(db)
     settings = get_app_settings(db)
     logo_status = build_logo_status(settings)
+    logo_hardware_status = build_logo_client(settings).read_status()
     system_status = get_system_status()
 
     return templates.TemplateResponse(
@@ -6370,6 +6431,7 @@ def ui_settings(
             "active_event": active_event,
             "settings": settings,
             "logo_status": logo_status,
+            "logo_hardware_status": logo_hardware_status,
             "system_status": system_status,
             "success": success,
             "error": error,
@@ -6523,12 +6585,19 @@ def ui_delete_club_logo(
 @app.post("/ui/settings/logo")
 def ui_save_logo_connection(
     logo_enabled: str = Form("false"),
-    logo_simulation_mode: str = Form("true"),
+    logo_simulation_mode: str = Form("false"),
     logo_ip: str = Form(...),
     logo_port: int = Form(...),
     logo_timeout_ms: int = Form(...),
-    logo_access_mode: str = Form("logo_web"),
+    logo_poll_interval_ms: int = Form(200),
+    logo_access_mode: str = Form("modbus_tcp"),
     logo_password: str = Form(""),
+    logo_time_register_start: int = Form(0),
+    logo_output_coil_start: int = Form(8192),
+    logo_marker_coil_start: int = Form(8256),
+    logo_web_start_coil: str = Form("8262"),
+    logo_web_reset_coil: str = Form("8264"),
+    logo_pulse_duration: str = Form("0.2"),
     db: Session = Depends(get_db),
 ):
     if logo_port < 1 or logo_port > 65535:
@@ -6543,11 +6612,22 @@ def ui_save_logo_connection(
     if logo_timeout_ms > 10000:
         logo_timeout_ms = 10000
 
-    if logo_access_mode not in ["logo_web", "modbus_tcp"]:
+    if logo_poll_interval_ms < 200:
+        logo_poll_interval_ms = 200
+
+    if logo_poll_interval_ms > 5000:
+        logo_poll_interval_ms = 5000
+
+    if logo_access_mode not in ["modbus_tcp"]:
         return RedirectResponse(
             url="/ui/settings?error=Ungültige Zugriffsart",
             status_code=303,
         )
+
+    try:
+        pulse_duration_value = max(0.05, min(2.0, float(str(logo_pulse_duration).replace(",", "."))))
+    except ValueError:
+        pulse_duration_value = 0.2
 
     save_logo_settings(
         db=db,
@@ -6557,8 +6637,16 @@ def ui_save_logo_connection(
             "logo_ip": logo_ip.strip(),
             "logo_port": str(logo_port),
             "logo_timeout_ms": str(logo_timeout_ms),
+            "logo_poll_interval_ms": str(logo_poll_interval_ms),
             "logo_access_mode": logo_access_mode,
             "logo_password": logo_password.strip(),
+            "logo_time_register_start": str(logo_time_register_start),
+            "logo_output_coil_start": str(logo_output_coil_start),
+            "logo_marker_coil_start": str(logo_marker_coil_start),
+            "logo_web_start_coil": logo_web_start_coil.strip(),
+            "logo_web_reset_coil": logo_web_reset_coil.strip(),
+            "logo_pulse_duration": f"{pulse_duration_value:.2f}",
+            "logo_pulse_duration_ms": str(round(pulse_duration_value * 1000)),
         },
     )
 
@@ -6703,10 +6791,7 @@ def ui_save_logo_mapping(
 def ui_logo_connection_check(
     db: Session = Depends(get_db),
 ):
-    from backend.logo_modbus import read_logo_status
-
-    settings = get_logo_settings(db)
-    result = read_logo_status(settings)
+    result = get_logo_status_payload(db)
     message = result.get("message", "Statusprüfung durchgeführt")
     ok = bool(result.get("ok"))
 
@@ -6719,6 +6804,104 @@ def ui_logo_connection_check(
 
     return RedirectResponse(
         url=f"/ui/settings?{status_key}={quote(message)}",
+        status_code=303,
+    )
+
+
+@app.get("/api/logo/status")
+def api_logo_status(
+    db: Session = Depends(get_db),
+):
+    return get_logo_status_payload(db)
+
+
+@app.get("/api/events/{event_id}/timekeeper/run/{run_id}/logo-status")
+def api_timekeeper_run_logo_status(
+    event_id: int,
+    run_id: int,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+    race_run = db.query(RaceRun).filter(
+        RaceRun.event_id == active_event.id,
+        RaceRun.id == run_id,
+    ).first()
+
+    if not race_run:
+        raise HTTPException(status_code=404, detail="Lauf nicht gefunden")
+
+    status = get_logo_status_payload(db)
+
+    if (
+        status.get("ok")
+        and not race_run.confirmed
+        and race_run.status in ["running", "started"]
+    ):
+        lane_a_result, lane_b_result = get_lane_results_for_run(race_run)
+        times = status.get("times", {})
+        lane_a_ms = times.get("lane_a_ms")
+        lane_b_ms = times.get("lane_b_ms")
+
+        if isinstance(lane_a_ms, int) and lane_a_ms > 0 and lane_a_result:
+            lane_a_result.raw_time_ms = lane_a_ms
+            race_run.lane_a_time_ms = lane_a_ms
+
+        if isinstance(lane_b_ms, int) and lane_b_ms > 0 and lane_b_result:
+            lane_b_result.raw_time_ms = lane_b_ms
+            race_run.lane_b_time_ms = lane_b_ms
+
+        db.commit()
+
+    status["run"] = {
+        "id": race_run.id,
+        "status": race_run.status,
+        "confirmed": race_run.confirmed,
+    }
+
+    return status
+
+
+@app.post("/api/logo/test-connection")
+def api_logo_test_connection(
+    db: Session = Depends(get_db),
+):
+    return build_logo_client(get_logo_settings(db)).test_connection()
+
+
+@app.post("/api/logo/web-start")
+def api_logo_web_start(
+    db: Session = Depends(get_db),
+):
+    return pulse_logo_web_start(db)
+
+
+@app.post("/api/logo/web-reset")
+def api_logo_web_reset(
+    db: Session = Depends(get_db),
+):
+    return pulse_logo_web_reset(db)
+
+
+@app.post("/ui/settings/logo/web-start")
+def ui_logo_web_start(
+    db: Session = Depends(get_db),
+):
+    result = pulse_logo_web_start(db)
+    status_key = "success" if result.get("ok") else "error"
+    return RedirectResponse(
+        url=f"/ui/settings?{status_key}={quote(result.get('message', 'WEB Start getestet'))}",
+        status_code=303,
+    )
+
+
+@app.post("/ui/settings/logo/web-reset")
+def ui_logo_web_reset(
+    db: Session = Depends(get_db),
+):
+    result = pulse_logo_web_reset(db)
+    status_key = "success" if result.get("ok") else "error"
+    return RedirectResponse(
+        url=f"/ui/settings?{status_key}={quote(result.get('message', 'WEB Reset getestet'))}",
         status_code=303,
     )
 

@@ -74,6 +74,14 @@
     </div>
 {% endif %}
 
+{% if time_error == "invalid" %}
+    <div class="card">
+        <div class="error">
+            Zeit bitte sechsstellig als MMSSHH eingeben, zum Beispiel 012354 für 01:23,54.
+        </div>
+    </div>
+{% endif %}
+
 {% if saved_notice and not race_run.confirmed %}
     <div class="card">
         <div class="error">
@@ -86,16 +94,25 @@
     <div class="card compact-control-card">
         <h3>Ampel</h3>
 
-        <div class="traffic-light-box">
-            {% if race_run.traffic_light_status == "red" %}
-                🔴 ROT
-            {% elif race_run.traffic_light_status == "yellow" %}
-                🟡 GELB
-            {% elif race_run.traffic_light_status == "green" %}
-                🟢 GRÜN
-            {% else %}
-                ⚫ AUS
-            {% endif %}
+        <div class="hardware-traffic-light" id="logo_traffic_light">
+            <div class="hardware-lamp hardware-lamp-red {% if logo_status.outputs.red %}active{% endif %}" data-lamp="red">Rot</div>
+            <div class="hardware-lamp hardware-lamp-yellow {% if logo_status.outputs.yellow %}active{% endif %}" data-lamp="yellow">Gelb</div>
+            <div class="hardware-lamp hardware-lamp-green {% if logo_status.outputs.green %}active{% endif %}" data-lamp="green">Grün</div>
+        </div>
+
+        <div class="logo-run-status" id="logo_run_status">
+            {{ logo_status.message }}
+        </div>
+
+        <div class="logo-run-grid">
+            <div class="logo-run-item">Zeit A <strong id="logo_time_a">{% if logo_status.times.lane_a_seconds is not none %}{{ "%.2f"|format(logo_status.times.lane_a_seconds) }} s / {{ logo_status.times.lane_a_display }}{% else %}-{% endif %}</strong></div>
+            <div class="logo-run-item">Zeit B <strong id="logo_time_b">{% if logo_status.times.lane_b_seconds is not none %}{{ "%.2f"|format(logo_status.times.lane_b_seconds) }} s / {{ logo_status.times.lane_b_display }}{% else %}-{% endif %}</strong></div>
+            <div class="logo-run-item">Betrieb A <strong id="logo_marker_a">{{ "AN" if logo_status.markers.lane_a_running else "AUS" }}</strong></div>
+            <div class="logo-run-item">Betrieb B <strong id="logo_marker_b">{{ "AN" if logo_status.markers.lane_b_running else "AUS" }}</strong></div>
+            <div class="logo-run-item">Reset <strong id="logo_marker_reset">{{ "JA" if logo_status.markers.reset_available else "NEIN" }}</strong></div>
+            <div class="logo-run-item">LS-Störung <strong id="logo_marker_fault">{{ "JA" if logo_status.markers.light_barrier_fault else "NEIN" }}</strong></div>
+            <div class="logo-run-item">Fehlstart A <strong id="logo_marker_false_a">{{ "JA" if logo_status.markers.false_start_a else "NEIN" }}</strong></div>
+            <div class="logo-run-item">Fehlstart B <strong id="logo_marker_false_b">{{ "JA" if logo_status.markers.false_start_b else "NEIN" }}</strong></div>
         </div>
     </div>
 
@@ -249,11 +266,12 @@
                     <td>
                         <input
                             class="small-number-input time-ms-input"
-                            type="number"
+                            type="text"
                             name="raw_time_ms_{{ result.id }}"
-                            value="{{ result.raw_time_ms or '' }}"
-                            placeholder="ms"
-                            min="0"
+                            value="{{ format_time_input_code(result.raw_time_ms) }}"
+                            placeholder="MMSSHH"
+                            inputmode="numeric"
+                            pattern="[0-9]{1,6}"
                             oninput="updateTimeDisplays()"
                             {% if race_run.confirmed or active_event.closed or result.participant.withdrawn %}disabled{% endif %}
                         >
@@ -344,6 +362,59 @@
 </div>
 
 <script>
+    function parseManualTimeInput(value) {
+        if (!value) {
+            return null;
+        }
+
+        const rawValue = String(value).trim();
+
+        if (rawValue === "") {
+            return null;
+        }
+
+        let minutes;
+        let seconds;
+        let hundredths;
+
+        if (rawValue.includes(":") || rawValue.includes(",") || rawValue.includes(".")) {
+            const normalized = rawValue.replace(".", ",");
+            const parts = normalized.split(":");
+
+            if (parts.length !== 2 || !parts[1].includes(",")) {
+                return null;
+            }
+
+            const secondParts = parts[1].split(",");
+            minutes = parseInt(parts[0], 10);
+            seconds = parseInt(secondParts[0], 10);
+            hundredths = parseInt(secondParts[1], 10);
+        } else {
+            const digits = rawValue.replace(/\D/g, "");
+
+            if (digits.length > 6) {
+                return null;
+            }
+
+            const padded = digits.padStart(6, "0");
+            minutes = parseInt(padded.slice(0, 2), 10);
+            seconds = parseInt(padded.slice(2, 4), 10);
+            hundredths = parseInt(padded.slice(4, 6), 10);
+        }
+
+        if (
+            Number.isNaN(minutes) ||
+            Number.isNaN(seconds) ||
+            Number.isNaN(hundredths) ||
+            seconds > 59 ||
+            hundredths > 99
+        ) {
+            return null;
+        }
+
+        return ((minutes * 60 + seconds) * 100 + hundredths) * 10;
+    }
+
     function formatMilliseconds(ms) {
         if (ms === null || ms === undefined || isNaN(ms) || ms < 0) {
             return "—";
@@ -382,7 +453,7 @@
                 return;
             }
 
-            display.innerText = formatMilliseconds(parseInt(value));
+            display.innerText = formatMilliseconds(parseManualTimeInput(value));
         });
     }
 
@@ -415,5 +486,63 @@
     }
 
     initializeRunDetailChangeWarning();
+
+    function setLogoText(id, value) {
+        const element = document.getElementById(id);
+
+        if (element) {
+            element.innerText = value;
+        }
+    }
+
+    function renderLogoRunStatus(data) {
+        if (!data) {
+            return;
+        }
+
+        const outputs = data.outputs || {};
+        const markers = data.markers || {};
+        const times = data.times || {};
+        const trafficLight = document.getElementById("logo_traffic_light");
+
+        if (trafficLight) {
+            trafficLight.querySelectorAll(".hardware-lamp").forEach(function(lamp) {
+                const key = lamp.dataset.lamp;
+                lamp.classList.toggle("active", !!outputs[key]);
+            });
+        }
+
+        setLogoText("logo_run_status", data.message || "-");
+        setLogoText("logo_time_a", typeof times.lane_a_seconds === "number" ? Number(times.lane_a_seconds || 0).toFixed(2) + " s / " + (times.lane_a_display || "-") : "-");
+        setLogoText("logo_time_b", typeof times.lane_b_seconds === "number" ? Number(times.lane_b_seconds || 0).toFixed(2) + " s / " + (times.lane_b_display || "-") : "-");
+        setLogoText("logo_marker_a", markers.lane_a_running ? "AN" : "AUS");
+        setLogoText("logo_marker_b", markers.lane_b_running ? "AN" : "AUS");
+        setLogoText("logo_marker_reset", markers.reset_available ? "JA" : "NEIN");
+        setLogoText("logo_marker_false_a", markers.false_start_a ? "JA" : "NEIN");
+        setLogoText("logo_marker_false_b", markers.false_start_b ? "JA" : "NEIN");
+        setLogoText("logo_marker_fault", markers.light_barrier_fault ? "JA" : "NEIN");
+    }
+
+    async function pollLogoRunStatus() {
+        try {
+            const response = await fetch(
+                "/api/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/logo-status",
+                {cache: "no-store"}
+            );
+
+            if (!response.ok) {
+                return;
+            }
+
+            const data = await response.json();
+            renderLogoRunStatus(data);
+        } catch (error) {
+            return;
+        }
+    }
+
+    {% if logo_status.enabled %}
+        setInterval(pollLogoRunStatus, {{ logo_poll_interval_ms }});
+    {% endif %}
 </script>
 {% endblock %}

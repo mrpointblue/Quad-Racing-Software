@@ -305,9 +305,9 @@ esp32/startdisplay/README.md
 
 ---
 
-# Projektstand / Version 1.5.0
+# Projektstand / Version 1.6.0
 
-Dieser Stand basiert auf Version 1.5.0 der Quad Parallel Race Software.
+Dieser Stand basiert auf Version 1.6.0 der Quad Parallel Race Software.
 
 Kernpunkte:
 
@@ -385,6 +385,17 @@ Korrekturen und Erweiterungen in Version 1.5.0:
 - Zeitnahme zeigt den nächsten Lauf im Kopfbereich klarer neben der Rennbetriebsübersicht.
 - Ausgeschiedene Teilnehmer werden in Rennbetrieb und Teilnehmerliste deutlicher als Status-Badge dargestellt.
 - Einstellungen enthalten eine besser lesbare Aktivierung für die digitale Streckenpostenfunktion.
+
+LOGO-Hardwareintegration in Version 1.6.0:
+
+- Siemens LOGO! wird über Modbus TCP eingebunden.
+- Default-Verbindung: Host `192.168.2.20`, Port `502`.
+- V0/V4 werden als DWORD-Zeitwerte in Hundertstelsekunden gelesen und intern für die Speicherung in Millisekunden umgerechnet.
+- Q1/Q2/Q3 werden als Ampelzustände Gelb, Grün und Rot gelesen.
+- M1-M6 werden als Betriebs-, Reset-, Fehlstart- und Lichtschrankenstatus gelesen.
+- WEB Start wird über M7 / Coil `8262` gepulst, WEB Reset über M9 / Coil `8264`; M8 bleibt reserviert und wird nicht verwendet.
+- Die Laufansicht zeigt eine echte dreifarbige Ampel, Live-Zeiten und LOGO-Statusindikatoren.
+- LOGO-Fehler und Offline-Zustände bringen die Software nicht zum Absturz; manuelle Zeitkorrektur bleibt möglich.
 
 Wichtige Korrekturen seit Version 1.3.0:
 
