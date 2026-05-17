@@ -4962,12 +4962,6 @@ async def ui_event_save_run(
         if result.participant and result.participant.withdrawn:
             if can_update_times:
                 result.raw_time_ms = None
-                result.general_penalty = 0
-
-                for sector in range(1, 11):
-                    set_penalty_for_sector(result, sector, 0)
-
-            continue
 
         if can_update_times:
             raw_time_value = form.get(f"raw_time_ms_{result.id}")
@@ -4983,16 +4977,17 @@ async def ui_event_save_run(
                         status_code=303,
                     )
 
-        for sector in range(1, 11):
-            penalty_value = form.get(f"sector_{sector}_penalty_{result.id}")
-            set_penalty_for_sector(
-                result,
-                sector,
-                normalize_penalty_input(penalty_value),
-            )
+        if not active_event.closed:
+            for sector in range(1, 11):
+                penalty_value = form.get(f"sector_{sector}_penalty_{result.id}")
+                set_penalty_for_sector(
+                    result,
+                    sector,
+                    normalize_penalty_input(penalty_value),
+                )
 
-        general_penalty_value = form.get(f"general_penalty_{result.id}")
-        result.general_penalty = normalize_penalty_input(general_penalty_value)
+            general_penalty_value = form.get(f"general_penalty_{result.id}")
+            result.general_penalty = normalize_penalty_input(general_penalty_value)
 
     lane_a_result = next((r for r in results if r.lane == "lane_a"), None)
     lane_b_result = next((r for r in results if r.lane == "lane_b"), None)

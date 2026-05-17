@@ -289,7 +289,7 @@
                                 value="{{ result.sector_penalties[sector] }}"
                                 min="0"
                                 step="5"
-                                {% if result.participant.withdrawn %}disabled{% endif %}
+                                {% if active_event.closed %}disabled{% endif %}
                             >
                         </td>
                     {% endfor %}
@@ -302,7 +302,7 @@
                             value="{{ result.general_penalty or 0 }}"
                             min="0"
                             step="5"
-                            {% if result.participant.withdrawn %}disabled{% endif %}
+                            {% if active_event.closed %}disabled{% endif %}
                         >
                     </td>
 
