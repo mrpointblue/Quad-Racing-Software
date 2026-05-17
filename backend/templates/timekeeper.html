@@ -16,7 +16,32 @@
     </p>
 
     <a class="button" href="/ui/classes">Zurück zu Klassen</a>
+    <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/class/{{ race_class }}/reset" style="display:inline; margin-left: 12px;">
+        <button
+            type="submit"
+            class="reset-button"
+            onclick="return confirm('Zeitmessanlage wirklich resetten? Zeiten und Fehlerpunkte bleiben erhalten.')"
+        >
+            RESET
+        </button>
+    </form>
 </div>
+
+{% if reset_notice %}
+    <div class="card">
+        <div class="success">
+            Reset ausgeführt. Hardware-Status und Ampel wurden zurückgesetzt.
+        </div>
+    </div>
+{% endif %}
+
+{% if reset_error %}
+    <div class="card">
+        <div class="error">
+            Reset fehlgeschlagen: {{ reset_error }}
+        </div>
+    </div>
+{% endif %}
 
 <div class="card">
     <h3>Läufe</h3>

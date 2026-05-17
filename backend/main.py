@@ -1,4 +1,5 @@
 import shutil
+import copy
 import os
 import socket
 import sqlite3
@@ -1437,7 +1438,7 @@ def build_monitor_logo_signal_payload(
     logo_status = None
 
     if visible and settings.get("logo_enabled") == "true":
-        logo_status = build_logo_client(settings).read_status()
+        logo_status = get_logo_status_payload()
         outputs = logo_status.get("outputs", {})
 
         if outputs.get("red"):
@@ -4540,6 +4541,8 @@ def ui_event_timekeeper_class(
             "active_event": active_event,
             "race_class": race_class,
             "pairings": pairings,
+            "reset_notice": request.query_params.get("reset") == "1",
+            "reset_error": request.query_params.get("reset_error"),
             "event_year": get_event_year(active_event),
         },
     )
@@ -4643,11 +4646,8 @@ def ui_event_timekeeper_run(
         and next_unconfirmed_run.id == race_run.id
     )
     logo_settings = get_logo_settings(db)
-    logo_poll_interval_ms = int(logo_settings.get("logo_poll_interval_ms") or 200)
-    logo_status = build_logo_client(logo_settings).read_status()
-
-    if not logo_status.get("ok"):
-        logo_poll_interval_ms = max(3000, logo_poll_interval_ms)
+    logo_poll_interval_ms = parse_logo_poll_interval_ms(logo_settings)
+    logo_status = get_logo_status_payload()
 
     return templates.TemplateResponse(
         request=request,
@@ -4665,6 +4665,8 @@ def ui_event_timekeeper_run(
             "is_next_startable_run": is_next_startable_run,
             "start_error": request.query_params.get("start_error"),
             "time_error": request.query_params.get("time_error"),
+            "reset_notice": request.query_params.get("reset") == "1",
+            "reset_error": request.query_params.get("reset_error"),
             "saved_notice": request.query_params.get("saved") == "1",
             "event_year": get_event_year(active_event),
         },
@@ -4768,32 +4770,78 @@ def ui_event_reset_run(
             detail="Lauf nicht gefunden",
         )
 
-    if not race_run.confirmed:
-        race_run.traffic_light_status = "off"
-        race_run.false_start_lane = "none"
-        race_run.last_reset_at = now_string()
-        race_run.last_reset_by = "Zeitmessanlage"
-        race_run.reset_count = (race_run.reset_count or 0) + 1
+    race_run.traffic_light_status = "off"
+    race_run.false_start_lane = "none"
+    race_run.last_reset_at = now_string()
+    race_run.last_reset_by = "Zeitmessanlage"
+    race_run.reset_count = (race_run.reset_count or 0) + 1
 
-        if race_run.status == "running":
-            race_run.status = "ready"
+    if race_run.status in ["running", "started"]:
+        race_run.status = "ready"
 
-        db.commit()
+    db.commit()
 
-        # Update Startdisplay
-        threading.Thread(
-            target=send_start_display_for_run,
-            args=(active_event.id, race_run.id),
-            daemon=True
-        ).start()
+    # Update Startdisplay
+    threading.Thread(
+        target=send_start_display_for_run,
+        args=(active_event.id, race_run.id),
+        daemon=True
+    ).start()
 
-        threading.Thread(
-            target=pulse_logo_web_reset_background,
-            daemon=True,
-        ).start()
+    reset_result = pulse_logo_web_reset(db)
+    reset_query = "reset=1" if reset_result.get("ok") else f"reset_error={quote(reset_result.get('message', 'Reset fehlgeschlagen'))}"
 
     return RedirectResponse(
-        url=f"/ui/events/{active_event.id}/timekeeper/run/{run_id}",
+        url=f"/ui/events/{active_event.id}/timekeeper/run/{run_id}?{reset_query}",
+        status_code=303,
+    )
+
+
+def reset_active_run_hardware(event_id: int, db: Session) -> None:
+    active_run_id = None
+    active_run_id_str = get_setting(db, "startdisplay_active_run_id")
+
+    if active_run_id_str and active_run_id_str.isdigit():
+        active_run_id = int(active_run_id_str)
+
+    if active_run_id is None:
+        return
+
+    race_run = db.query(RaceRun).filter(
+        RaceRun.event_id == event_id,
+        RaceRun.id == active_run_id,
+    ).first()
+
+    if not race_run:
+        return
+
+    race_run.traffic_light_status = "off"
+    race_run.false_start_lane = "none"
+    race_run.last_reset_at = now_string()
+    race_run.last_reset_by = "Zeitmessanlage"
+    race_run.reset_count = (race_run.reset_count or 0) + 1
+
+    if race_run.status in ["running", "started"]:
+        race_run.status = "ready"
+
+    db.commit()
+
+
+@app.post("/ui/events/{event_id}/timekeeper/class/{race_class}/reset")
+def ui_event_timekeeper_reset(
+    event_id: int,
+    race_class: int,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+
+    reset_active_run_hardware(active_event.id, db)
+
+    reset_result = pulse_logo_web_reset(db)
+    reset_query = "reset=1" if reset_result.get("ok") else f"reset_error={quote(reset_result.get('message', 'Reset fehlgeschlagen'))}"
+
+    return RedirectResponse(
+        url=f"/ui/events/{active_event.id}/timekeeper/class/{race_class}?{reset_query}",
         status_code=303,
     )
 
@@ -5487,7 +5535,7 @@ LOGO_DEFAULT_SETTINGS = {
     "logo_ip": "192.168.2.20",
     "logo_port": "502",
     "logo_timeout_ms": "1000",
-    "logo_poll_interval_ms": "200",
+    "logo_poll_interval_ms": "500",
     "logo_access_mode": "modbus_tcp",
     "logo_password": "",
 
@@ -5622,16 +5670,333 @@ def get_logo_settings(db: Session) -> dict:
     return settings
 
 
-def get_logo_status_payload(db: Session) -> dict:
-    return build_logo_client(get_logo_settings(db)).read_status()
+def parse_logo_poll_interval_ms(settings: dict | None) -> int:
+    settings = settings or {}
+
+    try:
+        interval_ms = int(str(settings.get("logo_poll_interval_ms") or "200").strip())
+    except (TypeError, ValueError):
+        interval_ms = 200
+
+    return 500
+
+
+def build_empty_logo_status(enabled: bool, message: str, ok: bool = False) -> dict:
+    return {
+        "enabled": enabled,
+        "ok": ok,
+        "online": False,
+        "message": message,
+        "times": {
+            "lane_a_raw": None,
+            "lane_b_raw": None,
+            "lane_a_centiseconds": None,
+            "lane_b_centiseconds": None,
+            "lane_a_ms": None,
+            "lane_b_ms": None,
+            "lane_a_seconds": None,
+            "lane_b_seconds": None,
+            "lane_a_display": None,
+            "lane_b_display": None,
+        },
+        "outputs": {
+            "yellow": False,
+            "green": False,
+            "red": False,
+        },
+        "markers": {
+            "lane_a_running": False,
+            "lane_b_running": False,
+            "reset_available": False,
+            "false_start_a": False,
+            "false_start_b": False,
+            "light_barrier_fault": False,
+        },
+    }
+
+
+class LogoStatusCache:
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._client_lock = threading.Lock()
+        self._stop_event = threading.Event()
+        self._thread: threading.Thread | None = None
+        self._client = None
+        self._client_key = None
+        self._settings: dict = dict(LOGO_DEFAULT_SETTINGS)
+        self._poll_interval_ms = parse_logo_poll_interval_ms(self._settings)
+        self._status = self._with_cache_metadata(
+            build_empty_logo_status(False, "LOGO-Status wird geladen.", ok=True),
+            source="cache-init",
+        )
+
+    def start(self):
+        if self._thread and self._thread.is_alive():
+            return
+
+        self._stop_event.clear()
+        self._thread = threading.Thread(
+            target=self._run,
+            name="logo-status-poller",
+            daemon=True,
+        )
+        self._thread.start()
+
+    def stop(self):
+        self._stop_event.set()
+
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=2)
+
+        with self._client_lock:
+            self._drop_client_locked()
+
+    def get_status(self) -> dict:
+        with self._lock:
+            status = copy.deepcopy(self._status)
+
+        cached_at_monotonic = status.get("_cached_at_monotonic")
+        if isinstance(cached_at_monotonic, (int, float)):
+            status["cache_age_ms"] = round((time.monotonic() - cached_at_monotonic) * 1000)
+
+        status.pop("_cached_at_monotonic", None)
+        return status
+
+    def _run(self):
+        settings_refresh_after = 0.0
+
+        while not self._stop_event.is_set():
+            loop_started_at = time.monotonic()
+            settings = self._settings
+
+            if loop_started_at >= settings_refresh_after:
+                settings = self._load_settings()
+                settings_refresh_after = loop_started_at + 5.0
+
+            poll_interval_ms = parse_logo_poll_interval_ms(settings)
+
+            try:
+                logo_client = build_logo_client(settings)
+
+                if not logo_client.config.enabled:
+                    with self._client_lock:
+                        self._drop_client_locked()
+                    status = build_empty_logo_status(False, "LOGO ist deaktiviert.", ok=True)
+                else:
+                    with self._client_lock:
+                        client = self._get_or_connect_locked(logo_client, settings)
+                        status = self._read_status_with_client(logo_client, client)
+            except Exception as error:
+                with self._client_lock:
+                    self._drop_client_locked()
+
+                status = self._error_status(settings, error)
+
+            self._store_status(
+                status=status,
+                settings=settings,
+                poll_interval_ms=poll_interval_ms,
+            )
+            self._stop_event.wait(poll_interval_ms / 1000)
+
+    def pulse_web_start(self, settings: dict) -> dict:
+        return self._pulse_web_coil(settings, "start", "WEB Start")
+
+    def pulse_web_reset(self, settings: dict) -> dict:
+        return self._pulse_web_coil(settings, "reset", "WEB Reset")
+
+    def _pulse_web_coil(self, settings: dict, coil_name: str, label: str) -> dict:
+        logo_client = build_logo_client(settings)
+
+        if not logo_client.config.enabled:
+            return build_empty_logo_status(False, "LOGO ist deaktiviert.", ok=True)
+
+        coil_address = (
+            logo_client.config.web_start_coil
+            if coil_name == "start"
+            else logo_client.config.web_reset_coil
+        )
+
+        if coil_address is None:
+            return {
+                "enabled": True,
+                "ok": False,
+                "online": False,
+                "message": f"{label}-Schreibadresse ist nicht konfiguriert.",
+            }
+
+        try:
+            with self._client_lock:
+                client = self._get_or_connect_locked(logo_client, settings)
+                self._write_coil_or_raise(client, coil_address, True)
+                time.sleep(logo_client.config.pulse_duration)
+                self._write_coil_or_raise(client, coil_address, False)
+
+            return {
+                "enabled": True,
+                "ok": True,
+                "online": True,
+                "message": f"{label}-Impuls gesendet.",
+                "coil": coil_address,
+            }
+        except Exception as error:
+            with self._client_lock:
+                self._drop_client_locked()
+
+            return {
+                "enabled": True,
+                "ok": False,
+                "online": False,
+                "message": f"{label}-Impuls fehlgeschlagen: {error}",
+                "coil": coil_address,
+            }
+
+    def _get_or_connect_locked(self, logo_client, settings: dict):
+        next_client_key = self._connection_key(settings)
+
+        if self._client is not None and self._client_key != next_client_key:
+            self._drop_client_locked()
+
+        if self._client is None:
+            self._client = logo_client._connect()
+            self._client_key = next_client_key
+
+        return self._client
+
+    @staticmethod
+    def _write_coil_or_raise(client, coil_address: int, value: bool):
+        response = client.write_coil(coil_address, value)
+
+        if response is None or getattr(response, "isError", lambda: True)():
+            raise RuntimeError("Modbus-Schreibantwort ist fehlerhaft.")
+
+    def _drop_client_locked(self):
+        if self._client is not None:
+            self._close_client(self._client)
+            self._client = None
+            self._client_key = None
+
+    @staticmethod
+    def _connection_key(settings: dict) -> tuple:
+        return (
+            str(settings.get("logo_enabled", "")).strip().lower(),
+            str(settings.get("logo_ip", "")).strip(),
+            str(settings.get("logo_port", "")).strip(),
+            str(settings.get("logo_timeout_ms", "")).strip(),
+            str(settings.get("logo_time_register_start", "")).strip(),
+            str(settings.get("logo_output_coil_start", "")).strip(),
+            str(settings.get("logo_marker_coil_start", "")).strip(),
+        )
+
+    @staticmethod
+    def _close_client(client):
+        try:
+            client.close()
+        except Exception:
+            pass
+
+    @staticmethod
+    def _read_status_with_client(logo_client, client) -> dict:
+        return {
+            "enabled": True,
+            "ok": True,
+            "online": True,
+            "message": "LOGO-Status gelesen.",
+            "times": logo_client.read_times(client),
+            "outputs": logo_client.read_outputs(client),
+            "markers": logo_client.read_markers(client),
+        }
+
+    @staticmethod
+    def _error_status(settings: dict, error: Exception) -> dict:
+        return build_empty_logo_status(
+            enabled=str(settings.get("logo_enabled", "")).strip().lower() == "true",
+            ok=False,
+            message=f"LOGO-Status konnte nicht gelesen werden: {error}",
+        )
+
+    def _load_settings(self) -> dict:
+        db = SessionLocal()
+        try:
+            return get_logo_settings(db)
+        except Exception as error:
+            self._store_status(
+                status=build_empty_logo_status(
+                    False,
+                    f"LOGO-Einstellungen konnten nicht geladen werden: {error}",
+                ),
+                settings=dict(LOGO_DEFAULT_SETTINGS),
+                poll_interval_ms=parse_logo_poll_interval_ms(LOGO_DEFAULT_SETTINGS),
+            )
+            return dict(LOGO_DEFAULT_SETTINGS)
+        finally:
+            db.close()
+
+    def _store_status(self, status: dict, settings: dict, poll_interval_ms: int):
+        with self._lock:
+            self._settings = dict(settings)
+            self._poll_interval_ms = poll_interval_ms
+            self._status = self._with_cache_metadata(status, source="poller")
+
+    def _with_cache_metadata(self, status: dict, source: str) -> dict:
+        payload = copy.deepcopy(status)
+        payload["cached"] = True
+        payload["cache_source"] = source
+        payload["cached_at"] = datetime.now().isoformat(timespec="seconds")
+        payload["_cached_at_monotonic"] = time.monotonic()
+        payload["poll_interval_ms"] = self._poll_interval_ms
+        return payload
+
+
+logo_status_cache = LogoStatusCache()
+
+
+@app.on_event("startup")
+def start_logo_status_cache():
+    logo_status_cache.start()
+
+
+@app.on_event("shutdown")
+def stop_logo_status_cache():
+    logo_status_cache.stop()
+
+
+def get_logo_status_payload(db: Session | None = None) -> dict:
+    return logo_status_cache.get_status()
+
+
+LOGO_RUN_DB_SYNC_LOCK = threading.Lock()
+LOGO_RUN_DB_SYNC_STATE: dict[int, dict] = {}
+LOGO_RUN_DB_SYNC_MIN_INTERVAL_SECONDS = 1.5
+
+
+def should_sync_logo_run_times(run_id: int, lane_a_ms, lane_b_ms) -> bool:
+    now = time.monotonic()
+    values = (lane_a_ms, lane_b_ms)
+
+    with LOGO_RUN_DB_SYNC_LOCK:
+        state = LOGO_RUN_DB_SYNC_STATE.get(run_id)
+
+        if state:
+            if state.get("values") == values:
+                return False
+
+            if now - state.get("synced_at", 0) < LOGO_RUN_DB_SYNC_MIN_INTERVAL_SECONDS:
+                return False
+
+        LOGO_RUN_DB_SYNC_STATE[run_id] = {
+            "values": values,
+            "synced_at": now,
+        }
+        return True
 
 
 def pulse_logo_web_start(db: Session) -> dict:
-    return build_logo_client(get_logo_settings(db)).pulse_web_start()
+    return logo_status_cache.pulse_web_start(get_logo_settings(db))
 
 
 def pulse_logo_web_reset(db: Session) -> dict:
-    return build_logo_client(get_logo_settings(db)).pulse_web_reset()
+    return logo_status_cache.pulse_web_reset(get_logo_settings(db))
 
 
 def pulse_logo_web_start_background():
@@ -6416,7 +6781,7 @@ def ui_settings(
     active_event = get_active_event(db)
     settings = get_app_settings(db)
     logo_status = build_logo_status(settings)
-    logo_hardware_status = build_logo_client(settings).read_status()
+    logo_hardware_status = get_logo_status_payload()
     system_status = get_system_status()
 
     return templates.TemplateResponse(
@@ -6607,11 +6972,11 @@ def ui_save_logo_connection(
     if logo_timeout_ms > 10000:
         logo_timeout_ms = 10000
 
-    if logo_poll_interval_ms < 200:
-        logo_poll_interval_ms = 200
+    if logo_poll_interval_ms < 500:
+        logo_poll_interval_ms = 500
 
-    if logo_poll_interval_ms > 5000:
-        logo_poll_interval_ms = 5000
+    if logo_poll_interval_ms > 500:
+        logo_poll_interval_ms = 500
 
     if logo_access_mode not in ["modbus_tcp"]:
         return RedirectResponse(
@@ -6786,7 +7151,7 @@ def ui_save_logo_mapping(
 def ui_logo_connection_check(
     db: Session = Depends(get_db),
 ):
-    result = get_logo_status_payload(db)
+    result = get_logo_status_payload()
     message = result.get("message", "Statusprüfung durchgeführt")
     ok = bool(result.get("ok"))
 
@@ -6836,16 +7201,25 @@ def api_timekeeper_run_logo_status(
         times = status.get("times", {})
         lane_a_ms = times.get("lane_a_ms")
         lane_b_ms = times.get("lane_b_ms")
+        should_commit = should_sync_logo_run_times(
+            run_id=race_run.id,
+            lane_a_ms=lane_a_ms,
+            lane_b_ms=lane_b_ms,
+        )
+        dirty = False
 
-        if isinstance(lane_a_ms, int) and lane_a_ms > 0 and lane_a_result:
+        if should_commit and isinstance(lane_a_ms, int) and lane_a_ms > 0 and lane_a_result:
             lane_a_result.raw_time_ms = lane_a_ms
             race_run.lane_a_time_ms = lane_a_ms
+            dirty = True
 
-        if isinstance(lane_b_ms, int) and lane_b_ms > 0 and lane_b_result:
+        if should_commit and isinstance(lane_b_ms, int) and lane_b_ms > 0 and lane_b_result:
             lane_b_result.raw_time_ms = lane_b_ms
             race_run.lane_b_time_ms = lane_b_ms
+            dirty = True
 
-        db.commit()
+        if dirty:
+            db.commit()
 
     status["run"] = {
         "id": race_run.id,
@@ -6860,7 +7234,7 @@ def api_timekeeper_run_logo_status(
 def api_logo_test_connection(
     db: Session = Depends(get_db),
 ):
-    return build_logo_client(get_logo_settings(db)).test_connection()
+    return get_logo_status_payload(db)
 
 
 @app.post("/api/logo/web-start")
