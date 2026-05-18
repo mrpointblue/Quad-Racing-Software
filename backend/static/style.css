@@ -814,6 +814,94 @@ select {
     border: 1px solid #86efac;
 }
 
+.registration-review-header {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 180px));
+    gap: 12px;
+    margin: 18px 0 22px;
+}
+
+.registration-review-counter {
+    display: grid;
+    gap: 2px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    background: #f9fafb;
+}
+
+.registration-review-counter strong {
+    font-size: 28px;
+    line-height: 1;
+}
+
+.registration-review-counter span {
+    color: #374151;
+    font-weight: 800;
+}
+
+.registration-review-counter-open {
+    border-color: #f59e0b;
+    background: #fffbeb;
+}
+
+.registration-review-counter-approved {
+    border-color: #86efac;
+    background: #f0fdf4;
+}
+
+.registration-review-table {
+    margin-bottom: 24px;
+}
+
+.registration-open-row {
+    background: #fffbeb;
+}
+
+.registration-open-row td {
+    border-bottom-color: #fde68a;
+}
+
+.registration-approved-row {
+    background: #ffffff;
+}
+
+.registration-status-badge {
+    padding: 5px 9px;
+}
+
+.registration-status-under-review,
+.registration-status-submitted {
+    color: #92400e;
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+}
+
+.registration-status-approved {
+    color: #166534;
+    background: #dcfce7;
+    border: 1px solid #86efac;
+}
+
+.registration-status-correction-required {
+    color: #991b1b;
+    background: #fee2e2;
+    border: 1px solid #fca5a5;
+}
+
+.registration-status-rejected,
+.registration-status-cancelled {
+    color: #7f1d1d;
+    background: #fecaca;
+    border: 1px solid #ef4444;
+}
+
+.registration-status-draft {
+    color: #374151;
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+}
+
 .status-meta {
     display: block;
     margin-top: 4px;
@@ -837,6 +925,153 @@ select {
     cursor: not-allowed !important;
     opacity: 0.7;
     border-color: #9ca3af !important;
+}
+
+.checkin-number-grid {
+    display: grid;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    gap: 8px;
+    margin: 12px 0 18px;
+    width: 100%;
+}
+
+.checkin-number-button {
+    min-height: 52px;
+    min-width: 0;
+    padding: 8px 4px;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    background: #f8fafc;
+    color: #111827;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.checkin-number-button:hover {
+    background: #e2e8f0;
+}
+
+.checkin-number-button.selected-number {
+    background: #2563eb;
+    color: white;
+    border-color: #1d4ed8;
+}
+
+@media (max-width: 620px) {
+    .checkin-number-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .checkin-number-button {
+        min-height: 56px;
+        font-size: 18px;
+        border-radius: 8px;
+    }
+}
+
+@media (max-width: 380px) {
+    .checkin-number-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .checkin-number-button {
+        min-height: 54px;
+        font-size: 17px;
+    }
+}
+
+.checkin-summary-list {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 22px;
+}
+
+.checkin-inline-field {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.boolean-badge {
+    display: inline-flex;
+    align-items: center;
+    min-width: 46px;
+    justify-content: center;
+    margin-left: 8px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.boolean-badge-yes {
+    color: #166534;
+    background: #dcfce7;
+    border: 1px solid #86efac;
+}
+
+.boolean-badge-no {
+    color: #374151;
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+}
+
+.admin-choice-fieldset {
+    margin: 18px 0 0 0;
+    padding: 0;
+    border: none;
+}
+
+.admin-choice-fieldset legend {
+    margin-bottom: 8px;
+    font-weight: 800;
+}
+
+.admin-choice-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.admin-choice-card {
+    position: relative;
+    display: block;
+    margin: 0;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.admin-choice-card input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.admin-choice-card span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    padding: 12px 14px;
+    border: 2px solid #d1d5db;
+    border-radius: 8px;
+    color: #111827;
+    background: #f9fafb;
+}
+
+.admin-choice-card input:checked + span {
+    color: #ffffff;
+    background: #2563eb;
+    border-color: #1d4ed8;
+}
+
+.admin-choice-card input:focus + span {
+    outline: 3px solid rgba(37, 99, 235, 0.22);
+    outline-offset: 2px;
 }
 
 .next-run-button {

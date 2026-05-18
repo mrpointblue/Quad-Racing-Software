@@ -1,0 +1,48 @@
+{% extends "checkin_base.html" %}
+
+{% block content %}
+<div class="checkin-form">
+    <h2>Fahrerklasse</h2>
+    
+    <div class="checkin-step-indicator">
+        <div class="checkin-step-dot done">✓</div>
+        <div class="checkin-step-dot done">✓</div>
+        <div class="checkin-step-dot done">✓</div>
+        <div class="checkin-step-dot active">4</div>
+        <div class="checkin-step-dot">5</div>
+        <div class="checkin-step-dot">6</div>
+        <div class="checkin-step-dot">7</div>
+    </div>
+
+    <div class="checkin-info-box">
+        <strong>Name:</strong> {{ first_name }} {{ last_name }}<br>
+        <strong>Startnummer:</strong> {{ start_number }}
+    </div>
+
+    {% if error %}
+        <div class="checkin-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="/checkin/events/{{ event.id }}/step4" class="checkin-form">
+        <input type="hidden" name="start_number" value="{{ start_number }}">
+        <input type="hidden" name="first_name" value="{{ first_name }}">
+        <input type="hidden" name="last_name" value="{{ last_name }}">
+        <input type="hidden" name="birth_date" value="{{ birth_date }}">
+        <input type="hidden" name="club" value="{{ club }}">
+
+        <label>Wähle deine Fahrerklasse:</label>
+        
+        <select name="class_id" required autofocus style="padding: 16px; font-size: 16px; min-height: 48px;">
+            <option value="">-- Bitte wählen --</option>
+            {% for class in classes %}
+                <option value="{{ class.id }}">{{ class.name }}</option>
+            {% endfor %}
+        </select>
+
+        <div class="checkin-button-group">
+            <a href="/checkin/events/{{ event.id }}/step3" class="checkin-button checkin-button-secondary">Zurück</a>
+            <button type="submit" class="checkin-button checkin-button-primary">Weiter</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

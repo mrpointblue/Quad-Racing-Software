@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% macro registration_table(items, empty_text, highlighted=False) %}
+    {% if items|length > 0 %}
+        <table class="registration-review-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Startnummer</th>
+                    <th>Status</th>
+                    <th>Erfasst am</th>
+                    <th>Aktionen</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for registration in items %}
+                <tr class="{% if highlighted %}registration-open-row{% else %}registration-approved-row{% endif %}">
+                    <td>{{ registration.id }}</td>
+                    <td>
+                        <strong>{{ registration.first_name }} {{ registration.last_name }}</strong>
+                        {% if registration.club %}
+                            <span class="status-meta">{{ registration.club }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ registration.start_number }}</td>
+                    <td>
+                        <span class="status-badge registration-status-badge registration-status-{{ registration.registration_status|replace('_', '-') }}">
+                            {{ status_labels.get(registration.registration_status, registration.registration_status) }}
+                        </span>
+                    </td>
+                    <td>{{ registration.created_at or '-' }}</td>
+                    <td>
+                        <a class="button small-button" href="/ui/events/{{ active_event.id }}/registrations/{{ registration.id }}">Ansehen</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>{{ empty_text }}</p>
+    {% endif %}
+{% endmacro %}
+
+{% block content %}
+<div class="card">
+    <h2>Check-in Nennungen</h2>
+    <p>Veranstaltung: <strong>{{ active_event.event_number }} – {{ active_event.name }}</strong></p>
+
+    <div class="registration-review-header">
+        <div class="registration-review-counter registration-review-counter-open">
+            <strong>{{ open_registrations|length }}</strong>
+            <span>Offen</span>
+        </div>
+        <div class="registration-review-counter registration-review-counter-approved">
+            <strong>{{ approved_registrations|length }}</strong>
+            <span>Bestätigt</span>
+        </div>
+    </div>
+
+    <h3>Offen</h3>
+    {{ registration_table(open_registrations, "Keine offenen Check-in-Nennungen vorhanden.", True) }}
+
+    <h3>Bestätigt</h3>
+    {{ registration_table(approved_registrations, "Noch keine bestätigten Check-in-Nennungen vorhanden.", False) }}
+</div>
+{% endblock %}

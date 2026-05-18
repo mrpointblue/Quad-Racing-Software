@@ -30,6 +30,7 @@ class Event(Base):
     participants = relationship("Participant", back_populates="event")
     pairings = relationship("Pairing", back_populates="event")
     registration_groups = relationship("RegistrationGroup", back_populates="event")
+    registrations = relationship("Registration", back_populates="event")
 
 
 class SystemSetting(Base):
@@ -244,6 +245,95 @@ class RegistrationNotification(Base):
     acknowledged_by = Column(String, nullable=True)
 
     event = relationship("Event")
+
+
+class Registration(Base):
+    __tablename__ = "registrations"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
+    driver_profile_id = Column(Integer, ForeignKey("driver_profiles.id"), nullable=True)
+
+    registration_source = Column(String, default="terminal")
+    registration_status = Column(String, default="draft")
+
+    first_name = Column(String, nullable=False)
+    last_name = Column(String, nullable=False)
+    birth_date = Column(String, nullable=False)
+    birth_year = Column(Integer, nullable=False)
+    age_at_event = Column(Integer, nullable=False)
+    class_id = Column(Integer, nullable=False)
+    club = Column(String, nullable=True)
+    adac_member_number = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    start_number = Column(Integer, nullable=False)
+    youth_pass_number = Column(String, nullable=True)
+    digital_youth_pass_available = Column(Boolean, default=False)
+    send_protocol_email = Column(Boolean, default=False)
+    legal_texts_accepted = Column(Boolean, default=False)
+    legal_texts_accepted_at = Column(String, nullable=True)
+    payment_status = Column(String, default="open")
+    mail_status = Column(String, default="not_requested")
+
+    created_at = Column(String, nullable=True)
+    updated_at = Column(String, nullable=True)
+    submitted_at = Column(String, nullable=True)
+    confirmed_at = Column(String, nullable=True)
+    confirmed_by = Column(String, nullable=True)
+
+    event = relationship("Event", back_populates="registrations")
+    driver_profile = relationship("DriverProfile")
+    signatures = relationship("RegistrationSignature", back_populates="registration")
+    protocols = relationship("RegistrationProtocol", back_populates="registration")
+    access_tokens = relationship("RegistrationAccessToken", back_populates="registration")
+
+
+class RegistrationSignature(Base):
+    __tablename__ = "registration_signatures"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    registration_id = Column(Integer, ForeignKey("registrations.id"), nullable=False)
+    signature_type = Column(String, nullable=False)
+    name = Column(String, nullable=False)
+    address = Column(String, nullable=True)
+    signature_image_path = Column(String, nullable=True)
+    signed_at = Column(String, nullable=True)
+
+    registration = relationship("Registration", back_populates="signatures")
+
+
+class RegistrationProtocol(Base):
+    __tablename__ = "registration_protocols"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    registration_id = Column(Integer, ForeignKey("registrations.id"), nullable=False)
+    pdf_path = Column(String, nullable=True)
+    mail_status = Column(String, default="not_requested")
+    mail_sent_at = Column(String, nullable=True)
+    mail_error = Column(String, nullable=True)
+    created_at = Column(String, nullable=True)
+
+    registration = relationship("Registration", back_populates="protocols")
+
+
+class RegistrationAccessToken(Base):
+    __tablename__ = "registration_access_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    registration_id = Column(Integer, ForeignKey("registrations.id"), nullable=False)
+    account_id = Column(Integer, nullable=True)
+    token_hash = Column(String, nullable=False)
+    expires_at = Column(String, nullable=True)
+    used_at = Column(String, nullable=True)
+    created_at = Column(String, nullable=True)
+    revoked_at = Column(String, nullable=True)
+
+    registration = relationship("Registration", back_populates="access_tokens")
 
 
 class MonitorDisplaySetting(Base):

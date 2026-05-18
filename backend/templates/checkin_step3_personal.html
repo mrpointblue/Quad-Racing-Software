@@ -1,0 +1,81 @@
+{% extends "checkin_base.html" %}
+
+{% block content %}
+<div class="checkin-form">
+    <h2>Persönliche Daten</h2>
+    
+    <div class="checkin-step-indicator">
+        <div class="checkin-step-dot done">✓</div>
+        <div class="checkin-step-dot done">✓</div>
+        <div class="checkin-step-dot active">3</div>
+        <div class="checkin-step-dot">4</div>
+        <div class="checkin-step-dot">5</div>
+        <div class="checkin-step-dot">6</div>
+        <div class="checkin-step-dot">7</div>
+    </div>
+
+    <div class="checkin-info-box">
+        <strong>Veranstaltung:</strong> {{ event.event_number }} – {{ event.name }}
+        {% if form_values.adac_member_number or form_values.youth_pass_number %}
+            <br><strong>Gefundene Kennung:</strong>
+            {{ form_values.adac_member_number or form_values.youth_pass_number }}
+        {% endif %}
+    </div>
+
+    {% if error %}
+        <div class="checkin-error">{{ error }}</div>
+    {% endif %}
+    {% if lookup_message %}
+        <div class="checkin-info-box">{{ lookup_message }}</div>
+    {% endif %}
+
+    {% if already_registered %}
+        <div class="checkin-error">
+            Fahrer bereits registriert.
+        </div>
+
+        <div class="checkin-info-box">
+            Für diese Veranstaltung liegt bereits eine Nennung oder ein bestätigter Teilnehmerdatensatz vor.
+            Eine weitere Nennung am Terminal ist nicht möglich.
+        </div>
+
+        <div class="checkin-button-group">
+            <a href="/checkin" class="checkin-button checkin-button-primary" style="width: 100%;">Abbrechen</a>
+        </div>
+    {% else %}
+    <form method="post" action="/checkin/events/{{ event.id }}/step3" class="checkin-form">
+        {% if start_number %}
+            <input type="hidden" name="start_number" value="{{ start_number }}">
+        {% endif %}
+        <input type="hidden" name="driver_profile_id" value="{{ form_values.driver_id or '' }}">
+        <input type="hidden" name="adac_member_number" value="{{ form_values.adac_member_number or '' }}">
+        <input type="hidden" name="youth_pass_number" value="{{ form_values.youth_pass_number or '' }}">
+        <input type="hidden" name="digital_youth_pass_available" value="{{ 1 if form_values.digital_youth_pass_available else 0 }}">
+
+        <label>Vorname *</label>
+        <input type="text" name="first_name" value="{{ form_values.first_name or '' }}" required autofocus>
+
+        <label>Nachname *</label>
+        <input type="text" name="last_name" value="{{ form_values.last_name or '' }}" required>
+
+        <label>Geburtsdatum *</label>
+        <input type="date" name="birth_date" value="{{ form_values.birth_date or '' }}" required>
+
+        <label>Verein / Ortsclub *</label>
+        <select name="club" required>
+            <option value="">Bitte auswählen</option>
+            {% for club in club_options %}
+                <option value="{{ club }}" {% if form_values.club == club %}selected{% endif %}>
+                    {{ club }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <div class="checkin-button-group">
+            <a href="/checkin/events/{{ event.id }}/step2" class="checkin-button checkin-button-secondary">Zurück</a>
+            <button type="submit" class="checkin-button checkin-button-primary">Weiter</button>
+        </div>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

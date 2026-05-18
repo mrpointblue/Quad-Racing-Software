@@ -1,0 +1,49 @@
+{% extends "checkin_base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Zusammenfassung</h2>
+
+    <div class="checkin-summary-list">
+        <div><strong>Veranstaltung:</strong> {{ event.event_number }} – {{ event.name }}</div>
+        <div><strong>Startnummer:</strong> {{ form_values.start_number }}</div>
+        <div><strong>Vorname:</strong> {{ form_values.first_name }}</div>
+        <div><strong>Nachname:</strong> {{ form_values.last_name }}</div>
+        <div><strong>Geburtsdatum:</strong> {{ form_values.birth_date }}</div>
+        <div><strong>Klasse:</strong>
+            {% if class_id == 1 %}Klasse 1{% elif class_id == 2 %}Klasse 2{% elif class_id == 3 %}Klasse 3{% elif class_id == 4 %}Klasse 4{% else %}Klasse 5{% endif %}
+        </div>
+        <div><strong>Verein:</strong> {{ form_values.club }}</div>
+        <div><strong>ADAC-Mitgliedsnummer:</strong> {{ form_values.adac_member_number or '-' }}</div>
+        <div><strong>Telefon:</strong> {{ form_values.phone or '-' }}</div>
+        <div><strong>Jugendausweisnummer:</strong> {{ form_values.youth_pass_number or '-' }}</div>
+        <div><strong>Digitaler Jugendpass:</strong> {{ 'Ja' if form_values.digital_youth_pass_available else 'Nein' }}</div>
+        <div><strong>Protokoll per E-Mail:</strong> {{ 'Ja' if form_values.send_protocol_email else 'Nein' }}</div>
+        {% if form_values.send_protocol_email %}
+            <div><strong>E-Mail-Adresse:</strong> {{ form_values.email or '-' }}</div>
+        {% endif %}
+        <div><strong>Unterschrift:</strong> {{ form_values.signature_name }}</div>
+    </div>
+
+    <form method="post" action="/checkin/events/{{ event.id }}/summary">
+        <input type="hidden" name="first_name" value="{{ form_values.first_name }}">
+        <input type="hidden" name="last_name" value="{{ form_values.last_name }}">
+        <input type="hidden" name="birth_date" value="{{ form_values.birth_date }}">
+        <input type="hidden" name="birth_year" value="{{ birth_year }}">
+        <input type="hidden" name="club" value="{{ form_values.club }}">
+        <input type="hidden" name="start_number" value="{{ form_values.start_number }}">
+        <input type="hidden" name="class_id" value="{{ class_id }}">
+        <input type="hidden" name="adac_member_number" value="{{ form_values.adac_member_number }}">
+        <input type="hidden" name="phone" value="{{ form_values.phone }}">
+        <input type="hidden" name="email" value="{{ form_values.email }}">
+        <input type="hidden" name="youth_pass_number" value="{{ form_values.youth_pass_number }}">
+        <input type="hidden" name="digital_youth_pass_available" value="{{ 1 if form_values.digital_youth_pass_available else 0 }}">
+        <input type="hidden" name="send_protocol_email" value="{{ 1 if form_values.send_protocol_email else 0 }}">
+        <input type="hidden" name="signature_name" value="{{ form_values.signature_name }}">
+
+        <button type="submit" class="button">Nennung absenden</button>
+    </form>
+
+    <a class="button" href="/checkin/events/{{ event.id }}/register">Zurück zur Eingabe</a>
+</div>
+{% endblock %}

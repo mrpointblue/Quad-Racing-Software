@@ -1,0 +1,17 @@
+{% extends "checkin_base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Für diese Veranstaltung nennen</h2>
+
+    <p><strong>{{ event.event_number }} – {{ event.name }}</strong></p>
+    <p>Ort: {{ event.location or "-" }}</p>
+    <p>Datum: {{ event.event_date or "-" }}</p>
+
+    <form method="post" action="/checkin/events/{{ event.id }}/start">
+        <button type="submit" class="button">Nennung starten</button>
+    </form>
+
+    <a class="button" href="/checkin">Abbrechen</a>
+</div>
+{% endblock %}

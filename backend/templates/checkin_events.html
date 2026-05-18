@@ -1,0 +1,41 @@
+{% extends "checkin_base.html" %}
+
+{% block content %}
+<div class="checkin-form">
+    <h2>Veranstaltung auswählen</h2>
+    
+    <div class="checkin-step-indicator">
+        <div class="checkin-step-dot active">1</div>
+        <div class="checkin-step-dot">2</div>
+        <div class="checkin-step-dot">3</div>
+        <div class="checkin-step-dot">4</div>
+        <div class="checkin-step-dot">5</div>
+        <div class="checkin-step-dot">6</div>
+        <div class="checkin-step-dot">7</div>
+    </div>
+
+    {% if open_events|length > 0 %}
+        <div class="checkin-summary-list" style="display: grid; gap: 12px;">
+            {% for event in open_events %}
+                <form method="post" action="/checkin/events/{{ event.id }}/select" style="margin: 0;">
+                    <button type="submit" style="width: 100%; padding: 16px; background: #f0f9ff; border: 2px solid #0ea5e9; border-radius: 8px; cursor: pointer; text-align: left; transition: all 0.2s;" 
+                        onmouseover="this.style.background='#e0f2fe'" 
+                        onmouseout="this.style.background='#f0f9ff'">
+                        <strong>{{ event.event_number }} – {{ event.name }}</strong><br>
+                        <small style="color: #64748b;">
+                            Ort: {{ event.location or "-" }} | Datum: {{ event.event_date or "-" }}
+                        </small>
+                    </button>
+                </form>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="checkin-error">Keine Veranstaltungen verfügbar.</div>
+    {% endif %}
+
+    <div class="checkin-button-group" style="margin-top: 20px;">
+        <a href="/checkin" class="checkin-button checkin-button-secondary" style="flex: 1;">Zurück</a>
+    </div>
+</div>
+{% endblock %}
+

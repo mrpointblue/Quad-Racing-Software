@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% set edit_mode = request.query_params.get('edit') == '1' or error %}
+<div class="card">
+    <h2>Registrierung #{{ registration.id }}</h2>
+    <p>Veranstaltung: <strong>{{ active_event.event_number }} – {{ active_event.name }}</strong></p>
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <div class="checkin-summary-list">
+        <div><strong>Name:</strong> {{ registration.first_name }} {{ registration.last_name }}</div>
+        <div><strong>Geburtsdatum:</strong> {{ registration.birth_date }}</div>
+        <div><strong>Geburtsjahr:</strong> {{ registration.birth_year }}</div>
+        <div><strong>Klasse:</strong> {{ registration.class_id }}</div>
+        <div><strong>Verein:</strong> {{ registration.club or '-' }}</div>
+        <div><strong>Startnummer:</strong> {{ registration.start_number }}</div>
+        <div><strong>ADAC-Mitgliedsnummer:</strong> {{ registration.adac_member_number or '-' }}</div>
+        <div><strong>E-Mail:</strong> {{ registration.email or '-' }}</div>
+        <div><strong>Jugendausweisnummer:</strong> {{ registration.youth_pass_number or '-' }}</div>
+        <div>
+            <strong>Digitaler Jugendpass:</strong>
+            <span class="boolean-badge {% if registration.digital_youth_pass_available %}boolean-badge-yes{% else %}boolean-badge-no{% endif %}">
+                {{ 'Ja' if registration.digital_youth_pass_available else 'Nein' }}
+            </span>
+        </div>
+        <div>
+            <strong>Protokoll per E-Mail:</strong>
+            <span class="boolean-badge {% if registration.send_protocol_email %}boolean-badge-yes{% else %}boolean-badge-no{% endif %}">
+                {{ 'Ja' if registration.send_protocol_email else 'Nein' }}
+            </span>
+        </div>
+        <div>
+            <strong>Rechtstexte bestätigt:</strong>
+            <span class="boolean-badge {% if registration.legal_texts_accepted %}boolean-badge-yes{% else %}boolean-badge-no{% endif %}">
+                {{ 'Ja' if registration.legal_texts_accepted else 'Nein' }}
+            </span>
+            {% if registration.legal_texts_accepted_at %}
+                <span class="status-meta">{{ registration.legal_texts_accepted_at }}</span>
+            {% endif %}
+        </div>
+        {% if registration.signatures %}
+            <div>
+                <strong>Unterschriften:</strong>
+                {% for signature in registration.signatures %}
+                    <span class="status-meta">
+                        {% if signature.signature_type == "driver" %}
+                            Fahrer
+                        {% elif signature.signature_type == "guardian" %}
+                            Erziehungsberechtigte/r
+                        {% else %}
+                            {{ signature.signature_type }}
+                        {% endif %}
+                        : {{ signature.name }}{% if signature.address %}, {{ signature.address }}{% endif %}
+                    </span>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <div><strong>Status:</strong> {{ registration.registration_status }}</div>
+        <div><strong>Erfasst am:</strong> {{ registration.created_at or '-' }}</div>
+        <div><strong>Letzte Änderung:</strong> {{ registration.updated_at or '-' }}</div>
+        <div><strong>Bestätigt am:</strong> {{ registration.confirmed_at or '-' }}</div>
+        <div><strong>Bestätigt durch:</strong> {{ registration.confirmed_by or '-' }}</div>
+    </div>
+
+    {% if registration.registration_status not in ["approved", "rejected"] and edit_mode %}
+    <div class="card">
+        <h3>Korrektur im Nennbüro</h3>
+        <p>Änderungen werden direkt in der eingereichten Nennung gespeichert. Die Klasse wird beim Speichern aus dem Geburtsdatum neu berechnet.</p>
+
+        <form method="post" action="/ui/events/{{ active_event.id }}/registrations/{{ registration.id }}/update">
+            <label>Vorname</label>
+            <input type="text" name="first_name" value="{{ registration.first_name }}" required>
+
+            <label>Nachname</label>
+            <input type="text" name="last_name" value="{{ registration.last_name }}" required>
+
+            <label>Geburtsdatum</label>
+            <input type="date" name="birth_date" value="{{ registration.birth_date }}" required>
+
+            <label>Verein</label>
+            <select name="club" required>
+                <option value="">Bitte auswählen</option>
+                <option value="MSC Lägerdorf v. 1925 e.V." {% if registration.club == "MSC Lägerdorf v. 1925 e.V." %}selected{% endif %}>MSC Lägerdorf v. 1925 e.V.</option>
+                <option value="AC Kellinghusen e.V." {% if registration.club == "AC Kellinghusen e.V." %}selected{% endif %}>AC Kellinghusen e.V.</option>
+                <option value="Wühlmäuse Schleswig-Holstein e.V." {% if registration.club == "Wühlmäuse Schleswig-Holstein e.V." %}selected{% endif %}>Wühlmäuse Schleswig-Holstein e.V.</option>
+                <option value="Gast" {% if registration.club == "Gast" %}selected{% endif %}>Gast</option>
+            </select>
+
+            <label>Startnummer</label>
+            <input type="number" name="start_number" value="{{ registration.start_number }}" min="1" max="99" required>
+
+            <label>ADAC-Mitgliedsnummer</label>
+            <input type="text" name="adac_member_number" value="{{ registration.adac_member_number or '' }}">
+
+            <label>Jugendausweisnummer</label>
+            <input type="text" name="youth_pass_number" value="{{ registration.youth_pass_number or '' }}">
+
+            <fieldset class="admin-choice-fieldset">
+                <legend>Digitaler Jugendpass vorhanden</legend>
+                <div class="admin-choice-grid">
+                    <label class="admin-choice-card">
+                        <input type="radio" name="digital_youth_pass_available" value="1" {% if registration.digital_youth_pass_available %}checked{% endif %}>
+                        <span>Ja</span>
+                    </label>
+                    <label class="admin-choice-card">
+                        <input type="radio" name="digital_youth_pass_available" value="0" {% if not registration.digital_youth_pass_available %}checked{% endif %}>
+                        <span>Nein</span>
+                    </label>
+                </div>
+            </fieldset>
+
+            <fieldset class="admin-choice-fieldset">
+                <legend>Protokoll per E-Mail senden</legend>
+                <div class="admin-choice-grid">
+                    <label class="admin-choice-card">
+                        <input
+                            type="radio"
+                            name="send_protocol_email"
+                            value="1"
+                            {% if registration.send_protocol_email %}checked{% endif %}
+                            onchange="toggleProtocolEmailField()"
+                        >
+                        <span>Ja</span>
+                    </label>
+                    <label class="admin-choice-card">
+                        <input
+                            type="radio"
+                            name="send_protocol_email"
+                            value="0"
+                            {% if not registration.send_protocol_email %}checked{% endif %}
+                            onchange="toggleProtocolEmailField()"
+                        >
+                        <span>Nein</span>
+                    </label>
+                </div>
+            </fieldset>
+
+            <div id="protocol_email_field">
+                <label>E-Mail</label>
+                <input type="email" name="email" id="protocol_email_input" value="{{ registration.email or '' }}">
+            </div>
+
+            <button type="submit" class="button">Korrektur speichern</button>
+            <a class="button" href="/ui/events/{{ active_event.id }}/registrations/{{ registration.id }}">Abbrechen</a>
+        </form>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <h3>Aktionen</h3>
+        {% if registration.registration_status in ["approved", "rejected"] %}
+            <p>
+                {% if registration.registration_status == "approved" %}
+                    Diese Nennung ist bereits bestätigt.
+                {% else %}
+                    Diese Nennung ist abgelehnt.
+                {% endif %}
+            </p>
+        {% else %}
+            <form method="post" action="/ui/events/{{ active_event.id }}/registrations/{{ registration.id }}/approve" style="display:inline-block; margin-right: 8px;">
+                <button type="submit" class="button">Bestätigen</button>
+            </form>
+
+            <form method="post" action="/ui/events/{{ active_event.id }}/registrations/{{ registration.id }}/reject" style="display:inline-block; margin-right: 8px;">
+                <button type="submit" class="button red-button">Ablehnen</button>
+            </form>
+
+            {% if not edit_mode %}
+                <form method="post" action="/ui/events/{{ active_event.id }}/registrations/{{ registration.id }}/correction-required" style="display:inline-block;">
+                    <button type="submit" class="button">Bearbeiten</button>
+                </form>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <a class="button" href="/ui/events/{{ active_event.id }}/registrations">Zurück zur Prüfliste</a>
+</div>
+
+<script>
+    function toggleProtocolEmailField() {
+        const selected = document.querySelector("input[name='send_protocol_email']:checked");
+        const field = document.getElementById("protocol_email_field");
+        const input = document.getElementById("protocol_email_input");
+        const enabled = selected && selected.value === "1";
+
+        if (!field || !input) {
+            return;
+        }
+
+        field.style.display = enabled ? "" : "none";
+        input.required = !!enabled;
+    }
+
+    toggleProtocolEmailField();
+</script>
+{% endblock %}

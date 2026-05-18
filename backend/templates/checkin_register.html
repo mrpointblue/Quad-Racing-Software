@@ -1,0 +1,93 @@
+{% extends "checkin_base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Fahrer-Registrierung</h2>
+
+    <p><strong>{{ event.event_number }} – {{ event.name }}</strong></p>
+    <p>Ort: {{ event.location or "-" }}</p>
+    <p>Datum: {{ event.event_date or "-" }}</p>
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="/checkin/events/{{ event.id }}/register" id="checkin_form">
+        <input type="hidden" name="start_number" id="start_number" value="{{ form_values.start_number or '' }}">
+
+        <label>Startnummer</label>
+        <div class="checkin-number-grid" id="start_number_grid">
+            {% for number in range(1, 100) %}
+                {% set occupied = number in occupied_numbers %}
+                <button
+                    type="button"
+                    class="checkin-number-button{% if occupied %} disabled-button{% endif %}{% if form_values.start_number == number %} selected-number{% endif %}"
+                    data-number="{{ number }}"
+                    {% if occupied %}disabled{% endif %}
+                >
+                    {{ number }}
+                </button>
+            {% endfor %}
+        </div>
+        <div class="hint">Belegte Startnummern sind deaktiviert.</div>
+
+        <label>Vorname</label>
+        <input type="text" name="first_name" value="{{ form_values.first_name or '' }}" required>
+
+        <label>Nachname</label>
+        <input type="text" name="last_name" value="{{ form_values.last_name or '' }}" required>
+
+        <label>Geburtsdatum</label>
+        <input type="date" name="birth_date" value="{{ form_values.birth_date or '' }}" required>
+
+        <label>Verein / Ortsclub</label>
+        <input type="text" name="club" value="{{ form_values.club or '' }}" required>
+
+        <label>ADAC-Mitgliedsnummer</label>
+        <input type="text" name="adac_member_number" value="{{ form_values.adac_member_number or '' }}">
+
+        <label>Telefonnummer</label>
+        <input type="text" name="phone" value="{{ form_values.phone or '' }}">
+
+        <label>Jugendausweisnummer</label>
+        <input type="text" name="youth_pass_number" value="{{ form_values.youth_pass_number or '' }}">
+
+        <div class="checkin-inline-field">
+            <label>Digitaler Jugendpass vorhanden</label>
+            <input type="checkbox" name="digital_youth_pass_available" value="1"{% if form_values.digital_youth_pass_available %} checked{% endif %}>
+        </div>
+
+        <label>Protokoll per E-Mail senden?</label>
+        <div class="checkin-inline-field">
+            <label><input type="radio" name="send_protocol_email" value="1"{% if form_values.send_protocol_email %} checked{% endif %}> Ja</label>
+            <label><input type="radio" name="send_protocol_email" value="0"{% if not form_values.send_protocol_email %} checked{% endif %}> Nein</label>
+        </div>
+
+        <label>E-Mail-Adresse</label>
+        <input type="email" name="email" value="{{ form_values.email or '' }}" placeholder="E-Mail-Adresse">
+
+        <label>Fahrer-Unterschrift</label>
+        <input type="text" name="signature_name" value="{{ form_values.signature_name or '' }}" placeholder="Name als Unterschrift" required>
+
+        <button type="submit" class="button">Weiter zur Zusammenfassung</button>
+    </form>
+</div>
+
+<script>
+    const startNumberInput = document.getElementById("start_number");
+    const numberButtons = document.querySelectorAll(".checkin-number-button:not(.disabled-button)");
+
+    function selectStartNumber(number) {
+        startNumberInput.value = number;
+        numberButtons.forEach((button) => {
+            button.classList.toggle("selected-number", button.dataset.number === String(number));
+        });
+    }
+
+    numberButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+            selectStartNumber(button.dataset.number);
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "checkin_base.html" %}
+
+{% block content %}
+<div class="checkin-form" style="text-align: center;">
+    <div style="font-size: 60px; margin: 20px 0;">✓</div>
+    <h2>Nennung erfolgreich!</h2>
+    
+    <div class="checkin-step-indicator">
+        <div class="checkin-step-dot done">✓</div>
+        <div class="checkin-step-dot done">✓</div>
+        <div class="checkin-step-dot done">✓</div>
+        <div class="checkin-step-dot done">✓</div>
+        <div class="checkin-step-dot done">✓</div>
+        <div class="checkin-step-dot done">✓</div>
+        <div class="checkin-step-dot done">✓</div>
+    </div>
+
+    <div class="checkin-info-box" style="margin: 20px 0; background: #dcfce7; border-color: #bbf7d0;">
+        <p style="margin: 0; font-size: 16px; color: #14532d;">
+            Die Nennung wurde erfolgreich gespeichert und liegt zur Prüfung vor, bitte melden sie sich im Rennbüro..
+        </p>
+    </div>
+
+    <p style="font-size: 14px; color: #6b7280; margin: 16px 0;">
+        Bitte geben Sie das Terminal an den nächsten Teilnehmer frei.
+    </p>
+
+    <div class="checkin-button-group" style="margin-top: 32px;">
+        <a href="/checkin" class="checkin-button checkin-button-primary" style="width: 100%;">Zurück zur Startseite</a>
+    </div>
+</div>
+{% endblock %}
+

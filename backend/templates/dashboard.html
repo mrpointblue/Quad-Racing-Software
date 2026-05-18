@@ -14,6 +14,15 @@
         <div class="stat">{{ total_participants }}</div>
     </div>
 
+    <div class="card">
+        <h3>Check-in offen</h3>
+        <div class="stat">{{ pending_checkin_registrations }}</div>
+        <p>Warten auf Prüfung / Bestätigung</p>
+        <a class="button small-button" href="/ui/events/{{ active_event.id }}/registrations">
+            Zum Check-in
+        </a>
+    </div>
+
     {% for race_class, count in class_counts.items() %}
     <div class="card">
         <h3>Klasse {{ race_class }}</h3>

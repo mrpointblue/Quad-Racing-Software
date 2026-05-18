@@ -82,6 +82,22 @@ Die Software ist danach im Browser erreichbar, zum Beispiel:
 http://<IP-DES-PI>:8000
 ```
 
+Für das separate lokale Check-in-Terminal kann die neue Check-in-App gestartet werden:
+
+```bash
+uvicorn backend.checkin_main:app --host 0.0.0.0 --port 8010
+```
+
+Die Check-in-Oberfläche ist dann erreichbar unter:
+
+```text
+http://<IP-DES-PI>:8010/checkin
+```
+
+```text
+http://<IP-DES-PI>:8000
+```
+
 Beispiel:
 
 ```text

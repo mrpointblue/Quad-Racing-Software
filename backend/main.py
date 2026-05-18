@@ -37,6 +37,7 @@ from backend.models import (
     RunResult,
     RegistrationGroup,
     RegistrationNotification,
+    Registration,
     MonitorDisplaySetting,
     Team,
     TeamMember,
@@ -176,6 +177,18 @@ for table_name in ["driver_profiles", "participants"]:
         column_name="youth_card_checked_at",
         column_definition="VARCHAR",
     )
+
+ensure_schema_column(
+    table_name="registrations",
+    column_name="legal_texts_accepted",
+    column_definition="BOOLEAN DEFAULT 0",
+)
+
+ensure_schema_column(
+    table_name="registrations",
+    column_name="legal_texts_accepted_at",
+    column_definition="VARCHAR",
+)
 
 app.mount("/static", StaticFiles(directory="backend/static"), name="static")
 templates = Jinja2Templates(directory="backend/templates")
@@ -2042,6 +2055,11 @@ def ui_event_dashboard(
         Participant.event_id == active_event.id
     ).count()
 
+    pending_checkin_registrations = db.query(Registration).filter(
+        Registration.event_id == active_event.id,
+        Registration.registration_status.in_(["submitted", "under_review", "correction_required"]),
+    ).count()
+
     class_counts = {}
 
     for race_class in [1, 2, 3, 4, 5]:
@@ -2138,6 +2156,7 @@ def ui_event_dashboard(
         context={
             "active_event": active_event,
             "total_participants": total_participants,
+            "pending_checkin_registrations": pending_checkin_registrations,
             "class_counts": class_counts,
             "event_year": get_event_year(active_event),
             "current_time": now_string(),
@@ -2609,6 +2628,378 @@ def ui_event_participant_list(
             "participants": participants,
             "event_year": get_event_year(active_event),
         },
+    )
+
+
+def require_registration(event_id: int, registration_id: int, db: Session):
+    registration = db.query(Registration).filter(
+        Registration.id == registration_id,
+        Registration.event_id == event_id,
+    ).first()
+
+    if not registration:
+        raise HTTPException(
+            status_code=404,
+            detail="Registrierung nicht gefunden",
+        )
+
+    return registration
+
+
+def validate_registration_email(send_protocol_email: bool, email: str | None) -> bool:
+    if not send_protocol_email:
+        return True
+
+    clean_email = (email or "").strip()
+    return "@" in clean_email and "." in clean_email
+
+
+REGISTRATION_STATUS_LABELS = {
+    "draft": "Entwurf",
+    "submitted": "Eingereicht",
+    "under_review": "In Prüfung",
+    "approved": "Bestätigt",
+    "rejected": "Abgelehnt",
+    "correction_required": "Korrektur erforderlich",
+    "cancelled": "Storniert",
+}
+
+
+REGISTRATION_STATUS_ORDER = {
+    "under_review": 1,
+    "submitted": 2,
+    "correction_required": 3,
+    "draft": 4,
+    "rejected": 5,
+    "cancelled": 6,
+    "approved": 7,
+}
+
+
+@app.get("/ui/events/{event_id}/registrations")
+def ui_event_registration_list(
+    event_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+
+    registrations = db.query(Registration).filter(
+        Registration.event_id == active_event.id,
+    ).all()
+
+    registrations = sorted(
+        registrations,
+        key=lambda item: (
+            REGISTRATION_STATUS_ORDER.get(item.registration_status, 99),
+            -item.id,
+        ),
+        reverse=False,
+    )
+    open_registrations = [
+        registration
+        for registration in registrations
+        if registration.registration_status != "approved"
+    ]
+    approved_registrations = [
+        registration
+        for registration in registrations
+        if registration.registration_status == "approved"
+    ]
+
+    return templates.TemplateResponse(
+        request=request,
+        name="registration_list.html",
+        context={
+            "active_event": active_event,
+            "registrations": registrations,
+            "open_registrations": open_registrations,
+            "approved_registrations": approved_registrations,
+            "status_labels": REGISTRATION_STATUS_LABELS,
+            "event_year": get_event_year(active_event),
+        },
+    )
+
+
+@app.get("/ui/events/{event_id}/registrations/{registration_id}")
+def ui_event_registration_detail(
+    event_id: int,
+    registration_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+    registration = require_registration(event_id, registration_id, db)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="registration_detail.html",
+        context={
+            "active_event": active_event,
+            "registration": registration,
+            "event_year": get_event_year(active_event),
+        },
+    )
+
+
+@app.post("/ui/events/{event_id}/registrations/{registration_id}/approve")
+def ui_event_registration_approve(
+    event_id: int,
+    registration_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+    registration = require_registration(event_id, registration_id, db)
+
+    existing_participant = db.query(Participant).filter(
+        Participant.event_id == active_event.id,
+        Participant.start_number == registration.start_number,
+    ).first()
+
+    if existing_participant:
+        return templates.TemplateResponse(
+            request=request,
+            name="registration_detail.html",
+            context={
+                "active_event": active_event,
+                "registration": registration,
+                "event_year": get_event_year(active_event),
+                "error": "Die gewählte Startnummer ist bereits durch einen Teilnehmer belegt.",
+            },
+        )
+
+    participant = Participant(
+        event_id=active_event.id,
+        driver_profile_id=registration.driver_profile_id,
+        start_number=registration.start_number,
+        first_name=registration.first_name,
+        last_name=registration.last_name,
+        birth_year=registration.birth_year,
+        race_class=registration.class_id,
+        club=registration.club,
+        team=None,
+        adac_number=registration.adac_member_number,
+        youth_license_number=registration.youth_pass_number,
+        youth_card_qr_url=None,
+        youth_card_valid_until=None,
+        youth_card_checked=False,
+        active=True,
+    )
+    db.add(participant)
+
+    registration.registration_status = "approved"
+    registration.confirmed_at = now_string()
+    registration.confirmed_by = "Nennstelle"
+    registration.updated_at = now_string()
+
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/ui/events/{event_id}/registrations/{registration_id}",
+        status_code=303,
+    )
+
+
+@app.post("/ui/events/{event_id}/registrations/{registration_id}/update")
+def ui_event_registration_update(
+    event_id: int,
+    registration_id: int,
+    request: Request,
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    birth_date: str = Form(...),
+    club: str = Form(...),
+    start_number: int = Form(...),
+    adac_member_number: str = Form(""),
+    email: str = Form(""),
+    youth_pass_number: str = Form(""),
+    digital_youth_pass_available: str = Form("false"),
+    send_protocol_email: str = Form("false"),
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+    registration = require_registration(event_id, registration_id, db)
+
+    if start_number < 1 or start_number > 99:
+        return templates.TemplateResponse(
+            request=request,
+            name="registration_detail.html",
+            context={
+                "active_event": active_event,
+                "registration": registration,
+                "event_year": get_event_year(active_event),
+                "error": "Die Startnummer muss zwischen 1 und 99 liegen.",
+            },
+        )
+
+    existing_participant = db.query(Participant).filter(
+        Participant.event_id == active_event.id,
+        Participant.start_number == start_number,
+    ).first()
+
+    if existing_participant:
+        return templates.TemplateResponse(
+            request=request,
+            name="registration_detail.html",
+            context={
+                "active_event": active_event,
+                "registration": registration,
+                "event_year": get_event_year(active_event),
+                "error": "Die gewählte Startnummer ist bereits durch einen Teilnehmer belegt.",
+            },
+        )
+
+    existing_registration = db.query(Registration).filter(
+        Registration.event_id == active_event.id,
+        Registration.id != registration.id,
+        Registration.start_number == start_number,
+        Registration.registration_status.in_([
+            "draft",
+            "submitted",
+            "under_review",
+            "correction_required",
+            "approved",
+        ]),
+    ).first()
+
+    if existing_registration:
+        return templates.TemplateResponse(
+            request=request,
+            name="registration_detail.html",
+            context={
+                "active_event": active_event,
+                "registration": registration,
+                "event_year": get_event_year(active_event),
+                "error": "Die gewählte Startnummer ist bereits durch eine andere Nennung reserviert.",
+            },
+        )
+
+    try:
+        parsed_birth_date = datetime.strptime(birth_date, "%Y-%m-%d").date()
+        race_class = determine_race_class(
+            birth_year=parsed_birth_date.year,
+            event_year=get_event_year(active_event),
+        )
+    except ValueError as error:
+        return templates.TemplateResponse(
+            request=request,
+            name="registration_detail.html",
+            context={
+                "active_event": active_event,
+                "registration": registration,
+                "event_year": get_event_year(active_event),
+                "error": str(error),
+            },
+        )
+
+    clean_first_name = first_name.strip()
+    clean_last_name = last_name.strip()
+    clean_club = clean_optional_form_value(club)
+    clean_adac_member_number = clean_optional_form_value(adac_member_number)
+    clean_email = clean_optional_form_value(email)
+    clean_youth_pass_number = clean_optional_form_value(youth_pass_number)
+    clean_digital_youth_pass_available = parse_form_bool(digital_youth_pass_available)
+    clean_send_protocol_email = parse_form_bool(send_protocol_email)
+
+    if not clean_first_name or not clean_last_name:
+        return templates.TemplateResponse(
+            request=request,
+            name="registration_detail.html",
+            context={
+                "active_event": active_event,
+                "registration": registration,
+                "event_year": get_event_year(active_event),
+                "error": "Vorname und Nachname sind Pflichtfelder.",
+            },
+        )
+
+    if not clean_club:
+        return templates.TemplateResponse(
+            request=request,
+            name="registration_detail.html",
+            context={
+                "active_event": active_event,
+                "registration": registration,
+                "event_year": get_event_year(active_event),
+                "error": "Verein ist ein Pflichtfeld.",
+            },
+        )
+
+    if not validate_registration_email(clean_send_protocol_email, clean_email):
+        return templates.TemplateResponse(
+            request=request,
+            name="registration_detail.html",
+            context={
+                "active_event": active_event,
+                "registration": registration,
+                "event_year": get_event_year(active_event),
+                "error": "Bitte eine gültige E-Mail-Adresse eintragen oder Protokoll per E-Mail deaktivieren.",
+            },
+        )
+
+    registration.first_name = clean_first_name
+    registration.last_name = clean_last_name
+    registration.birth_date = birth_date
+    registration.birth_year = parsed_birth_date.year
+    registration.age_at_event = get_event_year(active_event) - parsed_birth_date.year
+    registration.class_id = race_class
+    registration.club = clean_club
+    registration.start_number = start_number
+    registration.adac_member_number = clean_adac_member_number
+    registration.email = clean_email
+    registration.youth_pass_number = clean_youth_pass_number
+    registration.digital_youth_pass_available = clean_digital_youth_pass_available
+    registration.send_protocol_email = clean_send_protocol_email
+    registration.mail_status = "pending" if clean_send_protocol_email else "not_requested"
+    registration.registration_status = "under_review"
+    registration.updated_at = now_string()
+
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/ui/events/{event_id}/registrations/{registration_id}",
+        status_code=303,
+    )
+
+
+@app.post("/ui/events/{event_id}/registrations/{registration_id}/reject")
+def ui_event_registration_reject(
+    event_id: int,
+    registration_id: int,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+    registration = require_registration(event_id, registration_id, db)
+
+    registration.registration_status = "rejected"
+    registration.updated_at = now_string()
+    registration.confirmed_at = now_string()
+    registration.confirmed_by = "Nennstelle"
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/ui/events/{event_id}/registrations/{registration_id}",
+        status_code=303,
+    )
+
+
+@app.post("/ui/events/{event_id}/registrations/{registration_id}/correction-required")
+def ui_event_registration_correction_required(
+    event_id: int,
+    registration_id: int,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+    registration = require_registration(event_id, registration_id, db)
+
+    registration.registration_status = "correction_required"
+    registration.updated_at = now_string()
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/ui/events/{event_id}/registrations/{registration_id}?edit=1",
+        status_code=303,
     )
 
 

@@ -1,0 +1,90 @@
+{% extends "checkin_base.html" %}
+
+{% block content %}
+<div class="checkin-form">
+    <h2>Digitale Jugendkarte</h2>
+
+    <div class="checkin-step-indicator">
+        <div class="checkin-step-dot done">✓</div>
+        <div class="checkin-step-dot active">2</div>
+        <div class="checkin-step-dot">3</div>
+        <div class="checkin-step-dot">4</div>
+        <div class="checkin-step-dot">5</div>
+        <div class="checkin-step-dot">6</div>
+        <div class="checkin-step-dot">7</div>
+    </div>
+
+    <div class="checkin-info-box">
+        <strong>Veranstaltung:</strong><br>{{ event.event_number }} – {{ event.name }}
+    </div>
+
+    {% if lookup_message %}
+        <div class="checkin-info-box">{{ lookup_message }}</div>
+    {% endif %}
+
+    <form method="post" action="/checkin/events/{{ event.id }}/step2" class="checkin-form">
+        <label>Digitale Jugendkarte vorhanden?</label>
+
+        <div class="checkin-choice-grid">
+            <label class="checkin-choice-card">
+                <input
+                    type="radio"
+                    name="has_digital_youth_card"
+                    value="1"
+                    onchange="toggleYouthCardFields('scanner')"
+                    {% if form_values.has_digital_youth_card == "1" %}checked{% endif %}
+                    required
+                >
+                <span class="checkin-choice-content">Ja</span>
+            </label>
+            <label class="checkin-choice-card">
+                <input
+                    type="radio"
+                    name="has_digital_youth_card"
+                    value="0"
+                    onchange="toggleYouthCardFields('manual')"
+                    {% if form_values.has_digital_youth_card == "0" %}checked{% endif %}
+                    required
+                >
+                <span class="checkin-choice-content">Nein</span>
+            </label>
+        </div>
+
+        <div id="youth_card_scanner" style="display: none;">
+            <div class="checkin-info-box">
+                Scanner wird geöffnet. Bis der Scanner angebunden ist, bitte die ADAC-Nummer oder Jugendausweisnummer aus der digitalen Jugendkarte eingeben.
+            </div>
+        </div>
+
+        <div id="youth_card_lookup" style="display: none;">
+            <label>ADAC-Mitgliedsnummer</label>
+            <input type="text" name="adac_member_number" value="{{ form_values.adac_member_number or '' }}">
+
+            <label>Jugendausweisnummer</label>
+            <input type="text" name="youth_pass_number" value="{{ form_values.youth_pass_number or '' }}">
+        </div>
+
+        <div class="checkin-button-group">
+            <a href="/checkin" class="checkin-button checkin-button-secondary">Abbrechen</a>
+            <button type="submit" class="checkin-button checkin-button-primary">Weiter</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    function toggleYouthCardFields(mode) {
+        const scanner = document.getElementById('youth_card_scanner');
+        const lookup = document.getElementById('youth_card_lookup');
+
+        scanner.style.display = mode === 'scanner' ? 'block' : 'none';
+        lookup.style.display = mode === 'scanner' || mode === 'manual' ? 'block' : 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const checked = document.querySelector('input[name="has_digital_youth_card"]:checked');
+        if (checked) {
+            toggleYouthCardFields(checked.value === '1' ? 'scanner' : 'manual');
+        }
+    });
+</script>
+{% endblock %}

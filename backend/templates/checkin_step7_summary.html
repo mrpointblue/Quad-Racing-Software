@@ -1,0 +1,127 @@
+{% extends "checkin_base.html" %}
+
+{% block content %}
+<div class="checkin-form">
+    <h2>Zusammenfassung</h2>
+    
+    <div class="checkin-step-indicator">
+        <div class="checkin-step-dot done">✓</div>
+        <div class="checkin-step-dot done">✓</div>
+        <div class="checkin-step-dot done">✓</div>
+        <div class="checkin-step-dot done">✓</div>
+        <div class="checkin-step-dot done">✓</div>
+        <div class="checkin-step-dot done">✓</div>
+        <div class="checkin-step-dot active">7</div>
+    </div>
+
+    <div class="checkin-summary-list" style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin: 16px 0; font-size: 14px; line-height: 1.8;">
+        <div style="display: grid; gap: 8px;">
+            <div><strong>Veranstaltung:</strong> {{ event.event_number }} – {{ event.name }}</div>
+            <div><strong>Startnummer:</strong> {{ start_number }}</div>
+            <div><strong>Name:</strong> {{ first_name }} {{ last_name }}</div>
+            <div><strong>Geburtsdatum:</strong> {{ birth_date }}</div>
+            <div><strong>Klasse:</strong> {{ class_name }}</div>
+            <div><strong>Verein:</strong> {{ club }}</div>
+            {% if adac_member_number %}
+                <div><strong>ADAC-Nr.:</strong> {{ adac_member_number }}</div>
+            {% endif %}
+            {% if youth_pass_number %}
+                <div><strong>Jugendpass:</strong> {{ youth_pass_number }}</div>
+            {% endif %}
+            <div><strong>Digitaler Jugendpass:</strong> {{ 'Ja' if digital_youth_pass_available else 'Nein' }}</div>
+            <div><strong>Protokoll per Email:</strong> {{ 'Ja' if send_protocol_email else 'Nein' }}</div>
+            {% if send_protocol_email %}
+                <div><strong>Email:</strong> {{ email }}</div>
+            {% endif %}
+            <div><strong>Unterschrift:</strong> {{ signature_name }}</div>
+            {% if is_minor %}
+                <div><strong>Unterschrift Erziehungsberechtigte/r:</strong> {{ guardian_signature_name }}</div>
+                <div><strong>Anschrift Erziehungsberechtigte/r:</strong> {{ guardian_address }}</div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if error %}
+        <div class="checkin-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="/checkin/events/{{ event.id }}/submit" class="checkin-form">
+        <input type="hidden" name="start_number" value="{{ start_number }}">
+        <input type="hidden" name="driver_profile_id" value="{{ driver_profile_id or '' }}">
+        <input type="hidden" name="first_name" value="{{ first_name }}">
+        <input type="hidden" name="last_name" value="{{ last_name }}">
+        <input type="hidden" name="birth_date" value="{{ birth_date }}">
+        <input type="hidden" name="club" value="{{ club }}">
+        <input type="hidden" name="class_id" value="{{ class_id }}">
+        <input type="hidden" name="adac_member_number" value="{{ adac_member_number or '' }}">
+        <input type="hidden" name="youth_pass_number" value="{{ youth_pass_number or '' }}">
+        <input type="hidden" name="digital_youth_pass_available" value="{{ 1 if digital_youth_pass_available else 0 }}">
+        <input type="hidden" name="send_protocol_email" value="{{ 1 if send_protocol_email else 0 }}">
+        <input type="hidden" name="email" value="{{ email or '' }}">
+        <input type="hidden" name="signature_name" value="{{ signature_name }}">
+        <input type="hidden" name="guardian_signature_name" value="{{ guardian_signature_name or '' }}">
+        <input type="hidden" name="guardian_address" value="{{ guardian_address or '' }}">
+
+        <div class="checkin-info-box">
+            Bitte überprüfe alle Angaben sorgfältig. Es können später keine Änderungen vorgenommen werden.
+        </div>
+
+        <a
+            href="/checkin/legal"
+            target="_blank"
+            rel="noopener"
+            class="checkin-button checkin-button-secondary"
+            style="width: 100%; text-align: center; text-decoration: none;"
+        >
+            Haftungsausschluss, Bildrechte und Datenschutz lesen
+        </a>
+
+        <label class="checkin-required-checkbox">
+            <input
+                type="checkbox"
+                name="legal_texts_accepted"
+                value="1"
+                id="legal_texts_accepted"
+                required
+                onchange="toggleSubmitButton()"
+            >
+            <span>
+                Haftungsausschluss, Bildrechte und Datenschutz wurden gelesen und werden bestätigt. *
+            </span>
+        </label>
+
+        <div class="checkin-error" id="legal_hint">
+            Bitte akzeptieren Sie Haftungsausschluss und Datenschutz.
+        </div>
+
+        <div class="checkin-button-group">
+            <a
+                href="/checkin/events/{{ event.id }}/step6?sn={{ start_number }}&{% if driver_profile_id %}driver_id={{ driver_profile_id }}&{% endif %}fn={{ first_name|urlencode }}&ln={{ last_name|urlencode }}&bd={{ birth_date|urlencode }}&club={{ club|urlencode }}&cid={{ class_id }}&adac={{ (adac_member_number or '')|urlencode }}&youth={{ (youth_pass_number or '')|urlencode }}&digital={{ digital_youth_pass_available }}"
+                class="checkin-button checkin-button-secondary"
+            >
+                Zurück
+            </a>
+            <button type="submit" class="checkin-button checkin-button-primary" id="submit_button" disabled>Nennung absenden</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    function toggleSubmitButton() {
+        const checkbox = document.getElementById("legal_texts_accepted");
+        const submitButton = document.getElementById("submit_button");
+        const hint = document.getElementById("legal_hint");
+        const accepted = checkbox && checkbox.checked;
+
+        if (submitButton) {
+            submitButton.disabled = !accepted;
+        }
+
+        if (hint) {
+            hint.style.display = accepted ? "none" : "block";
+        }
+    }
+
+    toggleSubmitButton();
+</script>
+{% endblock %}
