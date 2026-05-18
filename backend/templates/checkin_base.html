@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Quad Parallel Race – Check-in{% endblock %}</title>
-    <link rel="stylesheet" href="/static/style.css?v=20260519-05">
+    <link rel="stylesheet" href="/static/style.css?v=20260519-06">
     <style>
         .checkin-body {
             background: #0f172a;
@@ -253,6 +253,22 @@
         }
         .checkin-required-checkbox span {
             flex: 1;
+        }
+        .signature-pad-wrap {
+            display: grid;
+            gap: 10px;
+        }
+        .signature-pad {
+            width: 100%;
+            height: 180px;
+            border: 2px solid #94a3b8;
+            border-radius: 8px;
+            background: #ffffff;
+            touch-action: none;
+        }
+        .signature-clear-button {
+            width: 100%;
+            margin: 0;
         }
         .checkin-button:disabled {
             background: #9ca3af;

@@ -50,22 +50,36 @@
         <label id="email_label" style="display: none;">Email-Adresse *</label>
         <input type="email" name="email" id="email_input" value="{{ form_values.email or '' }}" style="display: none;">
 
-        <label>Unterschrift (Name) *</label>
-        <input type="text" name="signature_name" value="{{ form_values.signature_name or '' }}" placeholder="Dein Name" required autofocus>
+        <label>Name Fahrer/in *</label>
+        <input type="text" name="signature_name" value="{{ form_values.signature_name or '' }}" placeholder="Name in Druckschrift" required autofocus>
+
+        <label>Unterschrift Fahrer/in *</label>
+        <div class="signature-pad-wrap">
+            <canvas class="signature-pad" id="driver_signature_canvas"></canvas>
+            <input type="hidden" name="signature_image_data" id="driver_signature_data" required>
+            <button type="button" class="checkin-button checkin-button-secondary signature-clear-button" onclick="clearSignaturePad('driver')">Unterschrift löschen</button>
+        </div>
 
         {% if is_minor %}
             <div class="checkin-info-box">
                 Der Fahrer ist nach heutigem Datum minderjährig. Die Unterschrift eines Erziehungsberechtigten ist erforderlich.
             </div>
 
-            <label>Unterschrift Erziehungsberechtigte/r *</label>
+            <label>Name Erziehungsberechtigte/r *</label>
             <input
                 type="text"
                 name="guardian_signature_name"
                 value="{{ form_values.guardian_signature_name or '' }}"
-                placeholder="Vollständiger Name"
+                placeholder="Name in Druckschrift"
                 required
             >
+
+            <label>Unterschrift Erziehungsberechtigte/r *</label>
+            <div class="signature-pad-wrap">
+                <canvas class="signature-pad" id="guardian_signature_canvas"></canvas>
+                <input type="hidden" name="guardian_signature_image_data" id="guardian_signature_data" required>
+                <button type="button" class="checkin-button checkin-button-secondary signature-clear-button" onclick="clearSignaturePad('guardian')">Unterschrift löschen</button>
+            </div>
 
             <label>Anschrift Erziehungsberechtigte/r *</label>
             <input
@@ -104,12 +118,110 @@
         }
     }
     
-    // Initialize on page load
+    const signaturePads = {};
+
+    function setupSignaturePad(name) {
+        const canvas = document.getElementById(name + '_signature_canvas');
+        const input = document.getElementById(name + '_signature_data');
+
+        if (!canvas || !input) {
+            return;
+        }
+
+        const context = canvas.getContext('2d');
+        let drawing = false;
+        let hasInk = false;
+
+        function resizeCanvas() {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = Math.floor(rect.width * ratio);
+            canvas.height = Math.floor(rect.height * ratio);
+            context.setTransform(ratio, 0, 0, ratio, 0, 0);
+            context.lineWidth = 3;
+            context.lineCap = 'round';
+            context.lineJoin = 'round';
+            context.strokeStyle = '#111827';
+        }
+
+        function getPoint(event) {
+            const rect = canvas.getBoundingClientRect();
+            const source = event.touches ? event.touches[0] : event;
+            return {
+                x: source.clientX - rect.left,
+                y: source.clientY - rect.top
+            };
+        }
+
+        function startDrawing(event) {
+            event.preventDefault();
+            drawing = true;
+            const point = getPoint(event);
+            context.beginPath();
+            context.moveTo(point.x, point.y);
+        }
+
+        function draw(event) {
+            if (!drawing) {
+                return;
+            }
+
+            event.preventDefault();
+            const point = getPoint(event);
+            context.lineTo(point.x, point.y);
+            context.stroke();
+            hasInk = true;
+            input.value = canvas.toDataURL('image/png');
+        }
+
+        function stopDrawing(event) {
+            if (!drawing) {
+                return;
+            }
+
+            event.preventDefault();
+            drawing = false;
+
+            if (hasInk) {
+                input.value = canvas.toDataURL('image/png');
+            }
+        }
+
+        resizeCanvas();
+        signaturePads[name] = { canvas, context, input, resizeCanvas };
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseleave', stopDrawing);
+        canvas.addEventListener('touchstart', startDrawing, { passive: false });
+        canvas.addEventListener('touchmove', draw, { passive: false });
+        canvas.addEventListener('touchend', stopDrawing, { passive: false });
+    }
+
+    function clearSignaturePad(name) {
+        const pad = signaturePads[name];
+
+        if (!pad) {
+            return;
+        }
+
+        pad.context.clearRect(0, 0, pad.canvas.width, pad.canvas.height);
+        pad.input.value = '';
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         const checked = document.querySelector('input[name="send_protocol_email"]:checked');
         if (checked) {
             toggleEmailField(checked.value === '1');
         }
+
+        setupSignaturePad('driver');
+        setupSignaturePad('guardian');
+    });
+
+    window.addEventListener('resize', () => {
+        Object.values(signaturePads).forEach((pad) => pad.resizeCanvas());
     });
 </script>
 {% endblock %}

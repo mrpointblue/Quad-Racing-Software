@@ -821,6 +821,38 @@ select {
     margin: 18px 0 22px;
 }
 
+.registration-list-titlebar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.registration-list-titlebar h2 {
+    margin-bottom: 8px;
+}
+
+.registration-list-titlebar p {
+    margin-top: 0;
+}
+
+.registration-list-titlebar .button {
+    flex: 0 0 auto;
+    margin-top: 0;
+}
+
+@media (max-width: 700px) {
+    .registration-list-titlebar {
+        display: grid;
+    }
+
+    .registration-list-titlebar .button {
+        width: 100%;
+        text-align: center;
+    }
+}
+
 .registration-review-counter {
     display: grid;
     gap: 2px;

@@ -3,6 +3,8 @@ Multi-step check-in service for Quad Parallel Race.
 Each registration step is on a separate page to avoid scrolling.
 """
 import os
+import base64
+import uuid
 from datetime import datetime, date
 from pathlib import Path
 
@@ -23,6 +25,8 @@ app = FastAPI(
 
 Base.metadata.create_all(bind=engine)
 DATA_DIR.mkdir(parents=True, exist_ok=True)
+SIGNATURE_UPLOAD_DIR = Path("backend/static/uploads/signatures")
+SIGNATURE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def ensure_schema_column(table_name: str, column_name: str, column_definition: str):
@@ -227,6 +231,29 @@ def is_minor_today(birth_date_value: str | None) -> bool:
         return False
 
     return calculate_age_on_date(parsed_birth_date, date.today()) < 18
+
+
+def save_signature_image(signature_data: str | None, prefix: str) -> str | None:
+    """Save a canvas data URL as PNG and return its static path."""
+    clean_data = (signature_data or "").strip()
+    expected_prefix = "data:image/png;base64,"
+
+    if not clean_data or not clean_data.startswith(expected_prefix):
+        return None
+
+    try:
+        image_bytes = base64.b64decode(clean_data[len(expected_prefix):], validate=True)
+    except Exception:
+        return None
+
+    if len(image_bytes) < 100:
+        return None
+
+    filename = f"{prefix}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex}.png"
+    image_path = SIGNATURE_UPLOAD_DIR / filename
+    image_path.write_bytes(image_bytes)
+
+    return f"/static/uploads/signatures/{filename}"
 
 
 def validate_club(club: str | None) -> str:
@@ -931,7 +958,9 @@ def checkin_step6_post(
     send_protocol_email: str | None = Form(None),
     email: str | None = Form(None),
     signature_name: str = Form(...),
+    signature_image_data: str | None = Form(None),
     guardian_signature_name: str | None = Form(None),
+    guardian_signature_image_data: str | None = Form(None),
     guardian_address: str | None = Form(None),
     db: Session = Depends(get_db),
 ):
@@ -942,10 +971,18 @@ def checkin_step6_post(
 
     if not signature_name.strip():
         raise HTTPException(status_code=400, detail="Unterschrift erforderlich.")
+    signature_image_path = save_signature_image(signature_image_data, "driver")
+    if not signature_image_path:
+        raise HTTPException(status_code=400, detail="Bitte im Unterschriftenfeld Fahrer/in unterschreiben.")
 
     minor = is_minor_today(birth_date)
     if minor and not (guardian_signature_name or "").strip():
         raise HTTPException(status_code=400, detail="Unterschrift Erziehungsberechtigten erforderlich.")
+    guardian_signature_image_path = None
+    if minor:
+        guardian_signature_image_path = save_signature_image(guardian_signature_image_data, "guardian")
+        if not guardian_signature_image_path:
+            raise HTTPException(status_code=400, detail="Bitte Unterschrift Erziehungsberechtigte/r erfassen.")
     if minor and not (guardian_address or "").strip():
         raise HTTPException(status_code=400, detail="Anschrift Erziehungsberechtigten erforderlich.")
 
@@ -973,7 +1010,9 @@ def checkin_step6_post(
             f"email_send={normalize_boolean(send_protocol_email)}&"
             f"email={quote(email or '')}&"
             f"sig={quote(signature_name)}&"
+            f"sig_path={quote(signature_image_path)}&"
             f"guardian_sig={quote(guardian_signature_name or '')}&"
+            f"guardian_sig_path={quote(guardian_signature_image_path or '')}&"
             f"guardian_address={quote(guardian_address or '')}"
         ),
         status_code=303
@@ -1000,7 +1039,9 @@ def checkin_step7(
     email_send: str = None,
     email: str = None,
     sig: str = None,
+    sig_path: str | None = None,
     guardian_sig: str | None = None,
+    guardian_sig_path: str | None = None,
     guardian_address: str | None = None,
     request: Request = None,
     db: Session = Depends(get_db),
@@ -1036,7 +1077,9 @@ def checkin_step7(
             "send_protocol_email": normalize_boolean(email_send),
             "email": email,
             "signature_name": sig,
+            "signature_image_path": sig_path,
             "guardian_signature_name": guardian_sig,
+            "guardian_signature_image_path": guardian_sig_path,
             "guardian_address": guardian_address,
             "is_minor": minor,
         },
@@ -1060,7 +1103,9 @@ def checkin_submit(
     send_protocol_email: str | None = Form(None),
     email: str | None = Form(None),
     signature_name: str = Form(...),
+    signature_image_path: str | None = Form(None),
     guardian_signature_name: str | None = Form(None),
+    guardian_signature_image_path: str | None = Form(None),
     guardian_address: str | None = Form(None),
     legal_texts_accepted: str | None = Form(None),
     db: Session = Depends(get_db),
@@ -1101,7 +1146,9 @@ def checkin_submit(
                 "send_protocol_email": normalize_boolean(send_protocol_email),
                 "email": email,
                 "signature_name": signature_name,
+                "signature_image_path": signature_image_path,
                 "guardian_signature_name": guardian_signature_name,
+                "guardian_signature_image_path": guardian_signature_image_path,
                 "guardian_address": guardian_address,
                 "is_minor": minor,
                 "error": message,
@@ -1114,6 +1161,10 @@ def checkin_submit(
 
     if minor and not (guardian_signature_name or "").strip():
         return render_submit_error("Unterschrift Erziehungsberechtigten erforderlich.")
+    if not (signature_image_path or "").strip():
+        return render_submit_error("Bitte im Unterschriftenfeld unterschreiben.")
+    if minor and not (guardian_signature_image_path or "").strip():
+        return render_submit_error("Bitte Unterschrift Erziehungsberechtigte/r erfassen.")
     if minor and not (guardian_address or "").strip():
         return render_submit_error("Anschrift Erziehungsberechtigten erforderlich.")
     if not normalize_boolean(legal_texts_accepted):
@@ -1172,7 +1223,7 @@ def checkin_submit(
         signature_type="driver",
         name=signature_name.strip(),
         address=None,
-        signature_image_path=None,
+        signature_image_path=signature_image_path,
         signed_at=now_string(),
     )
 
@@ -1184,7 +1235,7 @@ def checkin_submit(
             signature_type="guardian",
             name=guardian_signature_name.strip(),
             address=guardian_address.strip(),
-            signature_image_path=None,
+            signature_image_path=guardian_signature_image_path,
             signed_at=now_string(),
         )
         db.add(guardian_signature)

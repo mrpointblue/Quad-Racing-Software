@@ -44,8 +44,16 @@
 
 {% block content %}
 <div class="card">
-    <h2>Check-in Nennungen</h2>
-    <p>Veranstaltung: <strong>{{ active_event.event_number }} – {{ active_event.name }}</strong></p>
+    <div class="registration-list-titlebar">
+        <div>
+            <h2>Check-in Nennungen</h2>
+            <p>Veranstaltung: <strong>{{ active_event.event_number }} – {{ active_event.name }}</strong></p>
+        </div>
+
+        <a class="button" href="http://race.local:8010/checkin" target="_blank" rel="noopener">
+            Check-in Terminal öffnen
+        </a>
+    </div>
 
     <div class="registration-review-header">
         <div class="registration-review-counter registration-review-counter-open">
