@@ -2283,10 +2283,6 @@ def ui_create_event(
             },
         )
 
-    has_active_event = db.query(Event).filter(
-        Event.active == True
-    ).first() is not None
-
     event = Event(
         event_number=event_number,
         name=name,
@@ -2295,7 +2291,7 @@ def ui_create_event(
         organizer_club=organizer_club.strip() or None,
         sectors_per_lane=sectors_per_lane,
         marshal_enabled=False,
-        active=not has_active_event,
+        active=False,
         closed=False,
         closed_at=None,
         closed_by=None,
