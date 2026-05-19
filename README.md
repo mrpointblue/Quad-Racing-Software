@@ -381,6 +381,18 @@ esp32/startdisplay/README.md
 
 ---
 
+# Version 1.7.2
+
+- Stabilisierung der Modbus-TCP Kommunikation zur Siemens LOGO!
+- Integration von System-Telemetrie (CPU/RAM) in der Weboberfläche
+- Verbesserte Fehlerbehandlung beim Startdisplay-Dienst
+- Sicherheitsprüfung für Datenbank-Backups und Imports
+- Optimierung der mobilen Streckenposten-Eingabe für langsame WLAN-Verbindungen
+- **Check-in Terminal:** Validierung der Altersprüfung korrigiert (Stichtagsregelung)
+- **Check-in Terminal:** Fehler behoben, bei dem die Unterschrift auf einigen Tablets nicht korrekt im Backend gespeichert wurde
+
+---
+
 # Projektstand / Version 1.6.0
 
 Dieser Stand basiert auf Version 1.6.0 der Quad Parallel Race Software.

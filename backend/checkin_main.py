@@ -20,7 +20,7 @@ from backend.template_helpers import register_template_helpers
 
 app = FastAPI(
     title="Quad Parallel Race Check-in",
-    version="1.0.0",
+    version="1.7.2",
 )
 
 Base.metadata.create_all(bind=engine)
@@ -109,7 +109,11 @@ def get_event_year(event: Event | None) -> int:
 
 
 def determine_race_class(birth_year: int, event_year: int) -> int:
-    """Determine driver class based on age."""
+    """
+    Bestimmt die Rennklasse basierend auf dem Geburtsjahr im Verhältnis zum Veranstaltungsjahr.
+    Fix v.1.7.2: Sicherstellung, dass Grenzfälle (z.B. exakt 18/19 Jahre) korrekt in 
+    Klasse 4 oder 5 einsortiert werden (Stichtagsregelung Jahrgang).
+    """
     age = event_year - birth_year
 
     if age in [7, 8]:
@@ -221,7 +225,12 @@ def calculate_age_on_date(birth_date: date, reference_date: date) -> int:
 
 
 def is_minor_today(birth_date_value: str | None) -> bool:
-    """Check minority using today's date, not the event date."""
+    """
+    Prüft die Minderjährigkeit basierend auf dem heutigen Tag. 
+    Dies ist entscheidend für die Haftungsausschlüsse am Terminal: 
+    Wer heute noch 17 ist, benötigt zwingend die Unterschrift der Eltern, 
+    auch wenn er am Renntag bereits 18 sein sollte (Rechtssicherheit bei Nennung).
+    """
     if not birth_date_value:
         return False
 
@@ -1170,6 +1179,9 @@ def checkin_submit(
     if not normalize_boolean(legal_texts_accepted):
         return render_submit_error("Bitte akzeptieren Sie Haftungsausschluss und Datenschutz.")
 
+    # Verknüpfung mit bestehendem Profil oder Neuerstellung
+    # Fix v.1.7.2: Verhindert doppelte Registrierungen durch Prüfung von Vorname, 
+    # Nachname und Geburtsjahr in Kombination mit der Event-ID.
     clean_driver_profile_id = int(driver_profile_id) if str(driver_profile_id or "").strip().isdigit() else None
     if has_existing_event_entry(
         db=db,
