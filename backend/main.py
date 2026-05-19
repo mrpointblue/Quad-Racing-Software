@@ -38,6 +38,9 @@ from backend.models import (
     RegistrationGroup,
     RegistrationNotification,
     Registration,
+    RegistrationAccessToken,
+    RegistrationProtocol,
+    RegistrationSignature,
     MonitorDisplaySetting,
     Team,
     TeamMember,
@@ -755,6 +758,84 @@ def is_registration_group_race_started(
                 return True
 
     return False
+
+
+def registration_matches_participant(
+    registration: Registration,
+    participant: Participant,
+) -> bool:
+    if (
+        participant.driver_profile_id
+        and registration.driver_profile_id
+        and registration.driver_profile_id == participant.driver_profile_id
+    ):
+        return True
+
+    return (
+        registration.first_name.strip().lower() == participant.first_name.strip().lower()
+        and registration.last_name.strip().lower() == participant.last_name.strip().lower()
+        and registration.birth_year == participant.birth_year
+        and registration.class_id == participant.race_class
+    )
+
+
+def delete_linked_registrations_for_participant_before_start_release(
+    db: Session,
+    participant: Participant,
+) -> int:
+    registration_group = get_registration_group_for_class(
+        race_class=participant.race_class,
+        event_id=participant.event_id,
+        db=db,
+    )
+
+    if registration_group.released or registration_group.released_at:
+        return 0
+
+    registrations = db.query(Registration).filter(
+        Registration.event_id == participant.event_id,
+        Registration.start_number == participant.start_number,
+    ).all()
+
+    deleted_count = 0
+
+    for registration in registrations:
+        if not registration_matches_participant(registration, participant):
+            continue
+
+        delete_registration_relations(db, registration)
+        db.delete(registration)
+        deleted_count += 1
+
+    return deleted_count
+
+
+def delete_registration_relations(
+    db: Session,
+    registration: Registration,
+):
+    db.query(RegistrationSignature).filter(
+        RegistrationSignature.registration_id == registration.id,
+    ).delete(synchronize_session=False)
+    db.query(RegistrationProtocol).filter(
+        RegistrationProtocol.registration_id == registration.id,
+    ).delete(synchronize_session=False)
+    db.query(RegistrationAccessToken).filter(
+        RegistrationAccessToken.registration_id == registration.id,
+    ).delete(synchronize_session=False)
+
+
+def is_registration_deletable(
+    registration: Registration,
+    db: Session,
+) -> bool:
+    registration_group = get_registration_group_for_class(
+        race_class=registration.class_id,
+        event_id=registration.event_id,
+        db=db,
+    )
+
+    return not registration_group.released and not registration_group.released_at
 
 
 def get_points_table_c(place: int | None, has_result: bool) -> int:
@@ -2692,6 +2773,17 @@ def ui_event_registration_list(
         ),
         reverse=False,
     )
+
+    for registration in registrations:
+        registration.can_be_edited = (
+            not active_event.closed
+            and registration.registration_status not in ["approved", "rejected"]
+        )
+        registration.can_be_deleted = (
+            not active_event.closed
+            and is_registration_deletable(registration, db)
+        )
+
     open_registrations = [
         registration
         for registration in registrations
@@ -2714,6 +2806,47 @@ def ui_event_registration_list(
             "status_labels": REGISTRATION_STATUS_LABELS,
             "event_year": get_event_year(active_event),
         },
+    )
+
+
+@app.post("/ui/events/{event_id}/registrations/{registration_id}/delete")
+def ui_event_registration_delete(
+    event_id: int,
+    registration_id: int,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+    ensure_event_is_open(active_event)
+    registration = require_registration(event_id, registration_id, db)
+
+    if not is_registration_deletable(registration, db):
+        return RedirectResponse(
+            url=f"/ui/events/{active_event.id}/registrations",
+            status_code=303,
+        )
+
+    participants = db.query(Participant).filter(
+        Participant.event_id == active_event.id,
+        Participant.start_number == registration.start_number,
+    ).all()
+
+    for participant in participants:
+        if not registration_matches_participant(registration, participant):
+            continue
+
+        db.query(TeamMember).filter(
+            TeamMember.event_id == active_event.id,
+            TeamMember.participant_id == participant.id,
+        ).delete(synchronize_session=False)
+        db.delete(participant)
+
+    delete_registration_relations(db, registration)
+    db.delete(registration)
+    db.commit()
+
+    return RedirectResponse(
+        url=f"/ui/events/{active_event.id}/registrations",
+        status_code=303,
     )
 
 
@@ -3503,6 +3636,10 @@ def ui_event_delete_participant(
     ).first()
 
     if participant:
+        delete_linked_registrations_for_participant_before_start_release(
+            db=db,
+            participant=participant,
+        )
         db.query(TeamMember).filter(
             TeamMember.event_id == active_event.id,
             TeamMember.participant_id == participant.id,

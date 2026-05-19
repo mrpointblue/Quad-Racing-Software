@@ -32,6 +32,24 @@
                     <td>{{ registration.created_at or '-' }}</td>
                     <td>
                         <a class="button small-button" href="/ui/events/{{ active_event.id }}/registrations/{{ registration.id }}">Ansehen</a>
+                        {% if registration.can_be_edited %}
+                            <a class="button small-button" href="/ui/events/{{ active_event.id }}/registrations/{{ registration.id }}?edit=1">Bearbeiten</a>
+                        {% endif %}
+                        {% if registration.can_be_deleted %}
+                            <form
+                                method="post"
+                                action="/ui/events/{{ active_event.id }}/registrations/{{ registration.id }}/delete"
+                                style="display:inline;"
+                            >
+                                <button
+                                    type="submit"
+                                    class="small-button red-button"
+                                    onclick="return confirm('Nennung wirklich löschen? Ein vorhandener Teilnehmer wird ebenfalls gelöscht.')"
+                                >
+                                    Löschen
+                                </button>
+                            </form>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
