@@ -109,7 +109,7 @@
                 <a href="/ui/events/{{ active_event.id }}/registrations" class="{% if current_path.startswith('/ui/events/' + active_event.id|string + '/registrations') %}active{% endif %}">Check-in</a>
                 <a href="/ui/events/{{ active_event.id }}/participants" class="{% if current_path == '/ui/events/' + active_event.id|string + '/participants' %}active{% endif %}">Teilnehmerliste</a>
                 <a href="/ui/events/{{ active_event.id }}/registration" class="{% if current_path == '/ui/events/' + active_event.id|string + '/registration' %}active{% endif %}">Startfreigabe</a>
-                <a href="/ui/events/{{ active_event.id }}/driver-profiles" class="{% if current_path.startswith('/ui/events/' + active_event.id|string + '/driver-profiles') or current_path.startswith('/ui/events/' + active_event.id|string + '/driver-database') %}active{% endif %}">Teilnehmerdatenbank</a>
+                <a href="/ui/events/{{ active_event.id }}/driver-profiles" class="{% if current_path.startswith('/ui/events/' + active_event.id|string + '/driver-profiles') or current_path.startswith('/ui/events/' + active_event.id|string + '/driver-database') %}active{% endif %}">Fahrerdatenbank</a>
             {% elif active_category == 'rennen' %}
                 <a href="/ui/events/{{ active_event.id }}/classes" class="{% if current_path == '/ui/events/' + active_event.id|string + '/classes' %}active{% endif %}">Rennbetrieb</a>
                 <a href="/ui/events/{{ active_event.id }}/marshals" class="{% if current_path == '/ui/events/' + active_event.id|string + '/marshals' %}active{% endif %}">Streckenposten</a>
