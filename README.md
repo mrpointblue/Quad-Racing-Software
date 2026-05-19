@@ -307,6 +307,65 @@ Wichtig ist, dass der Raspberry Pi und das Anzeigegerät im gleichen Netzwerk si
 
 ---
 
+# Kiosk-Modus für Monitor-Anzeige
+
+Der Kiosk-Modus stellt ein Anzeigeterminal bereit, das automatisch den Monitor der gerade aktiven Veranstaltung anzeigt.
+Diese Lösung eignet sich für Bildschirme, die permanent im Veranstaltungsort hängen sollen.
+
+## Automatische Umschaltung zur aktiven Veranstaltung
+
+Statt eine feste Veranstaltungs-ID in der URL zu verwenden, wird die Route `/ui/monitor` genutzt.
+
+Diese Route sucht automatisch nach der aktiven Veranstaltung:
+
+- **URL:** `http://race.local:8000/ui/monitor`
+- Falls eine Veranstaltung mit `active=true` existiert → automatischer Redirect zum Monitor dieser Veranstaltung
+- Falls keine aktive Veranstaltung existiert → Hinweisseite mit Link zur Veranstaltungsübersicht
+
+## Chromium Kiosk-Start
+
+Starten Sie Chromium im Kiosk-Modus mit dieser URL:
+
+```bash
+XDG_RUNTIME_DIR=/run/user/1000 \
+WAYLAND_DISPLAY=wayland-0 \
+chromium \
+  --user-data-dir=/home/pi/chromium-race-profile \
+  --ozone-platform=wayland \
+  --kiosk \
+  http://race.local:8000/ui/monitor
+```
+
+Dieser Befehl:
+
+- Verwendet das Wayland-Display
+- Speichert Browser-Daten in `/home/pi/chromium-race-profile`
+- Startet im Kiosk-Modus (keine Menüleiste, keine Browser-UI)
+- Verbindet sich zu `http://race.local:8000/ui/monitor`
+
+## Autostart (optional)
+
+Falls das Terminal automatisch beim Boot starten soll, kann ein Autostart-Script erstellt werden:
+
+```bash
+mkdir -p ~/.config/autostart
+```
+
+Beispiel-Datei `~/.config/autostart/quad-race-monitor.desktop`:
+
+```ini
+[Desktop Entry]
+Type=Application
+Name=Quad Race Monitor
+Exec=bash -c 'sleep 5 && XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 chromium --user-data-dir=/home/pi/chromium-race-profile --ozone-platform=wayland --kiosk http://race.local:8000/ui/monitor'
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+```
+
+Die `sleep 5` Verzögerung gibt dem System Zeit, vollständig hochzufahren, bevor der Browser startet.
+
+---
+
 # ESP32 Startdisplay
 
 Der Code für das optionale ESP32 LED-Matrix-Startdisplay liegt unter:

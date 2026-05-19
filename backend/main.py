@@ -4972,9 +4972,21 @@ async def ui_event_update_monitor_output(
 
 @app.get("/ui/monitor")
 def ui_monitor_redirect(
+    request: Request,
     db: Session = Depends(get_db),
 ):
-    return redirect_to_active_event_path(db, "/monitor")
+    active_event = get_active_event(db)
+    
+    if not active_event:
+        return templates.TemplateResponse(
+            request=request,
+            name="monitor_no_event.html",
+        )
+    
+    return RedirectResponse(
+        url=f"/ui/events/{active_event.id}/monitor",
+        status_code=303,
+    )
 
 
 @app.get("/ui/events/{event_id}/monitor")
