@@ -292,13 +292,13 @@ Die Software ist webbasiert. Dadurch kann die Monitor-Seite auf jedem Gerät im 
 Beispiele:
 
 ```text
-http://<IP-DES-PI>:8000/monitor
+http://<IP-DES-PI>:8000/ui/monitor
 ```
 
 oder per Hostname:
 
 ```text
-http://quad-race.local:8000/monitor
+http://race.local:8000/ui/monitor
 ```
 
 Für einen Fernseher kann zum Beispiel ein Fire TV Stick genutzt werden.
@@ -314,11 +314,12 @@ Diese Lösung eignet sich für Bildschirme, die permanent im Veranstaltungsort h
 
 ## Automatische Umschaltung zur aktiven Veranstaltung
 
-Statt eine feste Veranstaltungs-ID in der URL zu verwenden, wird die Route `/ui/monitor` genutzt.
+Statt eine feste Veranstaltungs-ID wie `/ui/events/6/monitor` in der URL zu verwenden, wird die Route `/ui/monitor` genutzt.
 
 Diese Route sucht automatisch nach der aktiven Veranstaltung:
 
 - **URL:** `http://race.local:8000/ui/monitor`
+- **Alias:** `http://race.local:8000/ui/active/monitor`
 - Falls eine Veranstaltung mit `active=true` existiert → automatischer Redirect zum Monitor dieser Veranstaltung
 - Falls keine aktive Veranstaltung existiert → Hinweisseite mit Link zur Veranstaltungsübersicht
 
