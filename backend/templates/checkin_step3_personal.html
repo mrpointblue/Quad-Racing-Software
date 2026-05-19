@@ -17,7 +17,7 @@
     <div class="checkin-info-box">
         <strong>Veranstaltung:</strong> {{ event.event_number }} – {{ event.name }}
         {% if form_values.adac_member_number or form_values.youth_pass_number %}
-            <br><strong>Gefundene Kennung:</strong>
+            <br><strong>Kennungs-ID:</strong>
             {{ form_values.adac_member_number or form_values.youth_pass_number }}
         {% endif %}
     </div>
