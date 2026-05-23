@@ -1803,6 +1803,7 @@ select {
 .monitor-next-table th {
     padding: 6px 10px;
     color: #93c5fd;
+    background: #111827;
     font-size: 14px;
     text-align: left;
     border-bottom: 1px solid #334155;
@@ -1810,6 +1811,8 @@ select {
 
 .monitor-next-table td {
     padding: 8px 10px;
+    color: #f9fafb;
+    background: #0f172a;
     border-bottom: 1px solid #1f2937;
 }
 
@@ -1841,14 +1844,14 @@ select {
 
 .monitor-next-starter {
     display: flex;
-    gap: 8px;
+    gap: 0.35em;
     min-width: 0;
     font-weight: 700;
     white-space: nowrap;
 }
 
 .monitor-next-number {
-    color: #bbf7d0;
+    color: inherit;
     font-variant-numeric: tabular-nums;
 }
 
