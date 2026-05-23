@@ -90,6 +90,15 @@
     </div>
 {% endif %}
 
+<div
+    id="reset_required_warning"
+    class="reset-required-warning"
+    {% if not logo_status.markers.reset_available %}hidden{% endif %}
+>
+    <strong>RESET ERFORDERLICH</strong>
+    <span>Vor dem nächsten Start zuerst RESET drücken.</span>
+</div>
+
 {% if time_error == "invalid" %}
     <div class="card">
         <div class="error">
@@ -125,7 +134,7 @@
             <div class="logo-run-item">Zeit B <strong id="logo_time_b">{% if logo_status.times.lane_b_seconds is not none %}{{ "%.2f"|format(logo_status.times.lane_b_seconds) }} s / {{ logo_status.times.lane_b_display }}{% else %}-{% endif %}</strong></div>
             <div class="logo-run-item">Betrieb A <strong id="logo_marker_a">{{ "AN" if logo_status.markers.lane_a_running else "AUS" }}</strong></div>
             <div class="logo-run-item">Betrieb B <strong id="logo_marker_b">{{ "AN" if logo_status.markers.lane_b_running else "AUS" }}</strong></div>
-            <div class="logo-run-item">Reset <strong id="logo_marker_reset">{{ "JA" if logo_status.markers.reset_available else "NEIN" }}</strong></div>
+            <div class="logo-run-item {% if logo_status.markers.reset_available %}reset-marker-active{% endif %}" id="logo_marker_reset_item">Reset <strong id="logo_marker_reset">{{ "JA" if logo_status.markers.reset_available else "NEIN" }}</strong></div>
             <div class="logo-run-item">LS-Störung <strong id="logo_marker_fault">{{ "JA" if logo_status.markers.light_barrier_fault else "NEIN" }}</strong></div>
             <div class="logo-run-item">Fehlstart A <strong id="logo_marker_false_a">{{ "JA" if logo_status.markers.false_start_a else "NEIN" }}</strong></div>
             <div class="logo-run-item">Fehlstart B <strong id="logo_marker_false_b">{{ "JA" if logo_status.markers.false_start_b else "NEIN" }}</strong></div>
@@ -556,6 +565,17 @@
         setLogoText("logo_marker_a", markers.lane_a_running ? "AN" : "AUS");
         setLogoText("logo_marker_b", markers.lane_b_running ? "AN" : "AUS");
         setLogoText("logo_marker_reset", markers.reset_available ? "JA" : "NEIN");
+        const resetWarning = document.getElementById("reset_required_warning");
+        const resetMarker = document.getElementById("logo_marker_reset_item");
+
+        if (resetWarning) {
+            resetWarning.hidden = !markers.reset_available;
+        }
+
+        if (resetMarker) {
+            resetMarker.classList.toggle("reset-marker-active", !!markers.reset_available);
+        }
+
         setLogoText("logo_marker_false_a", markers.false_start_a ? "JA" : "NEIN");
         setLogoText("logo_marker_false_b", markers.false_start_b ? "JA" : "NEIN");
         setLogoText("logo_marker_fault", markers.light_barrier_fault ? "JA" : "NEIN");

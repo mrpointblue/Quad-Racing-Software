@@ -43,6 +43,13 @@
     </div>
 {% endif %}
 
+{% if logo_status and logo_status.markers.reset_available %}
+    <div class="reset-required-warning">
+        <strong>RESET ERFORDERLICH</strong>
+        <span>Vor dem nächsten Lauf zuerst RESET drücken.</span>
+    </div>
+{% endif %}
+
 <div class="card">
     <h3>Läufe</h3>
 

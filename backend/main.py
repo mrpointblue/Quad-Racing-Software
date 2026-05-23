@@ -5241,6 +5241,7 @@ def ui_event_timekeeper_class(
             "active_event": active_event,
             "race_class": race_class,
             "pairings": pairings,
+            "logo_status": get_logo_status_payload(),
             "reset_notice": request.query_params.get("reset") == "1",
             "reset_error": request.query_params.get("reset_error"),
             "event_year": get_event_year(active_event),

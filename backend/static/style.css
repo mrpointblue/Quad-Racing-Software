@@ -2307,6 +2307,44 @@ select {
     padding: 8px 12px !important;
 }
 
+.reset-required-warning {
+    background: #b91c1c;
+    color: #ffffff;
+    border: 2px solid #7f1d1d;
+    border-radius: 8px;
+    padding: 18px 20px;
+    margin: 16px 0;
+    box-shadow: 0 2px 10px rgba(127, 29, 29, 0.25);
+}
+
+.reset-required-warning[hidden] {
+    display: none;
+}
+
+.reset-required-warning strong {
+    display: block;
+    color: #ffffff;
+    font-size: 24px;
+    line-height: 1.1;
+    margin-bottom: 6px;
+}
+
+.reset-required-warning span {
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.logo-run-item.reset-marker-active {
+    background: #b91c1c;
+    color: #ffffff;
+    border-color: #7f1d1d;
+}
+
+.logo-run-item.reset-marker-active strong {
+    color: #ffffff;
+}
+
 .repeat-button {
     background: #f97316 !important;
     color: #ffffff !important;
