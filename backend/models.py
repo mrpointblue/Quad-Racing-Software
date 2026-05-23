@@ -351,6 +351,7 @@ class MonitorDisplaySetting(Base):
     show_logo_signal = Column(Boolean, default=False)
     show_statistics = Column(Boolean, default=False)
     display_orientation = Column(String, default="landscape")
+    display_theme = Column(String, default="dark")
 
     updated_at = Column(String, nullable=True)
 

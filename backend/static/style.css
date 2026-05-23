@@ -1224,6 +1224,12 @@ select {
     padding: 28px;
 }
 
+.monitor-theme-light,
+.monitor-theme-light .monitor-page {
+    background: #f8fafc;
+    color: #0f172a;
+}
+
 .monitor-body .header,
 .monitor-body .nav,
 .monitor-body .notification-bar {
@@ -1266,10 +1272,18 @@ select {
     font-size: 18px;
 }
 
+.monitor-theme-light .monitor-topbar p {
+    color: #475569;
+}
+
 .monitor-clock {
     font-size: 26px;
     font-weight: bold;
     color: #bbf7d0;
+}
+
+.monitor-theme-light .monitor-clock {
+    color: #166534;
 }
 
 .monitor-topbar-status {
@@ -1300,6 +1314,16 @@ select {
 
 .monitor-logo-signal strong {
     color: #f9fafb;
+}
+
+.monitor-theme-light .monitor-logo-signal {
+    border-color: #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+}
+
+.monitor-theme-light .monitor-logo-signal strong {
+    color: #0f172a;
 }
 
 .monitor-logo-lights {
@@ -1402,11 +1426,17 @@ select {
 }
 
 .monitor-header-controls {
-    min-width: 280px;
+    min-width: 460px;
 }
 
 .monitor-header-controls .button {
     margin-top: 10px;
+}
+
+.monitor-view-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+    gap: 12px;
 }
 
 .monitor-format-picker {
@@ -1648,6 +1678,10 @@ select {
     background: #111827;
 }
 
+.monitor-theme-light.monitor-portrait {
+    background: #f8fafc;
+}
+
 .monitor-portrait .container {
     width: 100vh;
     height: 100vw;
@@ -1755,6 +1789,12 @@ select {
     margin-bottom: 18px;
 }
 
+.monitor-theme-light .monitor-panel {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #0f172a;
+}
+
 .monitor-panel h2 {
     margin-top: 0;
     font-size: 28px;
@@ -1771,6 +1811,10 @@ select {
     margin-bottom: 14px;
 }
 
+.monitor-theme-light .monitor-meta {
+    color: #1d4ed8;
+}
+
 .monitor-lanes {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1784,10 +1828,19 @@ select {
     padding: 16px;
 }
 
+.monitor-theme-light .monitor-lane {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
 .monitor-lane-title {
     color: #93c5fd;
     font-weight: bold;
     margin-bottom: 10px;
+}
+
+.monitor-theme-light .monitor-lane-title {
+    color: #1d4ed8;
 }
 
 .monitor-driver {
@@ -1807,6 +1860,10 @@ select {
     color: #bbf7d0;
 }
 
+.monitor-theme-light .monitor-values strong {
+    color: #166534;
+}
+
 .monitor-next-list {
     min-height: 0;
     overflow: hidden;
@@ -1822,6 +1879,10 @@ select {
     overflow: hidden;
 }
 
+.monitor-theme-light .monitor-next-table {
+    background: #f8fafc;
+}
+
 .monitor-next-table th {
     padding: 6px 10px;
     color: #93c5fd;
@@ -1831,11 +1892,23 @@ select {
     border-bottom: 1px solid #334155;
 }
 
+.monitor-theme-light .monitor-next-table th {
+    color: #1d4ed8;
+    background: #e2e8f0;
+    border-bottom-color: #cbd5e1;
+}
+
 .monitor-next-table td {
     padding: 8px 10px;
     color: #f9fafb;
     background: #0f172a;
     border-bottom: 1px solid #1f2937;
+}
+
+.monitor-theme-light .monitor-next-table td {
+    color: #0f172a;
+    background: #f8fafc;
+    border-bottom-color: #e2e8f0;
 }
 
 .monitor-next-starter-cell {
@@ -1895,6 +1968,10 @@ select {
     padding: 0 0 0 4px;
 }
 
+.monitor-theme-light .monitor-next-more {
+    color: #b45309;
+}
+
 .monitor-note {
     color: #fde68a;
 }
@@ -1906,6 +1983,11 @@ select {
     font-size: 18px;
     color: #f9fafb;
     background: #0f172a;
+}
+
+.monitor-theme-light .monitor-results-table {
+    color: #0f172a;
+    background: #ffffff;
 }
 
 .monitor-results-table th,
@@ -1926,9 +2008,21 @@ select {
     display: table-cell;
 }
 
+.monitor-theme-light .monitor-results-table th,
+.monitor-theme-light .monitor-results-table td {
+    color: #0f172a;
+    background: #ffffff;
+    border-bottom-color: #cbd5e1;
+}
+
 .monitor-results-table th {
     color: #bfdbfe;
     background: #0f172a;
+}
+
+.monitor-theme-light .monitor-results-table th {
+    color: #1d4ed8;
+    background: #e2e8f0;
 }
 
 .monitor-race-results-table th:nth-child(1),

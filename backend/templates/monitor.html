@@ -2,7 +2,7 @@
 
 {% block title %}Monitor{% if active_event %} - {{ active_event.event_number }}{% endif %}{% endblock %}
 
-{% block body_class %}monitor-body monitor-{{ monitor_data.display_setting.display_orientation or 'landscape' }}{% endblock %}
+{% block body_class %}monitor-body monitor-{{ monitor_data.display_setting.display_orientation or 'landscape' }} monitor-theme-{{ monitor_data.display_setting.display_theme or 'dark' }}{% endblock %}
 
 {% block content %}
 {% set club_logo_path = get_club_logo_path() %}
@@ -913,6 +913,8 @@
             .then((data) => {
                 document.body.classList.toggle("monitor-portrait", data.display_setting.display_orientation === "portrait");
                 document.body.classList.toggle("monitor-landscape", data.display_setting.display_orientation !== "portrait");
+                document.body.classList.toggle("monitor-theme-light", data.display_setting.display_theme === "light");
+                document.body.classList.toggle("monitor-theme-dark", data.display_setting.display_theme !== "light");
 
                 text("monitor_event", data.event.event_number + " · " + data.event.name + " · " + data.event.organizer_club);
                 text("monitor_time", data.server_time);

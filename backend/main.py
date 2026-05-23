@@ -117,6 +117,12 @@ ensure_schema_column(
 
 ensure_schema_column(
     table_name="monitor_display_settings",
+    column_name="display_theme",
+    column_definition="VARCHAR DEFAULT 'dark'",
+)
+
+ensure_schema_column(
+    table_name="monitor_display_settings",
     column_name="show_overall_results",
     column_definition="BOOLEAN DEFAULT 0",
 )
@@ -1742,6 +1748,7 @@ def get_or_create_monitor_display_setting(
         show_logo_signal=False,
         show_statistics=False,
         display_orientation="landscape",
+        display_theme="dark",
         updated_at=now_string(),
     )
     db.add(setting)
@@ -1765,6 +1772,7 @@ def monitor_display_setting_payload(setting: MonitorDisplaySetting) -> dict:
         "show_logo_signal": bool(setting.show_logo_signal),
         "show_statistics": bool(setting.show_statistics),
         "display_orientation": setting.display_orientation or "landscape",
+        "display_theme": setting.display_theme or "dark",
     }
 
 
@@ -5122,6 +5130,11 @@ async def ui_event_update_monitor_output(
         "portrait"
         if form.get("display_orientation") == "portrait"
         else "landscape"
+    )
+    setting.display_theme = (
+        "light"
+        if form.get("display_theme") == "light"
+        else "dark"
     )
     setting.updated_at = now_string()
 

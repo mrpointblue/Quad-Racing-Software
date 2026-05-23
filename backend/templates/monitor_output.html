@@ -19,27 +19,56 @@
         </div>
 
         <div class="monitor-header-controls">
-            <div class="selection-label">Format</div>
-            <div class="pill-grid monitor-format-picker">
-                <label class="select-pill">
-                    <input
-                        type="radio"
-                        name="display_orientation"
-                        value="landscape"
-                        {% if setting.display_orientation != "portrait" %}checked{% endif %}
-                    >
-                    <span>Normal</span>
-                </label>
+            <div class="monitor-view-controls">
+                <div>
+                    <div class="selection-label">Modus</div>
+                    <div class="pill-grid monitor-format-picker">
+                        <label class="select-pill">
+                            <input
+                                type="radio"
+                                name="display_theme"
+                                value="dark"
+                                {% if setting.display_theme != "light" %}checked{% endif %}
+                            >
+                            <span>Dunkel</span>
+                        </label>
 
-                <label class="select-pill">
-                    <input
-                        type="radio"
-                        name="display_orientation"
-                        value="portrait"
-                        {% if setting.display_orientation == "portrait" %}checked{% endif %}
-                    >
-                    <span>Gedreht 90°</span>
-                </label>
+                        <label class="select-pill">
+                            <input
+                                type="radio"
+                                name="display_theme"
+                                value="light"
+                                {% if setting.display_theme == "light" %}checked{% endif %}
+                            >
+                            <span>Tag</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="selection-label">Format</div>
+                    <div class="pill-grid monitor-format-picker">
+                        <label class="select-pill">
+                            <input
+                                type="radio"
+                                name="display_orientation"
+                                value="landscape"
+                                {% if setting.display_orientation != "portrait" %}checked{% endif %}
+                            >
+                            <span>Normal</span>
+                        </label>
+
+                        <label class="select-pill">
+                            <input
+                                type="radio"
+                                name="display_orientation"
+                                value="portrait"
+                                {% if setting.display_orientation == "portrait" %}checked{% endif %}
+                            >
+                            <span>Gedreht 90°</span>
+                        </label>
+                    </div>
+                </div>
             </div>
 
             <a class="button small-button" href="/ui/events/{{ active_event.id }}/monitor">Monitor öffnen</a>
