@@ -330,8 +330,37 @@
         );
     }
 
-    function cleanDriverName(driver) {
-        return String(driver || "—").replace("#", "");
+    let latestNextRuns = [];
+
+    function formatStarterNumber(startNumber) {
+        if (startNumber === null || startNumber === undefined || startNumber === "") {
+            return "--";
+        }
+
+        return String(startNumber).padStart(2, "0");
+    }
+
+    function buildStarterElement(lane, laneData) {
+        const data = laneData || {};
+        const wrapper = document.createElement("div");
+        const laneElement = document.createElement("span");
+        const numberElement = document.createElement("span");
+        const nameElement = document.createElement("span");
+
+        wrapper.className = "monitor-next-starter";
+        laneElement.className = "monitor-next-lane";
+        numberElement.className = "monitor-next-number";
+        nameElement.className = "monitor-next-name";
+
+        laneElement.textContent = lane;
+        numberElement.textContent = formatStarterNumber(data.start_number);
+        nameElement.textContent = data.last_name || "—";
+
+        wrapper.appendChild(laneElement);
+        wrapper.appendChild(numberElement);
+        wrapper.appendChild(nameElement);
+
+        return wrapper;
     }
 
     function updateStarterGrid(data) {
@@ -465,6 +494,43 @@
         text("monitor_logo_signal_label", data.label || "AUS");
     }
 
+    function fitNextRuns() {
+        const container = document.getElementById("next_runs");
+
+        if (!container) {
+            return;
+        }
+
+        const items = Array.from(container.querySelectorAll(".monitor-next-item"));
+        const moreNote = container.querySelector(".monitor-next-more");
+
+        if (!moreNote || items.length === 0) {
+            return;
+        }
+
+        items.forEach((item) => {
+            item.hidden = false;
+        });
+        moreNote.hidden = true;
+
+        if (container.scrollHeight <= container.clientHeight) {
+            return;
+        }
+
+        let hiddenCount = 0;
+        moreNote.hidden = false;
+
+        for (let index = items.length - 1; index >= 0; index -= 1) {
+            hiddenCount += 1;
+            items[index].hidden = true;
+            moreNote.textContent = "+ " + hiddenCount + " weitere Starts";
+
+            if (container.scrollHeight <= container.clientHeight) {
+                break;
+            }
+        }
+    }
+
     function renderNextRuns(runs) {
         const container = document.getElementById("next_runs");
 
@@ -472,22 +538,34 @@
             return;
         }
 
+        latestNextRuns = runs || [];
         container.innerHTML = "";
 
-        if (!runs || runs.length === 0) {
+        if (latestNextRuns.length === 0) {
             container.textContent = "Keine weiteren Starter";
             return;
         }
 
-        runs.forEach((run) => {
+        latestNextRuns.forEach((run) => {
             const item = document.createElement("div");
+            const separator = document.createElement("div");
+
             item.className = "monitor-next-item";
-            item.innerHTML =
-                "<div><strong>Bahn A: " + cleanDriverName(run.lane_a && run.lane_a.driver) + "</strong></div>" +
-                "<div><strong>Bahn B: " + cleanDriverName(run.lane_b && run.lane_b.driver) + "</strong></div>" +
-                "<div class='monitor-next-meta'>" + runLabel(run) + "</div>";
+            separator.className = "monitor-next-separator";
+            separator.textContent = "|";
+
+            item.appendChild(buildStarterElement("A", run.lane_a));
+            item.appendChild(separator);
+            item.appendChild(buildStarterElement("B", run.lane_b));
             container.appendChild(item);
         });
+
+        const moreNote = document.createElement("div");
+        moreNote.className = "monitor-next-more";
+        moreNote.hidden = true;
+        container.appendChild(moreNote);
+
+        requestAnimationFrame(fitNextRuns);
     }
 
     function renderResultSection(section) {
@@ -808,6 +886,11 @@
 
     document.addEventListener("DOMContentLoaded", () => {
         pollMonitor();
+        applyPortraitLayout();
+    });
+
+    window.addEventListener("resize", () => {
+        renderNextRuns(latestNextRuns);
         applyPortraitLayout();
     });
 

@@ -1183,13 +1183,25 @@ def monitor_result_payload(result: RunResult | None, db: Session) -> dict:
     if result is None:
         return {
             "driver": "-",
+            "start_number": None,
+            "last_name": "-",
             "raw_time": "-",
             "penalty": "-",
             "valued_time": "-",
         }
 
+    participant = result.participant
+    if participant is None or participant.withdrawn:
+        start_number = None
+        last_name = "-"
+    else:
+        start_number = participant.start_number
+        last_name = participant.last_name
+
     return {
-        "driver": monitor_driver_name(result.participant),
+        "driver": monitor_driver_name(participant),
+        "start_number": start_number,
+        "last_name": last_name,
         "raw_time": format_time_ms(result.raw_time_ms),
         "penalty": get_monitor_penalty_sum(result, db),
         "valued_time": format_time_ms(get_monitor_valued_time_ms(result, db)),
@@ -1343,36 +1355,35 @@ def pick_monitor_current_run(
 def pick_monitor_next_runs(
     run_items: list[tuple[RaceRun, Pairing]],
     db: Session,
-    current_run_id: int | None,
-    limit: int = 3,
+    current_run: RaceRun | None,
 ) -> list[dict]:
     """
-    Nächste Starter nur anzeigen, wenn ein aktueller Lauf aktiv gesetzt ist.
+    Nächste Starter nur für die aktuell aktive Klasse anzeigen.
 
     Wenn keine aktive Paarung existiert, darf auch keine Vorschau aus alten
     oder fremden Klassen angezeigt werden.
     """
-    if current_run_id is None:
+    if current_run is None:
         return []
 
     next_runs = []
     current_found = False
 
     for race_run, pairing in run_items:
-        if race_run.id == current_run_id:
+        if race_run.id == current_run.id:
             current_found = True
             continue
 
         if not current_found:
             continue
 
+        if race_run.race_class != current_run.race_class:
+            continue
+
         if race_run.confirmed:
             continue
 
         next_runs.append(monitor_run_payload(race_run, pairing, db))
-
-        if len(next_runs) >= limit:
-            break
 
     return next_runs
 
@@ -1582,11 +1593,9 @@ def build_monitor_payload(
     )
 
     current_item = pick_monitor_current_run(run_items, active_run_id=active_run_id)
-    current_run_id = None
 
     if current_item is not None:
         current_run, current_pairing = current_item
-        current_run_id = current_run.id
         current_payload = monitor_run_payload(current_run, current_pairing, db)
         current_round_number, _current_round_label = get_round_display(current_run.round_name)
 
@@ -1617,8 +1626,7 @@ def build_monitor_payload(
         "next_runs": pick_monitor_next_runs(
             run_items=run_items,
             db=db,
-            current_run_id=current_run_id,
-            limit=3,
+            current_run=current_run,
         ),
         "live_results": get_monitor_live_result_runs(
             run_items=run_items,
