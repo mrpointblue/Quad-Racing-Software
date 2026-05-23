@@ -227,10 +227,10 @@ ROUND_ORDER = {
 
 CLASS_ROUND_CONFIGS = [
     {
-        "key": "quarterfinal",
-        "round_names": [ROUND_PRELIMINARY, "vorlauf"],
-        "label": "Viertelfinale",
-        "number": 1,
+        "key": "final",
+        "round_names": [ROUND_FINAL],
+        "label": "Finale",
+        "number": 3,
     },
     {
         "key": "semifinal",
@@ -239,10 +239,10 @@ CLASS_ROUND_CONFIGS = [
         "number": 2,
     },
     {
-        "key": "final",
-        "round_names": [ROUND_FINAL],
-        "label": "Finale",
-        "number": 3,
+        "key": "quarterfinal",
+        "round_names": [ROUND_PRELIMINARY, "viertelfinale"],
+        "label": "Viertelfinale",
+        "number": 1,
     },
 ]
 
@@ -4672,6 +4672,16 @@ def ui_event_classes(
 
             if not section_runs:
                 continue
+
+            section_runs = sorted(
+                section_runs,
+                key=lambda item: (
+                    0 if item["is_next_startable"] else 1,
+                    item["status_order"],
+                    item["pairing"].pairing_number,
+                    item["run"].run_number,
+                ),
+            )
 
             round_sections.append(
                 {
