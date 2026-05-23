@@ -340,8 +340,28 @@
         return String(startNumber).padStart(2, "0");
     }
 
+    function parseDriverFallback(driver) {
+        const text = String(driver || "").trim();
+        const match = text.match(/^#?(\d+)\s+(.+)$/);
+
+        if (!match) {
+            return {
+                startNumber: null,
+                lastName: "—",
+            };
+        }
+
+        const nameParts = match[2].trim().split(/\s+/);
+
+        return {
+            startNumber: match[1],
+            lastName: nameParts[nameParts.length - 1] || "—",
+        };
+    }
+
     function buildStarterElement(lane, laneData) {
         const data = laneData || {};
+        const fallback = parseDriverFallback(data.driver);
         const wrapper = document.createElement("div");
         const laneElement = document.createElement("span");
         const numberElement = document.createElement("span");
@@ -353,8 +373,8 @@
         nameElement.className = "monitor-next-name";
 
         laneElement.textContent = lane;
-        numberElement.textContent = formatStarterNumber(data.start_number);
-        nameElement.textContent = data.last_name || "—";
+        numberElement.textContent = formatStarterNumber(data.start_number || fallback.startNumber);
+        nameElement.textContent = data.last_name || fallback.lastName;
 
         wrapper.appendChild(laneElement);
         wrapper.appendChild(numberElement);
@@ -496,8 +516,10 @@
 
     function fitNextRuns() {
         const container = document.getElementById("next_runs");
+        const section = document.getElementById("next_starter_section");
+        const currentPanel = document.querySelector(".monitor-current");
 
-        if (!container) {
+        if (!container || !section) {
             return;
         }
 
@@ -508,12 +530,26 @@
             return;
         }
 
+        if (currentPanel && currentPanel.offsetHeight > 0) {
+            section.style.height = currentPanel.offsetHeight + "px";
+        } else {
+            section.style.height = "";
+        }
+
         items.forEach((item) => {
             item.hidden = false;
         });
         moreNote.hidden = true;
 
-        if (container.scrollHeight <= container.clientHeight) {
+        const sectionStyles = window.getComputedStyle(section);
+        const sectionPadding =
+            parseFloat(sectionStyles.paddingTop || "0") +
+            parseFloat(sectionStyles.paddingBottom || "0");
+        const title = section.querySelector("h2");
+        const titleHeight = title ? title.offsetHeight + parseFloat(window.getComputedStyle(title).marginBottom || "0") : 0;
+        const availableHeight = section.clientHeight - sectionPadding - titleHeight;
+
+        if (availableHeight <= 0 || container.scrollHeight <= availableHeight) {
             return;
         }
 
@@ -525,7 +561,7 @@
             items[index].hidden = true;
             moreNote.textContent = "+ " + hiddenCount + " weitere Starts";
 
-            if (container.scrollHeight <= container.clientHeight) {
+            if (container.scrollHeight <= availableHeight) {
                 break;
             }
         }

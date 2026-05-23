@@ -1310,6 +1310,7 @@ select {
     display: grid;
     grid-template-columns: minmax(520px, 2fr) minmax(320px, 1fr);
     gap: 18px;
+    align-items: start;
 }
 
 .monitor-grid[hidden] {
@@ -1738,9 +1739,8 @@ select {
 }
 
 #next_starter_section {
-    display: flex;
-    flex-direction: column;
     min-height: 0;
+    overflow: hidden;
 }
 
 .monitor-meta {
@@ -1786,7 +1786,6 @@ select {
 }
 
 .monitor-next-list {
-    flex: 1 1 auto;
     min-height: 0;
     overflow: hidden;
 }
@@ -1805,8 +1804,11 @@ select {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
-    gap: 10px;
-    font-size: 20px;
+    gap: 8px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    font-size: 18px;
+    line-height: 1.15;
 }
 
 .monitor-next-item[hidden] {
@@ -1844,9 +1846,9 @@ select {
 
 .monitor-next-more {
     color: #fde68a;
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
-    padding: 2px 0 0 4px;
+    padding: 0 0 0 4px;
 }
 
 .monitor-note {
