@@ -134,7 +134,7 @@
                             {% for row in section.rows %}
                                 <tr>
                                     <td class="place-cell"><strong>{{ row.place }}</strong></td>
-                                    <td class="start-cell">#{{ row.start_number }}</td>
+                                    <td class="start-cell">{{ row.start_number }}</td>
                                     <td class="monitor-driver-cell">{{ row.driver }}</td>
                                     <td class="monitor-time-cell">{{ row.run_1_raw_display or "—" }}</td>
                                     <td class="monitor-fp-cell">{{ row.run_1_penalty }}</td>
@@ -169,7 +169,7 @@
                                 <tr>
                                     <td><strong>{{ row.place }}</strong></td>
                                     <td>{{ row.race_class }}</td>
-                                    <td>#{{ row.start_number }} {{ row.driver }}</td>
+                                    <td>{{ row.start_number }} {{ row.driver }}</td>
                                     <td>{{ row.quarterfinal }}</td>
                                     <td>{{ row.semifinal }}</td>
                                     <td>{{ row.final }}</td>
@@ -202,7 +202,7 @@
                                 <td>
                                     {% for member in row.members %}
                                         {% if member.counted %}
-                                            #{{ member.start_number }} {{ member.driver }} · Kl. {{ member.race_class }} · {{ member.points }} Pkt.
+                                            {{ member.start_number }} {{ member.driver }} · Kl. {{ member.race_class }} · {{ member.points }} Pkt.
                                             {% if member.status != "Gewertet" %}
                                                 · {{ member.status }}
                                             {% endif %}
@@ -357,6 +357,19 @@
         };
     }
 
+    function formatCurrentDriver(laneData) {
+        const data = laneData || {};
+        const fallback = parseDriverFallback(data.driver);
+        const startNumber = data.start_number || fallback.startNumber;
+        const displayName = data.display_name || fallback.displayName;
+
+        if (!startNumber) {
+            return displayName || "—";
+        }
+
+        return String(startNumber) + " " + (displayName || "—");
+    }
+
     function buildStarterCell(laneData) {
         const data = laneData || {};
         const fallback = parseDriverFallback(data.driver);
@@ -480,11 +493,11 @@
         }
 
         text("current_run_meta", runLabel(run) + " · Status: " + run.status);
-        text("current_lane_a_driver", run.lane_a.driver);
+        text("current_lane_a_driver", formatCurrentDriver(run.lane_a));
         text("current_lane_a_time", run.lane_a.raw_time);
         text("current_lane_a_penalty", String(run.lane_a.penalty));
         text("current_lane_a_result", run.lane_a.valued_time);
-        text("current_lane_b_driver", run.lane_b.driver);
+        text("current_lane_b_driver", formatCurrentDriver(run.lane_b));
         text("current_lane_b_time", run.lane_b.raw_time);
         text("current_lane_b_penalty", String(run.lane_b.penalty));
         text("current_lane_b_result", run.lane_b.valued_time);
@@ -644,7 +657,7 @@
             const tr = document.createElement("tr");
             tr.innerHTML =
                 "<td class='place-cell'><strong>" + row.place + "</strong></td>" +
-                "<td class='start-cell'>#" + row.start_number + "</td>" +
+                "<td class='start-cell'>" + row.start_number + "</td>" +
                 "<td class='monitor-driver-cell'>" + row.driver + "</td>" +
                 "<td class='monitor-time-cell'>" + (row.run_1_raw_display || "—") + "</td>" +
                 "<td class='monitor-fp-cell'>" + row.run_1_penalty + "</td>" +
@@ -684,7 +697,7 @@
             const counted = (row.members || [])
                 .filter((member) => member.counted)
                 .map((member) => (
-                    "#" + member.start_number +
+                    member.start_number +
                     " " + member.driver +
                     " · Kl. " + member.race_class +
                     " · " + member.points + " Pkt." +
@@ -736,7 +749,7 @@
             tr.innerHTML =
                 "<td><strong>" + row.place + "</strong></td>" +
                 "<td>" + row.race_class + "</td>" +
-                "<td>#" + row.start_number + " " + row.driver + "</td>" +
+                "<td>" + row.start_number + " " + row.driver + "</td>" +
                 "<td>" + row.quarterfinal + "</td>" +
                 "<td>" + row.semifinal + "</td>" +
                 "<td>" + row.final + "</td>" +
