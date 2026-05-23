@@ -225,6 +225,27 @@ ROUND_ORDER = {
     ROUND_FINAL: 3,
 }
 
+CLASS_ROUND_CONFIGS = [
+    {
+        "key": "quarterfinal",
+        "round_names": [ROUND_PRELIMINARY, "vorlauf"],
+        "label": "Viertelfinale",
+        "number": 1,
+    },
+    {
+        "key": "semifinal",
+        "round_names": [ROUND_SEMIFINAL],
+        "label": "Halbfinale",
+        "number": 2,
+    },
+    {
+        "key": "final",
+        "round_names": [ROUND_FINAL],
+        "label": "Finale",
+        "number": 3,
+    },
+]
+
 POINTS_TABLE_C = {
     1: 25,
     2: 22,
@@ -1344,6 +1365,21 @@ def build_run_navigation_payload(
         "run_number": race_run.run_number,
         "status": race_run.status,
     }
+
+
+def get_class_round_config(round_key: str) -> dict | None:
+    for config in CLASS_ROUND_CONFIGS:
+        if config["key"] == round_key:
+            return config
+
+    return None
+
+
+def participant_start_label(participant: Participant | None) -> str:
+    if participant is None or participant.withdrawn:
+        return "-"
+
+    return f"#{participant.start_number} {participant.first_name} {participant.last_name}"
 
 
 def pick_monitor_current_run(
@@ -4427,6 +4463,7 @@ def ui_event_classes(
 
     class_data = []
     runs_by_class = {}
+    run_sections_by_class = {}
     active_run_by_class = {}
 
     run_status_order = {
@@ -4625,6 +4662,30 @@ def ui_event_classes(
             ),
         )
 
+        round_sections = []
+
+        for round_config in CLASS_ROUND_CONFIGS:
+            section_runs = [
+                run_item for run_item in run_items
+                if run_item["run"].round_name in round_config["round_names"]
+            ]
+
+            if not section_runs:
+                continue
+
+            round_sections.append(
+                {
+                    "key": round_config["key"],
+                    "label": round_config["label"],
+                    "number": round_config["number"],
+                    "runs": section_runs,
+                    "complete": all(
+                        run_item["run"].confirmed
+                        for run_item in section_runs
+                    ),
+                }
+            )
+
         active_run = None
 
         for run_item in run_items:
@@ -4634,6 +4695,7 @@ def ui_event_classes(
 
         active_run_by_class[race_class] = active_run
         runs_by_class[race_class] = run_items
+        run_sections_by_class[race_class] = round_sections
 
     class_data = sorted(
         class_data,
@@ -4650,6 +4712,7 @@ def ui_event_classes(
             "active_event": active_event,
             "class_data": class_data,
             "runs_by_class": runs_by_class,
+            "run_sections_by_class": run_sections_by_class,
             "active_run_by_class": active_run_by_class,
             "event_year": get_event_year(active_event),
             "event_date_reached": is_event_date_reached(active_event),
@@ -4733,6 +4796,71 @@ def ui_start_class_legacy(
         event_id=active_event.id,
         race_class=race_class,
         db=db,
+    )
+
+
+@app.get("/ui/events/{event_id}/classes/{race_class}/round/{round_key}/pairings/print")
+def ui_event_class_round_pairings_print(
+    event_id: int,
+    race_class: int,
+    round_key: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+
+    if race_class not in [1, 2, 3, 4, 5]:
+        raise HTTPException(
+            status_code=400,
+            detail="Ungültige Klasse",
+        )
+
+    round_config = get_class_round_config(round_key)
+
+    if round_config is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Ungültige Runde",
+        )
+
+    pairings = db.query(Pairing).filter(
+        Pairing.event_id == active_event.id,
+        Pairing.race_class == race_class,
+        Pairing.round_name.in_(round_config["round_names"]),
+    ).order_by(
+        Pairing.pairing_number,
+    ).all()
+
+    rows = []
+
+    for pairing in pairings:
+        for race_run in sorted(pairing.runs, key=lambda run: run.run_number):
+            lane_a, lane_b = get_lane_results_for_run(race_run)
+
+            rows.append(
+                {
+                    "pairing_number": pairing.pairing_number,
+                    "run_number": race_run.run_number,
+                    "round_number": round_config["number"],
+                    "lane_a": participant_start_label(
+                        lane_a.participant if lane_a else None
+                    ),
+                    "lane_b": participant_start_label(
+                        lane_b.participant if lane_b else None
+                    ),
+                }
+            )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="class_pairings_print.html",
+        context={
+            "active_event": active_event,
+            "race_class": race_class,
+            "round_label": round_config["label"],
+            "rows": rows,
+            "event_year": get_event_year(active_event),
+        },
     )
 
 

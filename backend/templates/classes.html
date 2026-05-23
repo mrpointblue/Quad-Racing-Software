@@ -158,9 +158,23 @@
             </div>
         {% endif %}
 
-        {% set class_runs = runs_by_class.get(item.race_class, []) %}
+        {% set class_run_sections = run_sections_by_class.get(item.race_class, []) %}
 
-        {% if class_runs|length > 0 %}
+        {% if class_run_sections|length > 0 %}
+            {% for round_section in class_run_sections %}
+                {% set class_runs = round_section.runs %}
+                <div class="class-round-section">
+                    <div class="class-round-heading">
+                        <h3>{{ round_section.label }}</h3>
+                        {% if not round_section.complete %}
+                            <a
+                                class="button small-button print-link"
+                                href="/ui/events/{{ active_event.id }}/classes/{{ item.race_class }}/round/{{ round_section.key }}/pairings/print"
+                            >
+                                Paarungen drucken
+                            </a>
+                        {% endif %}
+                    </div>
             <table class="compact-runs-table">
                 <thead>
                     <tr>
@@ -384,6 +398,8 @@
                     {% endfor %}
                 </tbody>
             </table>
+                </div>
+            {% endfor %}
         {% else %}
             {% if item.preliminary_created %}
                 <p class="error">

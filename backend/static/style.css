@@ -769,6 +769,28 @@ select {
     background: #f3f4f6;
 }
 
+.class-round-section {
+    margin-top: 18px;
+}
+
+.class-round-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.class-round-heading h3 {
+    margin: 0;
+}
+
+.pairings-print-table th,
+.pairings-print-table td {
+    font-size: 18px;
+    padding: 10px 12px;
+}
+
 .qpr-driver-cell {
     line-height: 1.35;
 }
