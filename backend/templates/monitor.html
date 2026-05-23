@@ -359,28 +359,27 @@
         };
     }
 
-    function buildStarterElement(lane, laneData) {
+    function buildStarterCell(laneData) {
         const data = laneData || {};
         const fallback = parseDriverFallback(data.driver);
-        const wrapper = document.createElement("div");
-        const laneElement = document.createElement("span");
+        const cell = document.createElement("td");
+        const wrapper = document.createElement("span");
         const numberElement = document.createElement("span");
         const nameElement = document.createElement("span");
 
+        cell.className = "monitor-next-starter-cell";
         wrapper.className = "monitor-next-starter";
-        laneElement.className = "monitor-next-lane";
         numberElement.className = "monitor-next-number";
         nameElement.className = "monitor-next-name";
 
-        laneElement.textContent = lane;
         numberElement.textContent = formatStarterNumber(data.start_number || fallback.startNumber);
         nameElement.textContent = data.last_name || fallback.lastName;
 
-        wrapper.appendChild(laneElement);
         wrapper.appendChild(numberElement);
         wrapper.appendChild(nameElement);
+        cell.appendChild(wrapper);
 
-        return wrapper;
+        return cell;
     }
 
     function updateStarterGrid(data) {
@@ -582,19 +581,33 @@
             return;
         }
 
+        const table = document.createElement("table");
+        const thead = document.createElement("thead");
+        const headerRow = document.createElement("tr");
+        const laneAHeader = document.createElement("th");
+        const laneBHeader = document.createElement("th");
+        const tbody = document.createElement("tbody");
+
+        table.className = "monitor-next-table";
+        laneAHeader.textContent = "Bahn A";
+        laneBHeader.textContent = "Bahn B";
+
+        headerRow.appendChild(laneAHeader);
+        headerRow.appendChild(laneBHeader);
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
         latestNextRuns.forEach((run) => {
-            const item = document.createElement("div");
-            const separator = document.createElement("div");
+            const item = document.createElement("tr");
 
             item.className = "monitor-next-item";
-            separator.className = "monitor-next-separator";
-            separator.textContent = "|";
-
-            item.appendChild(buildStarterElement("A", run.lane_a));
-            item.appendChild(separator);
-            item.appendChild(buildStarterElement("B", run.lane_b));
-            container.appendChild(item);
+            item.appendChild(buildStarterCell(run.lane_a));
+            item.appendChild(buildStarterCell(run.lane_b));
+            tbody.appendChild(item);
         });
+
+        table.appendChild(tbody);
+        container.appendChild(table);
 
         const moreNote = document.createElement("div");
         moreNote.className = "monitor-next-more";
