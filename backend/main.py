@@ -1179,12 +1179,26 @@ def monitor_driver_name(participant: Participant | None) -> str:
     return f"#{participant.start_number} {participant.first_name} {participant.last_name}"
 
 
+def monitor_driver_short_name(participant: Participant | None) -> str:
+    if participant is None or participant.withdrawn:
+        return "-"
+
+    first_initial = (participant.first_name or "").strip()[:1]
+    last_name = (participant.last_name or "").strip()
+
+    if first_initial and last_name:
+        return f"{first_initial}.{last_name}"
+
+    return last_name or "-"
+
+
 def monitor_result_payload(result: RunResult | None, db: Session) -> dict:
     if result is None:
         return {
             "driver": "-",
             "start_number": None,
             "last_name": "-",
+            "short_name": "-",
             "raw_time": "-",
             "penalty": "-",
             "valued_time": "-",
@@ -1194,14 +1208,17 @@ def monitor_result_payload(result: RunResult | None, db: Session) -> dict:
     if participant is None or participant.withdrawn:
         start_number = None
         last_name = "-"
+        short_name = "-"
     else:
         start_number = participant.start_number
         last_name = participant.last_name
+        short_name = monitor_driver_short_name(participant)
 
     return {
         "driver": monitor_driver_name(participant),
         "start_number": start_number,
         "last_name": last_name,
+        "short_name": short_name,
         "raw_time": format_time_ms(result.raw_time_ms),
         "penalty": get_monitor_penalty_sum(result, db),
         "valued_time": format_time_ms(get_monitor_valued_time_ms(result, db)),
