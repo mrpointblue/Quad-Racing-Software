@@ -5359,6 +5359,19 @@ def ui_event_timekeeper_run(
         next_unconfirmed_run is not None
         and next_unconfirmed_run.id == race_run.id
     )
+
+    if is_next_startable_run and not race_run.confirmed:
+        set_setting(db, "startdisplay_active_event_id", str(active_event.id))
+        set_setting(db, "startdisplay_active_run_id", str(race_run.id))
+        set_setting(db, "startdisplay_active_set_at", now_string())
+        db.commit()
+
+        threading.Thread(
+            target=send_start_display_for_run,
+            args=(active_event.id, race_run.id),
+            daemon=True,
+        ).start()
+
     logo_settings = get_logo_settings(db)
     logo_poll_interval_ms = parse_logo_poll_interval_ms(logo_settings)
     logo_status = get_logo_status_payload()
@@ -6789,25 +6802,17 @@ def send_start_display_numbers(lane_a_number: int | None, lane_b_number: int | N
         
         url = f"http://{host}:{port}{endpoint}"
         
-        # Build payload
-        if lane_a_number is not None or lane_b_number is not None:
-            payload = {
-                "mode": "start_numbers",
-                "lane_a_start_number": str(lane_a_number) if lane_a_number is not None else "",
-                "lane_b_start_number": str(lane_b_number) if lane_b_number is not None else "",
-            }
-        else:
-            payload = {
-                "mode": "idle",
-                "lane_a_start_number": "",
-                "lane_b_start_number": ""
-            }
+        payload = {
+            "mode": "start_numbers" if lane_a_number is not None or lane_b_number is not None else "idle",
+            "lane_a_start_number": lane_a_number,
+            "lane_b_start_number": lane_b_number,
+        }
         
         # Save status
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         set_setting(db, "startdisplay_last_send", now)
-        set_setting(db, "startdisplay_last_lane_a", str(lane_a_number or ""))
-        set_setting(db, "startdisplay_last_lane_b", str(lane_b_number or ""))
+        set_setting(db, "startdisplay_last_lane_a", str(lane_a_number) if lane_a_number is not None else "")
+        set_setting(db, "startdisplay_last_lane_b", str(lane_b_number) if lane_b_number is not None else "")
         # Send request
         import httpx
         import json
@@ -6820,7 +6825,7 @@ def send_start_display_numbers(lane_a_number: int | None, lane_b_number: int | N
             if response.status_code == 200:
                 set_setting(db, "startdisplay_last_success", now)
                 set_setting(db, "startdisplay_last_error", "")
-                set_setting(db, "startdisplay_last_payload", f"A:{lane_a_number or '-'} B:{lane_b_number or '-'}")
+                set_setting(db, "startdisplay_last_payload", f"A:{lane_a_number if lane_a_number is not None else '--'} B:{lane_b_number if lane_b_number is not None else '--'}")
                 return True
             else:
                 error_msg = f"HTTP {response.status_code}: {response.text}"
@@ -6830,12 +6835,12 @@ def send_start_display_numbers(lane_a_number: int | None, lane_b_number: int | N
     except httpx.TimeoutException:
         error_msg = "Timeout after 1s"
         set_setting(db, "startdisplay_last_error", error_msg)
-        set_setting(db, "startdisplay_last_payload", f"A:{lane_a_number or '-'} B:{lane_b_number or '-'}")
+        set_setting(db, "startdisplay_last_payload", f"A:{lane_a_number if lane_a_number is not None else '--'} B:{lane_b_number if lane_b_number is not None else '--'}")
         return False
     except httpx.ConnectError:
         error_msg = "Connection failed"
         set_setting(db, "startdisplay_last_error", error_msg)
-        set_setting(db, "startdisplay_last_payload", f"A:{lane_a_number or '-'} B:{lane_b_number or '-'}")
+        set_setting(db, "startdisplay_last_payload", f"A:{lane_a_number if lane_a_number is not None else '--'} B:{lane_b_number if lane_b_number is not None else '--'}")
         return False
     except Exception as e:
         error_msg = f"Error: {str(e)}"

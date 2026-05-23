@@ -67,10 +67,9 @@ int laneB = -1;
 unsigned long lastDataMs = 0;
 unsigned long lastScreenUpdateMs = 0;
 
-// Kein automatisches Löschen nach Timeout.
-// Ohne gültige Daten wird < A / B > / NO DATA angezeigt.
-// Letzte gültige Startnummern bleiben stehen,
-// wenn danach idle oder ungültige Daten empfangen werden.
+// Ohne gültige Paarung wird < A / B > / --/-- angezeigt.
+// Idle oder fehlende Startnummern löschen die Anzeige bewusst,
+// damit keine alten Startnummern stehen bleiben.
 
 // ============================================================
 // Farben
@@ -130,7 +129,7 @@ void showNoData() {
 
   // 3 Pixel tiefer
   drawCentered("< A / B >", 3, 1, COLOR_GREEN);
-  drawCentered("NO DATA", 17, 1, COLOR_ORANGE);
+  drawCentered("--/--", 16, 2, COLOR_ORANGE);
 }
 
 void showSetup() {
@@ -151,6 +150,14 @@ void showBadRequest() {
   drawCentered("FEHLER", 17, 1, COLOR_WHITE);
 }
 
+String formatStartNumber(int value) {
+  if (value < 0) {
+    return "--";
+  }
+
+  return String(value);
+}
+
 void showStartNumbers(int a, int b) {
   clearDisplay();
 
@@ -158,7 +165,7 @@ void showStartNumbers(int a, int b) {
   drawCentered("< A / B >", 3, 1, COLOR_GREEN);
 
   // Kompakter ohne Leerzeichen, damit es nicht abgeschnitten wird
-  String numbers = String(a) + "/" + String(b);
+  String numbers = formatStartNumber(a) + "/" + formatStartNumber(b);
 
   // Bis z. B. 26/4, 123/4 oder 12/34 groß anzeigen
   if (numbers.length() <= 5) {
@@ -172,7 +179,7 @@ void showStartNumbers(int a, int b) {
 void updateDisplay() {
   if (setupMode) {
     showSetup();
-  } else if (currentMode == "start_numbers" && laneA >= 0 && laneB >= 0) {
+  } else if (currentMode == "start_numbers") {
     showStartNumbers(laneA, laneB);
   } else if (currentMode == "offline") {
     showOffline();
@@ -301,8 +308,8 @@ void handleRoot() {
 
   html += "<h1>Quad Startdisplay</h1>";
   html += "<p>Status: " + currentMode + "</p>";
-  html += "<p>Bahn A: " + String(laneA) + "</p>";
-  html += "<p>Bahn B: " + String(laneB) + "</p>";
+  html += "<p>Bahn A: " + formatStartNumber(laneA) + "</p>";
+  html += "<p>Bahn B: " + formatStartNumber(laneB) + "</p>";
   html += "<p>IP: " + WiFi.localIP().toString() + "</p>";
   html += "<p>Port: 80</p>";
   html += "<p>Hostname: ";
@@ -439,22 +446,6 @@ void handleDisplayPost() {
     int a = doc["lane_a_start_number"] | -1;
     int b = doc["lane_b_start_number"] | -1;
 
-    if (a < 0 || b < 0) {
-      lastDataMs = millis();
-
-      // Ungültige Startnummern dürfen eine vorhandene Anzeige nicht löschen.
-      // Wenn noch keine gültige Anzeige vorhanden ist, bleibt NO DATA sichtbar.
-      if (currentMode != "start_numbers") {
-        currentMode = "idle";
-        laneA = -1;
-        laneB = -1;
-        updateDisplay();
-      }
-
-      server.send(200, "application/json", "{\"ok\":true,\"mode\":\"invalid_numbers_ignored_if_numbers_active\"}");
-      return;
-    }
-
     currentMode = "start_numbers";
     laneA = a;
     laneB = b;
@@ -465,8 +456,16 @@ void handleDisplayPost() {
     JsonDocument responseDoc;
     responseDoc["ok"] = true;
     responseDoc["mode"] = "start_numbers";
-    responseDoc["lane_a_start_number"] = laneA;
-    responseDoc["lane_b_start_number"] = laneB;
+    if (laneA >= 0) {
+      responseDoc["lane_a_start_number"] = laneA;
+    } else {
+      responseDoc["lane_a_start_number"] = (char*)NULL;
+    }
+    if (laneB >= 0) {
+      responseDoc["lane_b_start_number"] = laneB;
+    } else {
+      responseDoc["lane_b_start_number"] = (char*)NULL;
+    }
 
     String response;
     serializeJson(responseDoc, response);
@@ -477,33 +476,23 @@ void handleDisplayPost() {
 
   if (strcmp(mode, "idle") == 0) {
     lastDataMs = millis();
+    currentMode = "idle";
+    laneA = -1;
+    laneB = -1;
+    updateDisplay();
 
-    // Wichtig:
-    // Idle darf eine bereits gültige Anzeige nicht überschreiben.
-    // Die Quad Race Software sendet aktuell regelmäßig idle.
-    // Deshalb bleibt die letzte gültige Startnummernanzeige stehen.
-    if (currentMode != "start_numbers") {
-      currentMode = "idle";
-      laneA = -1;
-      laneB = -1;
-      updateDisplay();
-    }
-
-    server.send(200, "application/json", "{\"ok\":true,\"mode\":\"idle_ignored_if_numbers_active\"}");
+    server.send(200, "application/json", "{\"ok\":true,\"mode\":\"idle\"}");
     return;
   }
 
   lastDataMs = millis();
 
-  // Unbekannte Modi nicht die aktive Anzeige überschreiben lassen.
-  if (currentMode != "start_numbers") {
-    currentMode = "idle";
-    laneA = -1;
-    laneB = -1;
-    updateDisplay();
-  }
+  currentMode = "idle";
+  laneA = -1;
+  laneB = -1;
+  updateDisplay();
 
-  server.send(200, "application/json", "{\"ok\":true,\"mode\":\"unknown_ignored_if_numbers_active\"}");
+  server.send(200, "application/json", "{\"ok\":true,\"mode\":\"unknown_cleared\"}");
 }
 
 void handleNotFound() {

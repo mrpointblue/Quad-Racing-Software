@@ -28,8 +28,8 @@ Aktuelle Startnummern:
 ```json
 {
   "mode": "start_numbers",
-  "lane_a_start_number": "23",
-  "lane_b_start_number": "54"
+  "lane_a_start_number": 23,
+  "lane_b_start_number": 54
 }
 ```
 
@@ -38,10 +38,12 @@ Leerlauf / Anzeige löschen:
 ```json
 {
   "mode": "idle",
-  "lane_a_start_number": "",
-  "lane_b_start_number": ""
+  "lane_a_start_number": null,
+  "lane_b_start_number": null
 }
 ```
+
+Bei `null` oder fehlender Paarung zeigt das Display `--/--` und löscht vorherige Startnummern.
 
 ## Konfiguration in der Quad-Racing-Software
 

@@ -80,23 +80,15 @@ class StartDisplayService:
                 logger.debug("Startdisplay not enabled or not configured")
                 return True  # Not an error, just not enabled
             
-            # Build payload
-            if lane_a_number is not None and lane_b_number is not None:
-                payload = {
-                    "mode": "start_numbers",
-                    "lane_a_start_number": lane_a_number,
-                    "lane_b_start_number": lane_b_number
-                }
-            else:
-                payload = {
-                    "mode": "idle",
-                    "lane_a_start_number": None,
-                    "lane_b_start_number": None
-                }
+            payload = {
+                "mode": "start_numbers" if lane_a_number is not None or lane_b_number is not None else "idle",
+                "lane_a_start_number": lane_a_number,
+                "lane_b_start_number": lane_b_number,
+            }
             
             # Save last sent numbers for diagnostics
-            self._set_setting(db, "startdisplay_last_lane_a", str(lane_a_number or ""))
-            self._set_setting(db, "startdisplay_last_lane_b", str(lane_b_number or ""))
+            self._set_setting(db, "startdisplay_last_lane_a", str(lane_a_number) if lane_a_number is not None else "")
+            self._set_setting(db, "startdisplay_last_lane_b", str(lane_b_number) if lane_b_number is not None else "")
             
             # Send to ESP32
             url = self.build_url(settings)
