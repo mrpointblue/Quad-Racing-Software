@@ -520,6 +520,40 @@
             <strong>Raspberry Pi</strong>
         </p>
 
+        <div class="system-time-panel">
+            <div>
+                Aktuelle Pi-Zeit:
+                <strong>{{ system_status.current_time }}</strong>
+            </div>
+
+            <form method="post" action="/ui/settings/system/time" class="system-time-actions" id="browser_time_form">
+                <input type="hidden" name="time_source" value="browser">
+                <input type="hidden" name="browser_datetime" id="browser_datetime">
+                <button
+                    type="button"
+                    class="small-button"
+                    onclick="submitBrowserTime()"
+                >
+                    Zeit vom PC übernehmen
+                </button>
+            </form>
+
+            <form method="post" action="/ui/settings/system/time" class="system-time-actions">
+                <input type="hidden" name="time_source" value="manual">
+                <label for="manual_datetime">Zeit manuell setzen</label>
+                <input
+                    type="datetime-local"
+                    id="manual_datetime"
+                    name="manual_datetime"
+                    value="{{ system_status.current_time_input }}"
+                    required
+                >
+                <button type="submit" class="small-button">
+                    Zeit setzen
+                </button>
+            </form>
+        </div>
+
         <p>
             Konfiguration vollständig:
             <strong>{{ logo_status.configuration_complete }}</strong>
@@ -742,6 +776,29 @@
 
             setSettingsAccordionState(id, defaultOpenSettingsAccordions[id]);
         });
+    }
+
+    function formatLocalDateTime(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        const seconds = String(date.getSeconds()).padStart(2, "0");
+
+        return year + "-" + month + "-" + day + "T" + hours + ":" + minutes + ":" + seconds;
+    }
+
+    function submitBrowserTime() {
+        const input = document.getElementById("browser_datetime");
+        const form = document.getElementById("browser_time_form");
+
+        if (!input || !form) {
+            return;
+        }
+
+        input.value = formatLocalDateTime(new Date());
+        form.submit();
     }
 
     initializeSettingsAccordions();

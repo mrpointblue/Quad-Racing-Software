@@ -7365,7 +7365,11 @@ def get_network_status() -> dict:
 
 
 def get_system_status() -> dict:
+    current_time = datetime.now()
+
     return {
+        "current_time": current_time.strftime("%d.%m.%Y %H:%M:%S"),
+        "current_time_input": current_time.strftime("%Y-%m-%dT%H:%M"),
         "storage": get_system_storage_status(),
         "cpu_usage_percent": get_cpu_usage_percent(),
         "cpu_temperature": get_cpu_temperature(),
@@ -7392,6 +7396,55 @@ def reboot_system_delayed():
         check=False,
         timeout=15,
     )
+
+
+def parse_system_time_input(value: str | None) -> datetime:
+    cleaned_value = (value or "").strip()
+
+    for date_format in [
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+    ]:
+        try:
+            return datetime.strptime(cleaned_value, date_format)
+        except ValueError:
+            continue
+
+    raise ValueError("Ungültiges Zeitformat")
+
+
+def set_system_time(target_time: datetime) -> tuple[bool, str]:
+    if target_time.year < 2020 or target_time.year > 2099:
+        return False, "Jahr außerhalb des erlaubten Bereichs."
+
+    formatted_time = target_time.strftime("%Y-%m-%d %H:%M:%S")
+
+    try:
+        result = subprocess.run(
+            ["sudo", "-n", "date", "-s", formatted_time],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        return False, f"Systemzeit konnte nicht gesetzt werden: {error}"
+
+    if result.returncode != 0:
+        message = (result.stderr or result.stdout or "Keine Berechtigung zum Setzen der Systemzeit.").strip()
+        return False, message
+
+    subprocess.run(
+        ["sudo", "-n", "hwclock", "-w"],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+
+    return True, formatted_time
 
 
 def remove_existing_club_logos():
@@ -7512,6 +7565,36 @@ def ui_settings(
             "database_backups": get_database_backup_items(),
             "event_year": get_event_year(active_event),
         },
+    )
+
+
+@app.post("/ui/settings/system/time")
+def ui_set_system_time(
+    time_source: str = Form("manual"),
+    manual_datetime: str = Form(""),
+    browser_datetime: str = Form(""),
+):
+    raw_datetime = browser_datetime if time_source == "browser" else manual_datetime
+
+    try:
+        target_time = parse_system_time_input(raw_datetime)
+    except ValueError as error:
+        return RedirectResponse(
+            url=f"/ui/settings?error={quote(str(error))}",
+            status_code=303,
+        )
+
+    ok, message = set_system_time(target_time)
+
+    if not ok:
+        return RedirectResponse(
+            url=f"/ui/settings?error={quote('Systemzeit konnte nicht gesetzt werden: ' + message)}",
+            status_code=303,
+        )
+
+    return RedirectResponse(
+        url=f"/ui/settings?success={quote('Systemzeit gesetzt: ' + message)}",
+        status_code=303,
     )
 
 
