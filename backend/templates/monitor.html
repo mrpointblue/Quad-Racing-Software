@@ -277,20 +277,6 @@
                     </div>
                 {% endif %}
 
-                {% if statistics.most_penalties %}
-                    <div class="monitor-stat-card">
-                        <div class="monitor-stat-label">Meiste Fehlerpunkte</div>
-                        <div class="monitor-stat-value">{{ statistics.most_penalties.value }}</div>
-                        <div class="monitor-stat-detail">{{ statistics.most_penalties.driver }}</div>
-                        <div class="monitor-stat-sub">{{ statistics.most_penalties.detail }}</div>
-                    </div>
-                {% else %}
-                    <div class="monitor-stat-card">
-                        <div class="monitor-stat-label">Meiste Fehlerpunkte</div>
-                        <div class="monitor-stat-value">—</div>
-                    </div>
-                {% endif %}
-
                 {% if statistics.fewest_penalties %}
                     <div class="monitor-stat-card">
                         <div class="monitor-stat-label">Wenigste Fehlerpunkte</div>
@@ -810,13 +796,6 @@
             statistics.fastest_lane_2 ? statistics.fastest_lane_2.value : "—",
             statistics.fastest_lane_2 ? statistics.fastest_lane_2.driver : "",
             statistics.fastest_lane_2 ? statistics.fastest_lane_2.detail : ""
-        );
-        appendStatisticCard(
-            container,
-            "Meiste Fehlerpunkte",
-            statistics.most_penalties ? statistics.most_penalties.value : "—",
-            statistics.most_penalties ? statistics.most_penalties.driver : "",
-            statistics.most_penalties ? statistics.most_penalties.detail : ""
         );
         appendStatisticCard(
             container,

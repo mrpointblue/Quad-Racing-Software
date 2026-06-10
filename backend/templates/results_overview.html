@@ -478,19 +478,6 @@
         </div>
 
         <div class="result-stat-tile">
-            <span>Meiste Fehlerpunkte</span>
-            {% if result_statistics.most_penalties %}
-                <strong>{{ result_statistics.most_penalties.value }}</strong>
-                <small>
-                    {{ result_statistics.most_penalties.driver }}
-                    · {{ result_statistics.most_penalties.detail }}
-                </small>
-            {% else %}
-                <strong>—</strong>
-            {% endif %}
-        </div>
-
-        <div class="result-stat-tile">
             <span>Wenigste Fehlerpunkte</span>
             {% if result_statistics.fewest_penalties %}
                 <strong>{{ result_statistics.fewest_penalties.value }}</strong>
