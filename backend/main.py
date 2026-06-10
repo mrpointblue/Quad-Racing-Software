@@ -20,6 +20,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from backend.database import Base, DATABASE_FILE_PATH, DATA_DIR, SessionLocal, engine, get_db
+from backend.marshal_urls import build_marshal_station_url, normalize_marshal_url
 from backend.template_helpers import register_template_helpers
 from backend.time_utils import (
     format_time_input_code,
@@ -2046,17 +2047,12 @@ def get_monitor_marshal_qr_payload(event: Event, db: Session) -> dict | None:
         stations = []
 
         for station in build_marshal_station_options(event):
-            params = {
-                "type": station["type"],
-            }
-
-            if station["lane"]:
-                params["lane"] = station["lane"]
-
-            if station["sector"]:
-                params["sector"] = station["sector"]
-
-            station_url = f"/ui/events/{event.id}/marshal?{urlencode(params)}"
+            station_url = build_marshal_station_url(
+                event.id,
+                station["type"],
+                station["lane"],
+                station["sector"],
+            )
             stations.append(
                 {
                     "label": station["label"],
@@ -2078,7 +2074,7 @@ def get_monitor_marshal_qr_payload(event: Event, db: Session) -> dict | None:
         SystemSetting.key == f"marshal_qr_event_{event.id}_url"
     ).first()
 
-    station_url = url_setting.value if url_setting else ""
+    station_url = normalize_marshal_url(url_setting.value if url_setting else "", event.id)
 
     if not station_url:
         return None

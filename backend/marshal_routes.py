@@ -1,14 +1,13 @@
 import base64
 from datetime import datetime, timedelta
 from io import BytesIO
-from urllib.parse import urlencode
-
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 
 from backend.database import get_db
+from backend.marshal_urls import MARSHAL_QR_BASE_URL, build_marshal_station_path, build_marshal_station_url
 from backend.models import Event, Pairing, RaceRun, RunPenalty, RunResult, Participant, RegistrationGroup, SystemSetting
 from backend.template_helpers import register_template_helpers
 
@@ -77,26 +76,14 @@ def get_station_label(penalty_type: str, lane: str, sector: int | None = None) -
 
 
 def get_base_url(request: Request) -> str:
-    return str(request.base_url).rstrip("/")
+    return MARSHAL_QR_BASE_URL
 
 
 def get_station_url(event_id: int, penalty_type: str, lane: str, sector: int | None, base_url: str = "") -> str:
-    params = {
-        "type": penalty_type,
-    }
-
-    if penalty_type != "general":
-        params["lane"] = lane
-
-    if penalty_type == "sector":
-        params["sector"] = str(sector)
-
-    path = f"/ui/events/{event_id}/marshal?{urlencode(params)}"
-
     if base_url:
-        return f"{base_url}{path}"
+        return build_marshal_station_url(event_id, penalty_type, lane, sector, base_url)
 
-    return path
+    return build_marshal_station_path(event_id, penalty_type, lane, sector)
 
 
 def build_marshal_stations(event: Event, request: Request | None = None) -> list[dict]:
