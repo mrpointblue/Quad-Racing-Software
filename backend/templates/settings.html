@@ -133,35 +133,136 @@
             <button type="submit">Speichern</button>
         </form>
 
-        <hr>
+        <div class="logo-hardware-panel">
+            <section class="diagnostics-panel diagnostics-panel-wide">
+                <div class="diagnostics-panel-heading">
+                    <h3>Hardwarestatus</h3>
+                    {% if "fehlgeschlagen" in logo_hardware_status.message or "Fehler" in logo_hardware_status.message %}
+                        <span class="status-badge status-badge-withdrawn">Nicht verbunden</span>
+                    {% else %}
+                        <span class="status-badge status-badge-active">Bereit</span>
+                    {% endif %}
+                </div>
 
-        <div class="logo-hardware-status-grid">
-            <div>
-                <strong>Verbindungsstatus:</strong>
-                {{ logo_hardware_status.message }}
-            </div>
-            <div>Zeit Bahn A: <strong>{% if logo_hardware_status.times.lane_a_seconds is not none %}{{ "%.2f"|format(logo_hardware_status.times.lane_a_seconds) }} s / {{ logo_hardware_status.times.lane_a_display }}{% else %}-{% endif %}</strong></div>
-            <div>Zeit Bahn B: <strong>{% if logo_hardware_status.times.lane_b_seconds is not none %}{{ "%.2f"|format(logo_hardware_status.times.lane_b_seconds) }} s / {{ logo_hardware_status.times.lane_b_display }}{% else %}-{% endif %}</strong></div>
-            <div>Q1 Gelb: <strong>{{ "AN" if logo_hardware_status.outputs.yellow else "AUS" }}</strong></div>
-            <div>Q2 Grün: <strong>{{ "AN" if logo_hardware_status.outputs.green else "AUS" }}</strong></div>
-            <div>Q3 Rot: <strong>{{ "AN" if logo_hardware_status.outputs.red else "AUS" }}</strong></div>
-            <div>M1 Betrieb Bahn A: <strong>{{ "AN" if logo_hardware_status.markers.lane_a_running else "AUS" }}</strong></div>
-            <div>M2 Betrieb Bahn B: <strong>{{ "AN" if logo_hardware_status.markers.lane_b_running else "AUS" }}</strong></div>
-            <div>M3 Reset möglich: <strong>{{ "JA" if logo_hardware_status.markers.reset_available else "NEIN" }}</strong></div>
-            <div>M4 Fehlstart Bahn A: <strong>{{ "JA" if logo_hardware_status.markers.false_start_a else "NEIN" }}</strong></div>
-            <div>M5 Fehlstart Bahn B: <strong>{{ "JA" if logo_hardware_status.markers.false_start_b else "NEIN" }}</strong></div>
-            <div>M6 Störung Lichtschranke: <strong>{{ "JA" if logo_hardware_status.markers.light_barrier_fault else "NEIN" }}</strong></div>
+                <p class="logo-hardware-message">
+                    {{ logo_hardware_status.message }}
+                </p>
+            </section>
+
+            <section class="diagnostics-panel">
+                <div class="diagnostics-panel-heading">
+                    <h3>Zeitwerte</h3>
+                    <span>V0 / V4</span>
+                </div>
+
+                <dl class="diagnostics-list">
+                    <div>
+                        <dt>Bahn A</dt>
+                        <dd>
+                            {% if logo_hardware_status.times.lane_a_seconds is not none %}
+                                {{ "%.2f"|format(logo_hardware_status.times.lane_a_seconds) }} s / {{ logo_hardware_status.times.lane_a_display }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>Bahn B</dt>
+                        <dd>
+                            {% if logo_hardware_status.times.lane_b_seconds is not none %}
+                                {{ "%.2f"|format(logo_hardware_status.times.lane_b_seconds) }} s / {{ logo_hardware_status.times.lane_b_display }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section class="diagnostics-panel">
+                <div class="diagnostics-panel-heading">
+                    <h3>Ausgänge</h3>
+                    <span>Q1-Q3</span>
+                </div>
+
+                <div class="logo-signal-grid">
+                    <div class="logo-signal-item">
+                        <span class="logo-signal-dot logo-signal-yellow {% if logo_hardware_status.outputs.yellow %}active{% endif %}"></span>
+                        <span>Q1 Gelb</span>
+                        <strong>{{ "AN" if logo_hardware_status.outputs.yellow else "AUS" }}</strong>
+                    </div>
+                    <div class="logo-signal-item">
+                        <span class="logo-signal-dot logo-signal-green {% if logo_hardware_status.outputs.green %}active{% endif %}"></span>
+                        <span>Q2 Grün</span>
+                        <strong>{{ "AN" if logo_hardware_status.outputs.green else "AUS" }}</strong>
+                    </div>
+                    <div class="logo-signal-item">
+                        <span class="logo-signal-dot logo-signal-red {% if logo_hardware_status.outputs.red %}active{% endif %}"></span>
+                        <span>Q3 Rot</span>
+                        <strong>{{ "AN" if logo_hardware_status.outputs.red else "AUS" }}</strong>
+                    </div>
+                </div>
+            </section>
+
+            <section class="diagnostics-panel diagnostics-panel-wide">
+                <div class="diagnostics-panel-heading">
+                    <h3>Merker</h3>
+                    <span>M1-M6</span>
+                </div>
+
+                <div class="logo-marker-grid">
+                    <div class="logo-marker-item">
+                        <span>M1</span>
+                        <strong>Betrieb Bahn A</strong>
+                        <em>{{ "AN" if logo_hardware_status.markers.lane_a_running else "AUS" }}</em>
+                    </div>
+                    <div class="logo-marker-item">
+                        <span>M2</span>
+                        <strong>Betrieb Bahn B</strong>
+                        <em>{{ "AN" if logo_hardware_status.markers.lane_b_running else "AUS" }}</em>
+                    </div>
+                    <div class="logo-marker-item">
+                        <span>M3</span>
+                        <strong>Reset möglich</strong>
+                        <em>{{ "JA" if logo_hardware_status.markers.reset_available else "NEIN" }}</em>
+                    </div>
+                    <div class="logo-marker-item">
+                        <span>M4</span>
+                        <strong>Fehlstart Bahn A</strong>
+                        <em>{{ "JA" if logo_hardware_status.markers.false_start_a else "NEIN" }}</em>
+                    </div>
+                    <div class="logo-marker-item">
+                        <span>M5</span>
+                        <strong>Fehlstart Bahn B</strong>
+                        <em>{{ "JA" if logo_hardware_status.markers.false_start_b else "NEIN" }}</em>
+                    </div>
+                    <div class="logo-marker-item">
+                        <span>M6</span>
+                        <strong>Störung Lichtschranke</strong>
+                        <em>{{ "JA" if logo_hardware_status.markers.light_barrier_fault else "NEIN" }}</em>
+                    </div>
+                </div>
+            </section>
+
+            <section class="diagnostics-panel diagnostics-panel-wide">
+                <div class="diagnostics-panel-heading">
+                    <h3>Hardware-Aktionen</h3>
+                    <span>Test</span>
+                </div>
+
+                <div class="diagnostics-actions">
+                    <form method="post" action="/ui/settings/logo/check">
+                        <button type="submit" class="small-button">Verbindung testen</button>
+                    </form>
+                    <form method="post" action="/ui/settings/logo/web-start">
+                        <button type="submit" class="small-button">WEB Start testen</button>
+                    </form>
+                    <form method="post" action="/ui/settings/logo/web-reset">
+                        <button type="submit" class="small-button">WEB Reset testen</button>
+                    </form>
+                </div>
+            </section>
         </div>
-
-        <form method="post" action="/ui/settings/logo/check" style="display:inline;">
-            <button type="submit" class="small-button">Verbindung testen</button>
-        </form>
-        <form method="post" action="/ui/settings/logo/web-start" style="display:inline;">
-            <button type="submit" class="small-button">WEB Start testen</button>
-        </form>
-        <form method="post" action="/ui/settings/logo/web-reset" style="display:inline;">
-            <button type="submit" class="small-button">WEB Reset testen</button>
-        </form>
     </div>
 </div>
 
@@ -515,193 +616,211 @@
     </button>
 
     <div class="settings-accordion-body" id="accordion_system_status">
-        <p>
-            Systemdaten:
-            <strong>Raspberry Pi</strong>
-        </p>
+        <div class="diagnostics-overview">
+            <section class="diagnostics-panel diagnostics-panel-wide">
+                <div class="diagnostics-panel-heading">
+                    <h3>System</h3>
+                    <span>Raspberry Pi</span>
+                </div>
 
-        <div class="system-time-panel">
-            <div>
-                Aktuelle Pi-Zeit:
-                <strong>{{ system_status.current_time }}</strong>
-            </div>
+                <dl class="diagnostics-list">
+                    <div>
+                        <dt>Aktuelle Pi-Zeit</dt>
+                        <dd>{{ system_status.current_time }}</dd>
+                    </div>
+                </dl>
 
-            <form method="post" action="/ui/settings/system/time" class="system-time-actions" id="browser_time_form">
-                <input type="hidden" name="time_source" value="browser">
-                <input type="hidden" name="browser_datetime" id="browser_datetime">
-                <button
-                    type="button"
-                    class="small-button"
-                    onclick="submitBrowserTime()"
-                >
-                    Zeit vom PC übernehmen
-                </button>
-            </form>
+                <div class="system-time-panel">
+                    <form method="post" action="/ui/settings/system/time" class="system-time-actions" id="browser_time_form">
+                        <input type="hidden" name="time_source" value="browser">
+                        <input type="hidden" name="browser_datetime" id="browser_datetime">
+                        <button
+                            type="button"
+                            class="small-button"
+                            onclick="submitBrowserTime()"
+                        >
+                            Zeit vom PC übernehmen
+                        </button>
+                    </form>
 
-            <form method="post" action="/ui/settings/system/time" class="system-time-actions">
-                <input type="hidden" name="time_source" value="manual">
-                <label for="manual_datetime">Zeit manuell setzen</label>
-                <input
-                    type="datetime-local"
-                    id="manual_datetime"
-                    name="manual_datetime"
-                    value="{{ system_status.current_time_input }}"
-                    required
-                >
-                <button type="submit" class="small-button">
-                    Zeit setzen
-                </button>
-            </form>
+                    <form method="post" action="/ui/settings/system/time" class="system-time-actions">
+                        <input type="hidden" name="time_source" value="manual">
+                        <label for="manual_datetime">Zeit manuell setzen</label>
+                        <input
+                            type="datetime-local"
+                            id="manual_datetime"
+                            name="manual_datetime"
+                            value="{{ system_status.current_time_input }}"
+                            required
+                        >
+                        <button type="submit" class="small-button">
+                            Zeit setzen
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <section class="diagnostics-panel">
+                <div class="diagnostics-panel-heading">
+                    <h3>LOGO! / Modbus</h3>
+                    {% if settings.logo_last_check_ok == "true" %}
+                        <span class="status-badge status-badge-active">OK</span>
+                    {% elif settings.logo_last_check_ok == "false" %}
+                        <span class="status-badge status-badge-withdrawn">Fehler</span>
+                    {% else %}
+                        <span>-</span>
+                    {% endif %}
+                </div>
+
+                <dl class="diagnostics-list">
+                    <div>
+                        <dt>Konfiguration</dt>
+                        <dd>{{ logo_status.configuration_complete }}</dd>
+                    </div>
+                    <div>
+                        <dt>Betriebsart</dt>
+                        <dd>{{ logo_status.mode }}</dd>
+                    </div>
+                    <div>
+                        <dt>Letzter Check</dt>
+                        <dd>{{ settings.logo_last_check_at or "-" }}</dd>
+                    </div>
+                    <div>
+                        <dt>Letzter Fehler</dt>
+                        <dd>{{ settings.logo_last_error or "-" }}</dd>
+                    </div>
+                </dl>
+
+                <p class="diagnostics-note">
+                    Der Verbindungstest prüft nur TCP/Modbus. Es werden keine Ausgänge geschaltet.
+                </p>
+            </section>
+
+            <section class="diagnostics-panel">
+                <div class="diagnostics-panel-heading">
+                    <h3>Netzwerk</h3>
+                    <span>{{ system_status.network.active_connection }}</span>
+                </div>
+
+                <dl class="diagnostics-list">
+                    <div>
+                        <dt>Ethernet</dt>
+                        <dd>{{ system_status.network.ethernet.status }}</dd>
+                    </div>
+                    <div>
+                        <dt>Ethernet IP</dt>
+                        <dd>{{ system_status.network.ethernet.ip_address }}</dd>
+                    </div>
+                    <div>
+                        <dt>Ethernet MAC</dt>
+                        <dd>{{ system_status.network.ethernet.mac_address }}</dd>
+                    </div>
+                    <div>
+                        <dt>WLAN</dt>
+                        <dd>{{ system_status.network.wifi.status }}</dd>
+                    </div>
+                    <div>
+                        <dt>WLAN IP</dt>
+                        <dd>{{ system_status.network.wifi.ip_address }}</dd>
+                    </div>
+                    <div>
+                        <dt>WLAN MAC</dt>
+                        <dd>{{ system_status.network.wifi.mac_address }}</dd>
+                    </div>
+                    {% if system_status.network.wifi.connected %}
+                        <div>
+                            <dt>WLAN Signal</dt>
+                            <dd>{{ system_status.network.wifi.signal_strength }}</dd>
+                        </div>
+                    {% endif %}
+                </dl>
+            </section>
+
+            <section class="diagnostics-panel">
+                <div class="diagnostics-panel-heading">
+                    <h3>Ressourcen</h3>
+                    <span>Live-Werte</span>
+                </div>
+
+                <dl class="diagnostics-list">
+                    <div>
+                        <dt>CPU-Auslastung</dt>
+                        <dd>
+                            {% if system_status.cpu_usage_percent is none %}
+                                -
+                            {% else %}
+                                {{ system_status.cpu_usage_percent }}%
+                            {% endif %}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>CPU-Temperatur</dt>
+                        <dd>{{ system_status.cpu_temperature }}</dd>
+                    </div>
+                    <div>
+                        <dt>RAM frei</dt>
+                        <dd>{{ system_status.memory.free }} von {{ system_status.memory.total }}</dd>
+                    </div>
+                    <div>
+                        <dt>RAM belegt</dt>
+                        <dd>{{ system_status.memory.used }} ({{ system_status.memory.used_percent }}%)</dd>
+                    </div>
+                    <div>
+                        <dt>Speicher frei</dt>
+                        <dd>{{ system_status.storage.free }} von {{ system_status.storage.total }}</dd>
+                    </div>
+                    <div>
+                        <dt>Speicher belegt</dt>
+                        <dd>{{ system_status.storage.used }} ({{ system_status.storage.used_percent }}%)</dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section class="diagnostics-panel diagnostics-panel-wide">
+                <div class="diagnostics-panel-heading">
+                    <h3>Aktionen</h3>
+                    <span>Wartung</span>
+                </div>
+
+                <div class="diagnostics-actions">
+                    <form method="post" action="/ui/settings/logo/check">
+                        <button type="submit" class="small-button">
+                            Verbindung testen
+                        </button>
+                    </form>
+
+                    <form method="post" action="/ui/settings/logo/reset-status">
+                        <button type="submit" class="small-button">
+                            Status zurücksetzen
+                        </button>
+                    </form>
+
+                    <form method="post" action="/ui/settings/system/restart">
+                        <button
+                            type="submit"
+                            class="small-button red-button"
+                            onclick="return confirm('Software wirklich neu starten? Die Oberfläche ist kurz nicht erreichbar.')"
+                        >
+                            Software Neustart
+                        </button>
+                    </form>
+
+                    <form method="post" action="/ui/settings/system/reboot">
+                        <button
+                            type="submit"
+                            class="small-button red-button"
+                            onclick="return confirm('Sind Sie sicher, dass Sie das System neu starten möchten? Der Raspberry Pi ist während des Neustarts nicht erreichbar.')"
+                        >
+                            System neu starten
+                        </button>
+                    </form>
+                </div>
+            </section>
         </div>
 
-        <p>
-            Konfiguration vollständig:
-            <strong>{{ logo_status.configuration_complete }}</strong>
-        </p>
-
-        <p>
-            Betriebsart:
-            <strong>{{ logo_status.mode }}</strong>
-        </p>
-
-        <p>
-            Verbunden via:
-            <strong>{{ system_status.network.active_connection }}</strong>
-        </p>
-
-        <p>
-            Ethernet:
-            <strong>{{ system_status.network.ethernet.status }}</strong>
-            · MAC:
-            <strong>{{ system_status.network.ethernet.mac_address }}</strong>
-            · IP:
-            <strong>{{ system_status.network.ethernet.ip_address }}</strong>
-        </p>
-
-        <p>
-            WLAN:
-            <strong>{{ system_status.network.wifi.status }}</strong>
-            · MAC:
-            <strong>{{ system_status.network.wifi.mac_address }}</strong>
-            · IP:
-            <strong>{{ system_status.network.wifi.ip_address }}</strong>
-            {% if system_status.network.wifi.connected %}
-                · Signal:
-                <strong>{{ system_status.network.wifi.signal_strength }}</strong>
-            {% endif %}
-        </p>
-
-        <p>
-            Letzter Prüfstatus:
-            {% if settings.logo_last_check_ok == "true" %}
-                <span class="success">OK</span>
-            {% elif settings.logo_last_check_ok == "false" %}
-                <span class="error">Fehler</span>
-            {% else %}
-                <strong>-</strong>
-            {% endif %}
-        </p>
-
-        <p>
-            Letzter Check:
-            <strong>{{ settings.logo_last_check_at or "-" }}</strong>
-        </p>
-
-        <p>
-            Letzter Fehler:
-            <strong>{{ settings.logo_last_error or "-" }}</strong>
-        </p>
-
-        <p>
-            Der Verbindungstest führt aktuell nur TCP-/Modbus-Verbindungstests aus.
-            Es werden keine Ausgänge geschaltet.
-        </p>
-
-        <hr>
-
-        <p>
-            CPU-Auslastung:
-            <strong>
-                {% if system_status.cpu_usage_percent is none %}
-                    -
-                {% else %}
-                    {{ system_status.cpu_usage_percent }}%
-                {% endif %}
-            </strong>
-        </p>
-
-        <p>
-            CPU-Temperatur:
-            <strong>{{ system_status.cpu_temperature }}</strong>
-        </p>
-
-        <p>
-            RAM frei:
-            <strong>{{ system_status.memory.free }}</strong>
-            von
-            <strong>{{ system_status.memory.total }}</strong>
-        </p>
-
-        <p>
-            RAM belegt:
-            <strong>{{ system_status.memory.used }}</strong>
-            (<strong>{{ system_status.memory.used_percent }}%</strong>)
-        </p>
-
-        <p>
-            Speicher frei:
-            <strong>{{ system_status.storage.free }}</strong>
-            von
-            <strong>{{ system_status.storage.total }}</strong>
-        </p>
-
-        <p>
-            Speicher belegt:
-            <strong>{{ system_status.storage.used }}</strong>
-            (<strong>{{ system_status.storage.used_percent }}%</strong>)
-        </p>
-
-        <form method="post" action="/ui/settings/logo/check" style="display:inline;">
-            <button type="submit" class="small-button">
-                Verbindung testen
-            </button>
-        </form>
-
-        <form method="post" action="/ui/settings/logo/reset-status" style="display:inline;">
-            <button type="submit" class="small-button">
-                Status zurücksetzen
-            </button>
-        </form>
-
-        <form method="post" action="/ui/settings/system/restart" style="display:inline;">
-            <button
-                type="submit"
-                class="small-button red-button"
-                onclick="return confirm('Software wirklich neu starten? Die Oberfläche ist kurz nicht erreichbar.')"
-            >
-                Software Neustart
-            </button>
-        </form>
-
-        <form method="post" action="/ui/settings/system/reboot" style="display:inline;">
-            <button
-                type="submit"
-                class="small-button red-button"
-                onclick="return confirm('Sind Sie sicher, dass Sie das System neu starten möchten? Der Raspberry Pi ist während des Neustarts nicht erreichbar.')"
-            >
-                System neu starten
-            </button>
-        </form>
-
-        <hr>
-
-        <p>
-            Diese Seite bereitet die Siemens LOGO!-Anbindung vor. Die echte Kommunikation mit der Anlage wird separat aktiviert.
-        </p>
-
-        <p>
-            Solange der Simulationsmodus aktiv ist, bleibt der Rennbetrieb softwareseitig nutzbar.
-        </p>
+        <div class="diagnostics-note diagnostics-footer-note">
+            Siemens LOGO! Kommunikation wird separat aktiviert. Im Simulationsmodus bleibt der Rennbetrieb softwareseitig nutzbar.
+        </div>
     </div>
 </div>
 

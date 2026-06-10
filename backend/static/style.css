@@ -2354,6 +2354,95 @@ select {
     font-size: 13px;
 }
 
+.logo-hardware-panel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 18px;
+}
+
+.logo-hardware-message {
+    margin: 0;
+    overflow-wrap: anywhere;
+    font-weight: 700;
+}
+
+.logo-signal-grid,
+.logo-marker-grid {
+    display: grid;
+    gap: 8px;
+}
+
+.logo-signal-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.logo-signal-item span:nth-child(2) {
+    font-weight: 700;
+}
+
+.logo-signal-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 999px;
+    opacity: 0.28;
+    box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.2);
+}
+
+.logo-signal-dot.active {
+    opacity: 1;
+    box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.12);
+}
+
+.logo-signal-yellow {
+    background: #f59e0b;
+}
+
+.logo-signal-green {
+    background: #16a34a;
+}
+
+.logo-signal-red {
+    background: #dc2626;
+}
+
+.logo-marker-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.logo-marker-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.logo-marker-item span {
+    color: #4b5563;
+    font-weight: 800;
+}
+
+.logo-marker-item strong {
+    overflow-wrap: anywhere;
+}
+
+.logo-marker-item em {
+    color: #111827;
+    font-style: normal;
+    font-weight: 800;
+}
+
 .false-start-box {
     font-size: 16px;
     font-weight: bold;
@@ -2766,14 +2855,118 @@ select {
     margin-top: 12px;
 }
 
+.diagnostics-overview {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.diagnostics-panel {
+    padding: 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #f9fafb;
+}
+
+.diagnostics-panel-wide {
+    grid-column: 1 / -1;
+}
+
+.diagnostics-panel-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.diagnostics-panel-heading h3 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.diagnostics-panel-heading span {
+    font-size: 13px;
+    font-weight: 700;
+    color: #4b5563;
+    text-align: right;
+}
+
+.diagnostics-panel-heading .status-badge {
+    font-size: 12px;
+}
+
+.diagnostics-panel-heading .status-badge-active {
+    color: #166534;
+}
+
+.diagnostics-panel-heading .status-badge-withdrawn {
+    color: #991b1b;
+}
+
+.diagnostics-list {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+}
+
+.diagnostics-list div {
+    display: grid;
+    grid-template-columns: minmax(120px, 0.45fr) minmax(0, 1fr);
+    gap: 12px;
+    align-items: baseline;
+}
+
+.diagnostics-list dt {
+    color: #6b7280;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.diagnostics-list dd {
+    margin: 0;
+    color: #111827;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.diagnostics-note {
+    margin: 12px 0 0 0;
+    padding: 10px 12px;
+    border-left: 4px solid #94a3b8;
+    background: #eef2f7;
+    color: #374151;
+    border-radius: 6px;
+}
+
+.diagnostics-footer-note {
+    margin-top: 14px;
+}
+
+.diagnostics-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.diagnostics-actions form {
+    margin: 0;
+}
+
+.diagnostics-actions .small-button {
+    margin-top: 0;
+}
+
 .system-time-panel {
     display: grid;
     gap: 10px;
     padding: 14px;
-    margin: 12px 0 18px 0;
+    margin: 12px 0 0 0;
     border: 1px solid #d1d5db;
     border-radius: 8px;
-    background: #f9fafb;
+    background: #ffffff;
 }
 
 .system-time-actions {
@@ -2796,6 +2989,32 @@ select {
 
 .system-time-actions .small-button {
     margin-top: 0;
+}
+
+@media (max-width: 760px) {
+    .diagnostics-overview {
+        grid-template-columns: 1fr;
+    }
+
+    .diagnostics-list div {
+        grid-template-columns: 1fr;
+        gap: 2px;
+    }
+
+    .diagnostics-panel-heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .diagnostics-panel-heading span {
+        text-align: left;
+    }
+
+    .logo-hardware-panel,
+    .logo-marker-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .print-only {
