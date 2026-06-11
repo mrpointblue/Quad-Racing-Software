@@ -1295,6 +1295,61 @@ select {
     flex-shrink: 0;
 }
 
+.monitor-checkin-qr {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #374151;
+    border-radius: 8px;
+    padding: 7px 8px;
+    background: #020617;
+    color: #d1d5db;
+    text-align: left;
+}
+
+.monitor-checkin-qr[hidden] {
+    display: none;
+}
+
+.monitor-checkin-qr span {
+    display: block;
+    color: #f9fafb;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.05;
+    white-space: nowrap;
+}
+
+.monitor-checkin-qr small {
+    display: block;
+    color: #9ca3af;
+    font-size: 11px;
+    line-height: 1.1;
+}
+
+.monitor-checkin-qr img {
+    width: 54px;
+    height: 54px;
+    background: #ffffff;
+    border-radius: 5px;
+    padding: 3px;
+    image-rendering: pixelated;
+}
+
+.monitor-theme-light .monitor-checkin-qr {
+    border-color: #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+}
+
+.monitor-theme-light .monitor-checkin-qr span {
+    color: #0f172a;
+}
+
+.monitor-theme-light .monitor-checkin-qr small {
+    color: #64748b;
+}
+
 .monitor-logo-signal {
     display: flex;
     align-items: center;

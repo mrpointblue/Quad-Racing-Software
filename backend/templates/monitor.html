@@ -19,6 +19,23 @@
         </div>
         <div class="monitor-topbar-status">
             <div
+                id="monitor_checkin_qr"
+                class="monitor-checkin-qr"
+                {% if not monitor_data.checkin_qr %}hidden{% endif %}
+            >
+                <div>
+                    <span id="monitor_checkin_qr_label">
+                        {% if monitor_data.checkin_qr %}{{ monitor_data.checkin_qr.label }}{% else %}Check-in QR{% endif %}
+                    </span>
+                    <small>Scannen</small>
+                </div>
+                {% if monitor_data.checkin_qr and monitor_data.checkin_qr.qr_data_uri %}
+                    <img id="monitor_checkin_qr_image" src="{{ monitor_data.checkin_qr.qr_data_uri }}" alt="Check-in QR-Code">
+                {% else %}
+                    <img id="monitor_checkin_qr_image" src="" alt="Check-in QR-Code" hidden>
+                {% endif %}
+            </div>
+            <div
                 id="monitor_logo_signal"
                 class="monitor-logo-signal monitor-logo-signal-{{ monitor_data.logo_signal.status }}"
                 {% if not monitor_data.logo_signal.visible %}hidden{% endif %}
@@ -869,6 +886,31 @@
         }
     }
 
+    function renderCheckinQr(checkinQr) {
+        const container = document.getElementById("monitor_checkin_qr");
+        const label = document.getElementById("monitor_checkin_qr_label");
+        const image = document.getElementById("monitor_checkin_qr_image");
+
+        if (!container) {
+            return;
+        }
+
+        container.hidden = !checkinQr;
+
+        if (!checkinQr) {
+            return;
+        }
+
+        if (label) {
+            label.textContent = checkinQr.label || "Check-in QR";
+        }
+
+        if (image && checkinQr.qr_data_uri) {
+            image.src = checkinQr.qr_data_uri;
+            image.hidden = false;
+        }
+    }
+
     function renderMonitorResults(resultSections, overallSections, teamResults) {
         const container = document.getElementById("monitor_results");
 
@@ -917,6 +959,7 @@
                 renderMonitorResults(data.result_sections, data.overall_sections, data.team_results);
                 renderMonitorStatistics(data.statistics);
                 renderMarshalQr(data.marshal_qr);
+                renderCheckinQr(data.checkin_qr);
                 renderNextRuns(data.next_runs);
                 applyPortraitLayout();
             })

@@ -123,6 +123,11 @@
             <span>Statistik</span>
             <strong>{% if setting.show_statistics %}Aktiv{% else %}Aus{% endif %}</strong>
         </div>
+
+        <div class="summary-tile">
+            <span>Check-in QR</span>
+            <strong>{% if setting.show_checkin_qr %}Aktiv{% else %}Aus{% endif %}</strong>
+        </div>
     </div>
 
     <div class="monitor-output-layout">
@@ -157,6 +162,22 @@
                     <small>Zeigt Rot, Orange und Grün als visuelle Monitor-Anzeige.</small>
                 </span>
             </label>
+
+            <div class="monitor-marshal-control">
+                <h4>Check-in QR</h4>
+                <label class="choice-row">
+                    <input
+                        type="checkbox"
+                        name="show_checkin_qr"
+                        value="1"
+                        {% if setting.show_checkin_qr %}checked{% endif %}
+                    >
+                    <span>
+                        <strong>Check-in QR oben anzeigen</strong>
+                        <small>Kompakter QR-Code neben der Uhr für das Check-in-Terminal.</small>
+                    </span>
+                </label>
+            </div>
 
             <div class="monitor-marshal-control">
                 <h4>Streckenposten-QR</h4>

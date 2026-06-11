@@ -350,6 +350,7 @@ class MonitorDisplaySetting(Base):
     show_team_results = Column(Boolean, default=False)
     show_logo_signal = Column(Boolean, default=False)
     show_statistics = Column(Boolean, default=False)
+    show_checkin_qr = Column(Boolean, default=False)
     display_orientation = Column(String, default="landscape")
     display_theme = Column(String, default="dark")
 

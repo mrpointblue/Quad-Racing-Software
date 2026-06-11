@@ -142,6 +142,12 @@ ensure_schema_column(
 )
 
 ensure_schema_column(
+    table_name="monitor_display_settings",
+    column_name="show_checkin_qr",
+    column_definition="BOOLEAN DEFAULT 0",
+)
+
+ensure_schema_column(
     table_name="registration_groups",
     column_name="registration_deadline",
     column_definition="VARCHAR",
@@ -506,6 +512,7 @@ def find_or_create_driver_profile(
         DriverProfile.first_name == first_name,
         DriverProfile.last_name == last_name,
         DriverProfile.birth_year == birth_year,
+        DriverProfile.active == True,
     ).first()
 
     if not driver_profile:
@@ -1767,6 +1774,7 @@ def get_or_create_monitor_display_setting(
         show_team_results=False,
         show_logo_signal=False,
         show_statistics=False,
+        show_checkin_qr=False,
         display_orientation="landscape",
         display_theme="dark",
         updated_at=now_string(),
@@ -1791,6 +1799,7 @@ def monitor_display_setting_payload(setting: MonitorDisplaySetting) -> dict:
         "show_team_results": bool(setting.show_team_results),
         "show_logo_signal": bool(setting.show_logo_signal),
         "show_statistics": bool(setting.show_statistics),
+        "show_checkin_qr": bool(setting.show_checkin_qr),
         "display_orientation": setting.display_orientation or "landscape",
         "display_theme": setting.display_theme or "dark",
     }
@@ -2015,6 +2024,7 @@ def build_monitor_output_payload(
         else None
     )
     race_payload["marshal_qr"] = get_monitor_marshal_qr_payload(event, db)
+    race_payload["checkin_qr"] = get_monitor_checkin_qr_payload(event, setting)
     race_payload["live_results"] = []
 
     return race_payload
@@ -2031,6 +2041,29 @@ def build_qr_data_uri(value: str) -> str | None:
     image.save(buffer, format="PNG")
     encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
     return f"data:image/png;base64,{encoded}"
+
+
+CHECKIN_QR_BASE_URL = "http://race.local:8010"
+
+
+def build_checkin_url() -> str:
+    return f"{CHECKIN_QR_BASE_URL}/checkin"
+
+
+def get_monitor_checkin_qr_payload(
+    event: Event,
+    setting: MonitorDisplaySetting,
+) -> dict | None:
+    if not setting.show_checkin_qr:
+        return None
+
+    checkin_url = build_checkin_url()
+
+    return {
+        "label": "Check-in QR",
+        "url": checkin_url,
+        "qr_data_uri": build_qr_data_uri(checkin_url),
+    }
 
 
 def get_monitor_marshal_qr_payload(event: Event, db: Session) -> dict | None:
@@ -5113,6 +5146,7 @@ async def ui_event_update_monitor_output(
     setting.show_overall_results = form.get("show_overall_results") == "1"
     setting.show_team_results = form.get("show_team_results") == "1"
     setting.show_statistics = form.get("show_statistics") == "1"
+    setting.show_checkin_qr = form.get("show_checkin_qr") == "1"
     setting.display_orientation = (
         "portrait"
         if form.get("display_orientation") == "portrait"
