@@ -854,6 +854,24 @@ def delete_registration_relations(
     ).delete(synchronize_session=False)
 
 
+def delete_registrations_for_event(
+    db: Session,
+    event_id: int,
+) -> int:
+    registrations = db.query(Registration).filter(
+        Registration.event_id == event_id,
+    ).all()
+
+    deleted_count = 0
+
+    for registration in registrations:
+        delete_registration_relations(db, registration)
+        db.delete(registration)
+        deleted_count += 1
+
+    return deleted_count
+
+
 def is_registration_deletable(
     registration: Registration,
     db: Session,
@@ -2622,8 +2640,6 @@ def ui_close_event(
             detail="Ungültiger Schließgrund",
         )
 
-    was_active = event.active
-
     event.closed = True
     event.closed_at = now_string()
     event.closed_by = closed_by.strip()
@@ -2631,19 +2647,6 @@ def ui_close_event(
     event.active = False
 
     db.commit()
-
-    if was_active:
-        next_event = db.query(Event).filter(
-            Event.closed == False
-        ).order_by(
-            Event.event_date.asc(),
-            Event.id.desc(),
-        ).first()
-
-        if next_event:
-            next_event.active = True
-            db.commit()
-            ensure_registration_groups(db, next_event.id)
 
     return RedirectResponse(
         url="/ui/events",
@@ -2682,6 +2685,8 @@ def ui_delete_event(
         RegistrationNotification.event_id == event.id
     ).delete()
 
+    delete_registrations_for_event(db, event.id)
+
     db.query(MonitorDisplaySetting).filter(
         MonitorDisplaySetting.event_id == event.id
     ).delete()
@@ -2698,23 +2703,8 @@ def ui_delete_event(
         Participant.event_id == event.id
     ).delete()
 
-    was_active = event.active
-
     db.delete(event)
     db.commit()
-
-    if was_active:
-        next_event = db.query(Event).filter(
-            Event.closed == False
-        ).order_by(
-            Event.event_date.asc(),
-            Event.id.desc(),
-        ).first()
-
-        if next_event:
-            next_event.active = True
-            db.commit()
-            ensure_registration_groups(db, next_event.id)
 
     return RedirectResponse(
         url="/ui/events",

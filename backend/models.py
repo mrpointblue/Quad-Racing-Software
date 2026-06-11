@@ -20,7 +20,7 @@ class Event(Base):
     sectors_per_lane = Column(Integer, default=4)
     marshal_enabled = Column(Boolean, default=False)
 
-    active = Column(Boolean, default=True)
+    active = Column(Boolean, default=False)
 
     closed = Column(Boolean, default=False)
     closed_at = Column(String, nullable=True)
