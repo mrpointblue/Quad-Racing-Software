@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Quad Race Monitor
+Exec=/home/pi/.local/bin/quad-monitor-kiosk.sh
+Terminal=false
+X-GNOME-Autostart-enabled=true

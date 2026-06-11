@@ -28,6 +28,7 @@ from backend.time_utils import (
     normalize_time_to_centiseconds_ms,
     parse_time_input_to_ms,
 )
+from backend.version import APP_VERSION
 from backend.models import (
     Event,
     SystemSetting,
@@ -89,7 +90,7 @@ REQUIRED_DATABASE_TABLES = {
 
 app = FastAPI(
     title="Quad Parallel Race",
-    version="1.7.2",
+    version=APP_VERSION,
 )
 
 Base.metadata.create_all(bind=engine)
@@ -7561,6 +7562,7 @@ def ui_settings(
             "logo_status": logo_status,
             "logo_hardware_status": logo_hardware_status,
             "system_status": system_status,
+            "app_version": APP_VERSION,
             "success": success,
             "error": error,
             "database_backups": get_database_backup_items(),

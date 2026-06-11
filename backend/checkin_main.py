@@ -17,10 +17,11 @@ from sqlalchemy.orm import Session
 from backend.database import Base, DATA_DIR, engine, get_db
 from backend.models import Event, DriverProfile, Participant, Registration, RegistrationSignature
 from backend.template_helpers import register_template_helpers
+from backend.version import APP_VERSION
 
 app = FastAPI(
     title="Quad Parallel Race Check-in",
-    version="1.7.2",
+    version=APP_VERSION,
 )
 
 Base.metadata.create_all(bind=engine)
