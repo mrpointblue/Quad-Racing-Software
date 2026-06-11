@@ -12,6 +12,7 @@ from fastapi import FastAPI, Depends, Request, Form, HTTPException
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.database import Base, DATA_DIR, engine, get_db
@@ -40,6 +41,28 @@ def ensure_schema_column(table_name: str, column_name: str, column_definition: s
                 f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}"
             )
             connection.commit()
+
+
+def ensure_schema_index(index_sql: str):
+    with engine.connect() as connection:
+        connection.exec_driver_sql(index_sql)
+        connection.commit()
+
+
+ensure_schema_index(
+    """
+    CREATE UNIQUE INDEX IF NOT EXISTS ux_participants_event_start_number
+    ON participants(event_id, start_number)
+    """
+)
+
+ensure_schema_index(
+    """
+    CREATE UNIQUE INDEX IF NOT EXISTS ux_registrations_open_event_start_number
+    ON registrations(event_id, start_number)
+    WHERE registration_status IN ('draft', 'under_review', 'correction_required', 'approved')
+    """
+)
 
 
 ensure_schema_column(
@@ -1253,7 +1276,11 @@ def checkin_submit(
         )
         db.add(guardian_signature)
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        return render_submit_error("Startnummer wurde gerade von einer anderen Nennung belegt. Bitte eine andere Startnummer wählen.")
 
     return RedirectResponse(url="/checkin/done", status_code=303)
 

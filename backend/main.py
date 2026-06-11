@@ -17,6 +17,7 @@ from fastapi import FastAPI, Depends, File, HTTPException, Request, Form, Upload
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.database import Base, DATABASE_FILE_PATH, DATA_DIR, SessionLocal, engine, get_db
@@ -109,6 +110,28 @@ def ensure_schema_column(table_name: str, column_name: str, column_definition: s
                 f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}"
             )
             connection.commit()
+
+
+def ensure_schema_index(index_sql: str):
+    with engine.connect() as connection:
+        connection.exec_driver_sql(index_sql)
+        connection.commit()
+
+
+ensure_schema_index(
+    """
+    CREATE UNIQUE INDEX IF NOT EXISTS ux_participants_event_start_number
+    ON participants(event_id, start_number)
+    """
+)
+
+ensure_schema_index(
+    """
+    CREATE UNIQUE INDEX IF NOT EXISTS ux_registrations_open_event_start_number
+    ON registrations(event_id, start_number)
+    WHERE registration_status IN ('draft', 'under_review', 'correction_required', 'approved')
+    """
+)
 
 
 ensure_schema_column(
@@ -3011,7 +3034,21 @@ def ui_event_registration_approve(
     registration.confirmed_by = "Nennstelle"
     registration.updated_at = now_string()
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        return templates.TemplateResponse(
+            request=request,
+            name="registration_detail.html",
+            context={
+                "active_event": active_event,
+                "registration": registration,
+                "event_year": get_event_year(active_event),
+                "error": "Die gewählte Startnummer ist inzwischen belegt.",
+            },
+            status_code=400,
+        )
 
     return RedirectResponse(
         url=f"/ui/events/{event_id}/registrations/{registration_id}",
