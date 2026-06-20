@@ -685,10 +685,10 @@ def write_compact_round_sheet(
         "Startnr.",
         "Fahrer",
         "Verein",
-        "Bahn A Zeit",
-        "Bahn A FP",
-        "Bahn B Zeit",
-        "Bahn B FP",
+        "Lauf 1 Zeit",
+        "Lauf 1 FP",
+        "Lauf 2 Zeit",
+        "Lauf 2 FP",
         "Summe",
     ]
 

@@ -159,6 +159,13 @@ def ui_event_results_overview(
         pairings_count = len(pairings)
         rows_by_round = build_class_export_rows(pairings)
         overall_rows = build_overall_rows(rows_by_round)
+        overall_rows_count = len(
+            [
+                row
+                for row in overall_rows
+                if row.get("place") not in ["", None]
+            ]
+        )
         adac_overall_rows_by_class[race_class] = overall_rows
         tie_warnings.extend(
             build_tie_warnings(overall_rows, race_class)
@@ -177,6 +184,7 @@ def ui_event_results_overview(
                 "race_class": race_class,
                 "participants_count": participants_count,
                 "pairings_count": pairings_count,
+                "overall_rows_count": overall_rows_count,
                 "quarterfinal_status": get_round_status(
                     pairings=pairings,
                     round_name=ROUND_PRELIMINARY,

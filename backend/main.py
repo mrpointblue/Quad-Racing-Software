@@ -922,6 +922,13 @@ def get_points_table_c(place: int | None, has_result: bool) -> int:
     return POINTS_TABLE_C.get(place, 1)
 
 
+def sort_place_or_last(place) -> int:
+    if isinstance(place, int):
+        return place
+
+    return 999
+
+
 def build_participant_points(
     event: Event,
     db: Session,
@@ -1007,8 +1014,7 @@ def build_team_standings(
         member_rows.sort(
             key=lambda row: (
                 -row["points"],
-                row["place"] is None,
-                row["place"] if row["place"] is not None else 999,
+                sort_place_or_last(row["place"]),
                 row["start_number"],
             )
         )
@@ -1705,6 +1711,7 @@ def build_monitor_payload(
 
     if current_item is not None:
         current_run, current_pairing = current_item
+        sync_logo_times_for_run(current_run, db)
         current_payload = monitor_run_payload(current_run, current_pairing, db)
         current_round_number, _current_round_label = get_round_display(current_run.round_name)
 
@@ -1866,8 +1873,10 @@ def build_monitor_result_rows_for_round(
             "place": row["place"],
             "start_number": row["start_number"],
             "driver": row["driver_name"],
+            "run_1_lane_label": row["round_detail"]["run_1_lane_label"],
             "run_1_raw_display": row["round_detail"]["run_1_raw_display"],
             "run_1_penalty": row["round_detail"]["run_1_penalty"],
+            "run_2_lane_label": row["round_detail"]["run_2_lane_label"],
             "run_2_raw_display": row["round_detail"]["run_2_raw_display"],
             "run_2_penalty": row["round_detail"]["run_2_penalty"],
             "round_total_display": row["round_detail"]["round_total_display"],
@@ -6776,6 +6785,53 @@ def should_sync_logo_run_times(run_id: int, lane_a_ms, lane_b_ms) -> bool:
         return True
 
 
+def sync_logo_times_for_run(
+    race_run: RaceRun,
+    db: Session,
+    status: dict | None = None,
+) -> dict:
+    if status is None:
+        status = get_logo_status_payload(db)
+
+    if not (
+        status.get("ok")
+        and not race_run.confirmed
+        and race_run.status in ["running", "started"]
+    ):
+        return status
+
+    lane_a_result, lane_b_result = get_lane_results_for_run(race_run)
+    times = status.get("times", {})
+    lane_a_ms = times.get("lane_a_ms")
+    lane_b_ms = times.get("lane_b_ms")
+    should_commit = should_sync_logo_run_times(
+        run_id=race_run.id,
+        lane_a_ms=lane_a_ms,
+        lane_b_ms=lane_b_ms,
+    )
+
+    if not should_commit:
+        return status
+
+    dirty = False
+
+    if isinstance(lane_a_ms, int) and lane_a_ms > 0 and lane_a_result:
+        lane_a_result.raw_time_ms = lane_a_ms
+        race_run.lane_a_time_ms = lane_a_ms
+        dirty = True
+
+    if isinstance(lane_b_ms, int) and lane_b_ms > 0 and lane_b_result:
+        lane_b_result.raw_time_ms = lane_b_ms
+        race_run.lane_b_time_ms = lane_b_ms
+        dirty = True
+
+    if dirty:
+        db.commit()
+        db.refresh(race_run)
+
+    return status
+
+
 def pulse_logo_web_start(db: Session) -> dict:
     return logo_status_cache.pulse_web_start(get_logo_settings(db))
 
@@ -7478,33 +7534,81 @@ def parse_system_time_input(value: str | None) -> datetime:
     raise ValueError("Ungültiges Zeitformat")
 
 
+def format_system_command_error(command_label: str, result: subprocess.CompletedProcess) -> str:
+    raw_message = (result.stderr or result.stdout or "").strip()
+    normalized_message = raw_message.lower()
+
+    if "password is required" in normalized_message or "a terminal is required" in normalized_message:
+        return (
+            f"{command_label} darf ohne Passwort nicht ausgeführt werden. "
+            "Bitte sudoers für den Dienst prüfen."
+        )
+
+    if "not in the sudoers" in normalized_message or "not allowed" in normalized_message:
+        return (
+            f"{command_label} ist für den Dienst nicht freigegeben. "
+            "Bitte sudoers für den Dienst prüfen."
+        )
+
+    if "no new privileges" in normalized_message:
+        return (
+            f"{command_label} kann in dieser Laufzeitumgebung nicht mit sudo ausgeführt werden."
+        )
+
+    if "operation not permitted" in normalized_message:
+        return (
+            f"{command_label} wurde vom Betriebssystem verweigert. "
+            "Bitte Berechtigungen zum Setzen der Systemzeit prüfen."
+        )
+
+    if raw_message:
+        return f"{command_label} fehlgeschlagen: {raw_message}"
+
+    return f"{command_label} fehlgeschlagen (Exit-Code {result.returncode})."
+
+
+def run_system_time_command(command: list[str], command_label: str) -> tuple[bool, str]:
+    try:
+        result = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except subprocess.TimeoutExpired:
+        return False, f"{command_label} hat zu lange gedauert."
+    except OSError as error:
+        return False, f"{command_label} konnte nicht gestartet werden: {error}"
+
+    if result.returncode != 0:
+        return False, format_system_command_error(command_label, result)
+
+    return True, ""
+
+
 def set_system_time(target_time: datetime) -> tuple[bool, str]:
     if target_time.year < 2020 or target_time.year > 2099:
         return False, "Jahr außerhalb des erlaubten Bereichs."
 
     formatted_time = target_time.strftime("%Y-%m-%d %H:%M:%S")
 
-    try:
-        result = subprocess.run(
-            ["sudo", "-n", "date", "-s", formatted_time],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-    except (OSError, subprocess.TimeoutExpired) as error:
-        return False, f"Systemzeit konnte nicht gesetzt werden: {error}"
+    run_system_time_command(
+        ["sudo", "-n", "timedatectl", "set-ntp", "false"],
+        "Automatische Zeitsynchronisation deaktivieren",
+    )
 
-    if result.returncode != 0:
-        message = (result.stderr or result.stdout or "Keine Berechtigung zum Setzen der Systemzeit.").strip()
+    ok, message = run_system_time_command(
+        ["sudo", "-n", "date", "-s", formatted_time],
+        "Systemzeit setzen",
+    )
+
+    if not ok:
         return False, message
 
-    subprocess.run(
+    run_system_time_command(
         ["sudo", "-n", "hwclock", "-w"],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=10,
+        "Hardware-Uhr speichern",
     )
 
     return True, formatted_time
@@ -8051,36 +8155,7 @@ def api_timekeeper_run_logo_status(
     if not race_run:
         raise HTTPException(status_code=404, detail="Lauf nicht gefunden")
 
-    status = get_logo_status_payload(db)
-
-    if (
-        status.get("ok")
-        and not race_run.confirmed
-        and race_run.status in ["running", "started"]
-    ):
-        lane_a_result, lane_b_result = get_lane_results_for_run(race_run)
-        times = status.get("times", {})
-        lane_a_ms = times.get("lane_a_ms")
-        lane_b_ms = times.get("lane_b_ms")
-        should_commit = should_sync_logo_run_times(
-            run_id=race_run.id,
-            lane_a_ms=lane_a_ms,
-            lane_b_ms=lane_b_ms,
-        )
-        dirty = False
-
-        if should_commit and isinstance(lane_a_ms, int) and lane_a_ms > 0 and lane_a_result:
-            lane_a_result.raw_time_ms = lane_a_ms
-            race_run.lane_a_time_ms = lane_a_ms
-            dirty = True
-
-        if should_commit and isinstance(lane_b_ms, int) and lane_b_ms > 0 and lane_b_result:
-            lane_b_result.raw_time_ms = lane_b_ms
-            race_run.lane_b_time_ms = lane_b_ms
-            dirty = True
-
-        if dirty:
-            db.commit()
+    status = sync_logo_times_for_run(race_run, db)
 
     status["run"] = {
         "id": race_run.id,

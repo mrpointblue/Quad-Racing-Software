@@ -7,6 +7,13 @@ from backend.round_logic import ROUND_FINAL, ROUND_PRELIMINARY, ROUND_SEMIFINAL
 from backend.time_utils import normalize_time_to_centiseconds_ms
 
 
+def sort_int_or_last(value, fallback: int = 999999999) -> int:
+    if isinstance(value, int):
+        return value
+
+    return fallback
+
+
 def get_penalty_sum(result: RunResult) -> int:
     return (
         (result.sector_1_penalty or 0)
@@ -147,13 +154,20 @@ def build_result_statistics(
     ]
     best_driver = None
 
-    if adac_overall_rows:
+    scored_overall_rows = [
+        row
+        for row in adac_overall_rows
+        if row.get("total_ms") is not None
+        and isinstance(row.get("total_penalty"), int)
+    ]
+
+    if scored_overall_rows:
         best_row = sorted(
-            adac_overall_rows,
+            scored_overall_rows,
             key=lambda row: (
-                row.get("total_ms") if row.get("total_ms") is not None else 999999999,
-                row.get("total_penalty", 0),
-                row.get("start_number", 999999),
+                sort_int_or_last(row.get("total_ms")),
+                sort_int_or_last(row.get("total_penalty")),
+                sort_int_or_last(row.get("start_number")),
             ),
         )[0]
         best_driver = {

@@ -107,12 +107,16 @@ def get_participant_status(participant: Participant) -> str:
 def build_empty_round_detail() -> dict:
     return {
         "run_1_raw_ms": None,
+        "run_1_lane": "",
+        "run_1_lane_label": "",
         "run_1_penalty": "",
         "run_1_result_ms": None,
         "run_1_raw_display": "",
         "run_1_result_display": "",
 
         "run_2_raw_ms": None,
+        "run_2_lane": "",
+        "run_2_lane_label": "",
         "run_2_penalty": "",
         "run_2_result_ms": None,
         "run_2_raw_display": "",
@@ -147,6 +151,19 @@ def get_result_for_participant(
     return None
 
 
+def get_lane_label(result: RunResult | None) -> str:
+    if result is None:
+        return ""
+
+    if result.lane == "lane_a":
+        return "A"
+
+    if result.lane == "lane_b":
+        return "B"
+
+    return ""
+
+
 def build_round_detail(
     result_index: dict[tuple[int, str, int], RunResult],
     participant_id: int,
@@ -169,12 +186,16 @@ def build_round_detail(
 
     return {
         "run_1_raw_ms": normalize_time_to_centiseconds_ms(run_1.raw_time_ms) if run_1 else None,
+        "run_1_lane": run_1.lane if run_1 else "",
+        "run_1_lane_label": get_lane_label(run_1),
         "run_1_penalty": run_1_penalty,
         "run_1_result_ms": run_1_result_ms,
         "run_1_raw_display": format_time_ms(run_1.raw_time_ms if run_1 else None),
         "run_1_result_display": format_time_ms(run_1_result_ms),
 
         "run_2_raw_ms": normalize_time_to_centiseconds_ms(run_2.raw_time_ms) if run_2 else None,
+        "run_2_lane": run_2.lane if run_2 else "",
+        "run_2_lane_label": get_lane_label(run_2),
         "run_2_penalty": run_2_penalty,
         "run_2_result_ms": run_2_result_ms,
         "run_2_raw_display": format_time_ms(run_2.raw_time_ms if run_2 else None),

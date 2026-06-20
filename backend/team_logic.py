@@ -28,6 +28,13 @@ POINTS_TABLE_C = {
 }
 
 
+def sort_place_or_last(place) -> int:
+    if isinstance(place, int):
+        return place
+
+    return 999
+
+
 def get_points_table_c(place: int | None, has_result: bool) -> int:
     if not has_result or place is None:
         return 0
@@ -120,8 +127,7 @@ def build_team_standings(
         member_rows.sort(
             key=lambda row: (
                 -row["points"],
-                row["place"] is None,
-                row["place"] if row["place"] is not None else 999,
+                sort_place_or_last(row["place"]),
                 row["start_number"],
             )
         )

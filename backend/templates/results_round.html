@@ -77,10 +77,10 @@
                     <th>Startnr.</th>
                     <th>Fahrer</th>
                     <th>Verein</th>
-                    <th>Bahn A Zeit</th>
-                    <th>Bahn A FP</th>
-                    <th>Bahn B Zeit</th>
-                    <th>Bahn B FP</th>
+                    <th>Lauf 1 Zeit</th>
+                    <th>Lauf 1 FP</th>
+                    <th>Lauf 2 Zeit</th>
+                    <th>Lauf 2 FP</th>
                     <th>Summe</th>
                 </tr>
             </thead>
@@ -96,9 +96,9 @@
                             {% endif %}
                         </td>
                         <td>{{ row.club or "—" }}</td>
-                        <td>{{ row.round_detail.run_1_raw_display or "—" }}</td>
+                        <td>{% if row.round_detail.run_1_lane_label %}{{ row.round_detail.run_1_lane_label }} · {% endif %}{{ row.round_detail.run_1_raw_display or "—" }}</td>
                         <td>{{ row.round_detail.run_1_penalty }}</td>
-                        <td>{{ row.round_detail.run_2_raw_display or "—" }}</td>
+                        <td>{% if row.round_detail.run_2_lane_label %}{{ row.round_detail.run_2_lane_label }} · {% endif %}{{ row.round_detail.run_2_raw_display or "—" }}</td>
                         <td>{{ row.round_detail.run_2_penalty }}</td>
                         <td><strong>{{ row.round_detail.round_total_display or "—" }}</strong></td>
                     </tr>

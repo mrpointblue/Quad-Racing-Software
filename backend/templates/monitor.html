@@ -140,10 +140,10 @@
                                 <th class="place-cell">Pl.</th>
                                 <th class="start-cell">Startnr.</th>
                                 <th class="monitor-driver-cell">Fahrer</th>
-                                <th>A Zeit</th>
-                                <th>A FP</th>
-                                <th>B Zeit</th>
-                                <th>B FP</th>
+                                <th>Lauf 1 Zeit</th>
+                                <th>Lauf 1 FP</th>
+                                <th>Lauf 2 Zeit</th>
+                                <th>Lauf 2 FP</th>
                                 <th>Summe</th>
                             </tr>
                         </thead>
@@ -153,9 +153,9 @@
                                     <td class="place-cell"><strong>{{ row.place }}</strong></td>
                                     <td class="start-cell">{{ row.start_number }}</td>
                                     <td class="monitor-driver-cell">{{ row.driver }}</td>
-                                    <td class="monitor-time-cell">{{ row.run_1_raw_display or "—" }}</td>
+                                    <td class="monitor-time-cell">{% if row.run_1_lane_label %}{{ row.run_1_lane_label }} · {% endif %}{{ row.run_1_raw_display or "—" }}</td>
                                     <td class="monitor-fp-cell">{{ row.run_1_penalty }}</td>
-                                    <td class="monitor-time-cell">{{ row.run_2_raw_display or "—" }}</td>
+                                    <td class="monitor-time-cell">{% if row.run_2_lane_label %}{{ row.run_2_lane_label }} · {% endif %}{{ row.run_2_raw_display or "—" }}</td>
                                     <td class="monitor-fp-cell">{{ row.run_2_penalty }}</td>
                                     <td class="monitor-time-cell monitor-sum-cell"><strong>{{ row.round_total_display or "—" }}</strong></td>
                                 </tr>
@@ -646,10 +646,10 @@
                     "<th class='place-cell'>Pl.</th>" +
                     "<th class='start-cell'>Startnr.</th>" +
                     "<th class='monitor-driver-cell'>Fahrer</th>" +
-                    "<th>A Zeit</th>" +
-                    "<th>A FP</th>" +
-                    "<th>B Zeit</th>" +
-                    "<th>B FP</th>" +
+                    "<th>Lauf 1 Zeit</th>" +
+                    "<th>Lauf 1 FP</th>" +
+                    "<th>Lauf 2 Zeit</th>" +
+                    "<th>Lauf 2 FP</th>" +
                     "<th>Summe</th>" +
                 "</tr>" +
             "</thead>";
@@ -662,9 +662,9 @@
                 "<td class='place-cell'><strong>" + row.place + "</strong></td>" +
                 "<td class='start-cell'>" + row.start_number + "</td>" +
                 "<td class='monitor-driver-cell'>" + row.driver + "</td>" +
-                "<td class='monitor-time-cell'>" + (row.run_1_raw_display || "—") + "</td>" +
+                "<td class='monitor-time-cell'>" + (row.run_1_lane_label ? row.run_1_lane_label + " · " : "") + (row.run_1_raw_display || "—") + "</td>" +
                 "<td class='monitor-fp-cell'>" + row.run_1_penalty + "</td>" +
-                "<td class='monitor-time-cell'>" + (row.run_2_raw_display || "—") + "</td>" +
+                "<td class='monitor-time-cell'>" + (row.run_2_lane_label ? row.run_2_lane_label + " · " : "") + (row.run_2_raw_display || "—") + "</td>" +
                 "<td class='monitor-fp-cell'>" + row.run_2_penalty + "</td>" +
                 "<td class='monitor-time-cell monitor-sum-cell'><strong>" + (row.round_total_display || "—") + "</strong></td>";
             tbody.appendChild(tr);
@@ -978,6 +978,6 @@
         applyPortraitLayout();
     });
 
-    setInterval(pollMonitor, 2000);
+    setInterval(pollMonitor, 1000);
 </script>
 {% endblock %}
