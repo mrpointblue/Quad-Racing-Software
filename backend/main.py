@@ -1287,19 +1287,31 @@ def normalize_penalty_input(value: str | None) -> int:
     return ((penalty + 2) // 5) * 5
 
 
-def get_monitor_valued_time_ms(result: RunResult | None, db: Session) -> int | None:
-    if result is None or result.raw_time_ms is None:
+def get_monitor_valued_time_ms_for_raw(
+    result: RunResult | None,
+    db: Session,
+    raw_time_ms: int | None,
+) -> int | None:
+    if result is None or raw_time_ms is None:
         return None
 
     if result.participant and result.participant.withdrawn:
         return None
 
-    scoring_raw_time_ms = normalize_time_to_centiseconds_ms(result.raw_time_ms)
+    scoring_raw_time_ms = normalize_time_to_centiseconds_ms(raw_time_ms)
 
     if scoring_raw_time_ms is None:
         return None
 
     return scoring_raw_time_ms + (get_monitor_penalty_sum(result, db) * 1000)
+
+
+def get_monitor_valued_time_ms(result: RunResult | None, db: Session) -> int | None:
+    return get_monitor_valued_time_ms_for_raw(
+        result=result,
+        db=db,
+        raw_time_ms=result.raw_time_ms if result else None,
+    )
 
 
 def monitor_driver_name(participant: Participant | None) -> str:
@@ -1326,7 +1338,11 @@ def monitor_driver_display_name(participant: Participant | None) -> str:
     return first_name or last_name or "-"
 
 
-def monitor_result_payload(result: RunResult | None, db: Session) -> dict:
+def monitor_result_payload(
+    result: RunResult | None,
+    db: Session,
+    raw_time_ms_override: int | None = None,
+) -> dict:
     if result is None:
         return {
             "driver": "-",
@@ -1348,14 +1364,22 @@ def monitor_result_payload(result: RunResult | None, db: Session) -> dict:
         last_name = participant.last_name
         display_name = monitor_driver_display_name(participant)
 
+    raw_time_ms = (
+        raw_time_ms_override
+        if isinstance(raw_time_ms_override, int) and raw_time_ms_override > 0
+        else result.raw_time_ms
+    )
+
     return {
         "driver": monitor_driver_name(participant),
         "start_number": start_number,
         "last_name": last_name,
         "display_name": display_name,
-        "raw_time": format_time_ms(result.raw_time_ms),
+        "raw_time": format_time_ms(raw_time_ms),
         "penalty": get_monitor_penalty_sum(result, db),
-        "valued_time": format_time_ms(get_monitor_valued_time_ms(result, db)),
+        "valued_time": format_time_ms(
+            get_monitor_valued_time_ms_for_raw(result, db, raw_time_ms)
+        ),
     }
 
 
@@ -1363,9 +1387,28 @@ def monitor_run_payload(
     race_run: RaceRun,
     pairing: Pairing,
     db: Session,
+    live_status: dict | None = None,
 ) -> dict:
     lane_a_result, lane_b_result = get_lane_results_for_run(race_run)
     round_number, round_label = get_round_display(race_run.round_name)
+    live_times = live_status.get("times", {}) if live_status else {}
+    repeat_scope = get_run_repeat_scope(db, race_run.id)
+    use_live_times = bool(
+        live_status
+        and live_status.get("ok")
+        and not race_run.confirmed
+        and race_run.status in ["running", "started"]
+    )
+    lane_a_live_ms = (
+        live_times.get("lane_a_ms")
+        if use_live_times and is_lane_editable_for_repeat_scope("lane_a", repeat_scope)
+        else None
+    )
+    lane_b_live_ms = (
+        live_times.get("lane_b_ms")
+        if use_live_times and is_lane_editable_for_repeat_scope("lane_b", repeat_scope)
+        else None
+    )
 
     return {
         "id": race_run.id,
@@ -1378,8 +1421,8 @@ def monitor_run_payload(
         "status": race_run.status,
         "traffic_light_status": race_run.traffic_light_status or "off",
         "confirmed": race_run.confirmed,
-        "lane_a": monitor_result_payload(lane_a_result, db),
-        "lane_b": monitor_result_payload(lane_b_result, db),
+        "lane_a": monitor_result_payload(lane_a_result, db, lane_a_live_ms),
+        "lane_b": monitor_result_payload(lane_b_result, db, lane_b_live_ms),
     }
 
 
@@ -1765,8 +1808,13 @@ def build_monitor_payload(
 
     if current_item is not None:
         current_run, current_pairing = current_item
-        sync_logo_times_for_run(current_run, db)
-        current_payload = monitor_run_payload(current_run, current_pairing, db)
+        live_status = sync_logo_times_for_run(current_run, db)
+        current_payload = monitor_run_payload(
+            current_run,
+            current_pairing,
+            db,
+            live_status=live_status,
+        )
         current_round_number, _current_round_label = get_round_display(current_run.round_name)
 
         if current_run.round_name == ROUND_FINAL:
