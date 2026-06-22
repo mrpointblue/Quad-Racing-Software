@@ -1853,6 +1853,7 @@ select {
 .monitor-panel h2 {
     margin-top: 0;
     font-size: 28px;
+    margin-bottom: 12px;
 }
 
 #next_starter_section {
@@ -1939,10 +1940,10 @@ select {
 }
 
 .monitor-next-table th {
-    padding: 6px 10px;
+    padding: 5px 8px;
     color: #93c5fd;
     background: #111827;
-    font-size: 14px;
+    font-size: 13px;
     text-align: left;
     border-bottom: 1px solid #334155;
 }
@@ -1954,7 +1955,7 @@ select {
 }
 
 .monitor-next-table td {
-    padding: 8px 10px;
+    padding: 5px 8px;
     color: #f9fafb;
     background: #0f172a;
     border-bottom: 1px solid #1f2937;
@@ -1984,8 +1985,8 @@ select {
 }
 
 .monitor-next-item {
-    font-size: 18px;
-    line-height: 1.15;
+    font-size: 16px;
+    line-height: 1.1;
 }
 
 .monitor-next-item[hidden] {
@@ -1994,7 +1995,7 @@ select {
 
 .monitor-next-starter {
     display: flex;
-    gap: 0.35em;
+    gap: 0.3em;
     min-width: 0;
     font-weight: 700;
     white-space: nowrap;

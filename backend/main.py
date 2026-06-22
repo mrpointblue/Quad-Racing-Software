@@ -1473,31 +1473,34 @@ def pick_monitor_next_runs(
     current_run: RaceRun | None,
 ) -> list[dict]:
     """
-    Nächste Starter nur für die aktuell aktive Klasse anzeigen.
+    Nächste Starter klassenübergreifend in Startreihenfolge anzeigen.
 
-    Wenn keine aktive Paarung existiert, darf auch keine Vorschau aus alten
-    oder fremden Klassen angezeigt werden.
+    Bahnwechsel/Rückläufe derselben Paarung werden für die Teilnehmeranzeige
+    ausgeblendet. Die Rennläufe selbst bleiben unverändert.
     """
     if current_run is None:
         return []
 
     next_runs = []
     current_found = False
+    displayed_pairing_ids: set[int] = set()
 
     for race_run, pairing in run_items:
         if race_run.id == current_run.id:
             current_found = True
+            displayed_pairing_ids.add(pairing.id)
             continue
 
         if not current_found:
             continue
 
-        if race_run.race_class != current_run.race_class:
-            continue
-
         if race_run.confirmed:
             continue
 
+        if pairing.id in displayed_pairing_ids:
+            continue
+
+        displayed_pairing_ids.add(pairing.id)
         next_runs.append(monitor_run_payload(race_run, pairing, db))
 
     return next_runs
