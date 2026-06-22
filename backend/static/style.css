@@ -1459,9 +1459,9 @@ select {
 
 .monitor-grid {
     display: grid;
-    grid-template-columns: minmax(520px, 2fr) minmax(320px, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 18px;
-    align-items: start;
+    align-items: stretch;
 }
 
 .monitor-grid[hidden] {
@@ -1907,9 +1907,8 @@ select {
 }
 
 #next_starter_section {
-    max-height: 540px;
     min-height: 0;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .monitor-meta {
@@ -1973,7 +1972,7 @@ select {
 
 .monitor-next-list {
     min-height: 0;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .monitor-next-table {
@@ -1991,7 +1990,7 @@ select {
 }
 
 .monitor-next-table th {
-    padding: 5px 8px;
+    padding: 4px 8px;
     color: #93c5fd;
     background: #111827;
     font-size: 13px;
@@ -2006,7 +2005,7 @@ select {
 }
 
 .monitor-next-table td {
-    padding: 5px 8px;
+    padding: 4px 8px;
     color: #f9fafb;
     background: #0f172a;
     border-bottom: 1px solid #1f2937;
@@ -2036,8 +2035,8 @@ select {
 }
 
 .monitor-next-item {
-    font-size: 16px;
-    line-height: 1.1;
+    font-size: 15px;
+    line-height: 1.05;
 }
 
 .monitor-next-item[hidden] {
@@ -2066,17 +2065,6 @@ select {
 
 .monitor-next-separator {
     display: none;
-}
-
-.monitor-next-more {
-    color: #fde68a;
-    font-size: 18px;
-    font-weight: 700;
-    padding: 0 0 0 4px;
-}
-
-.monitor-theme-light .monitor-next-more {
-    color: #b45309;
 }
 
 .pairings-display-body .header,

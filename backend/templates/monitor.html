@@ -528,54 +528,6 @@
         text("monitor_logo_signal_label", data.label || "AUS");
     }
 
-    function fitNextRuns() {
-        const container = document.getElementById("next_runs");
-        const section = document.getElementById("next_starter_section");
-
-        if (!container || !section) {
-            return;
-        }
-
-        const items = Array.from(container.querySelectorAll(".monitor-next-item"));
-        const moreNote = container.querySelector(".monitor-next-more");
-
-        if (!moreNote || items.length === 0) {
-            return;
-        }
-
-        section.style.height = "";
-
-        items.forEach((item) => {
-            item.hidden = false;
-        });
-        moreNote.hidden = true;
-
-        const sectionStyles = window.getComputedStyle(section);
-        const sectionPadding =
-            parseFloat(sectionStyles.paddingTop || "0") +
-            parseFloat(sectionStyles.paddingBottom || "0");
-        const title = section.querySelector("h2");
-        const titleHeight = title ? title.offsetHeight + parseFloat(window.getComputedStyle(title).marginBottom || "0") : 0;
-        const availableHeight = section.clientHeight - sectionPadding - titleHeight;
-
-        if (availableHeight <= 0 || container.scrollHeight <= availableHeight) {
-            return;
-        }
-
-        let hiddenCount = 0;
-        moreNote.hidden = false;
-
-        for (let index = items.length - 1; index >= 0; index -= 1) {
-            hiddenCount += 1;
-            items[index].hidden = true;
-            moreNote.textContent = "+ " + hiddenCount + " weitere Starts";
-
-            if (container.scrollHeight <= availableHeight) {
-                break;
-            }
-        }
-    }
-
     function renderNextRuns(runs) {
         const container = document.getElementById("next_runs");
 
@@ -618,13 +570,6 @@
 
         table.appendChild(tbody);
         container.appendChild(table);
-
-        const moreNote = document.createElement("div");
-        moreNote.className = "monitor-next-more";
-        moreNote.hidden = true;
-        container.appendChild(moreNote);
-
-        requestAnimationFrame(fitNextRuns);
     }
 
     function renderResultSection(section) {
