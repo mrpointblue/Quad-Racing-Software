@@ -237,9 +237,30 @@
                         <em>{{ "JA" if logo_hardware_status.markers.false_start_b else "NEIN" }}</em>
                     </div>
                     <div class="logo-marker-item">
-                        <span>M6</span>
-                        <strong>Störung Lichtschranke</strong>
-                        <em>{{ "JA" if logo_hardware_status.markers.light_barrier_fault else "NEIN" }}</em>
+                        <span>I1/M6</span>
+                        <strong>Störung Lichtschranke Bahn A</strong>
+                        <em>
+                            {% if logo_hardware_status.markers.light_barrier_fault_a %}
+                                JA
+                            {% elif logo_hardware_status.markers.light_barrier_fault and logo_hardware_status.inputs.read_error %}
+                                UNKLAR
+                            {% else %}
+                                NEIN
+                            {% endif %}
+                        </em>
+                    </div>
+                    <div class="logo-marker-item">
+                        <span>I2/M6</span>
+                        <strong>Störung Lichtschranke Bahn B</strong>
+                        <em>
+                            {% if logo_hardware_status.markers.light_barrier_fault_b %}
+                                JA
+                            {% elif logo_hardware_status.markers.light_barrier_fault and logo_hardware_status.inputs.read_error %}
+                                UNKLAR
+                            {% else %}
+                                NEIN
+                            {% endif %}
+                        </em>
                     </div>
                 </div>
             </section>
@@ -301,7 +322,8 @@
                 <tr><td>M3</td><td>Reset möglich</td><td>Coil {{ settings.logo_marker_coil_start|int + 2 }}</td></tr>
                 <tr><td>M4</td><td>Fehlstart Bahn A</td><td>Coil {{ settings.logo_marker_coil_start|int + 3 }}</td></tr>
                 <tr><td>M5</td><td>Fehlstart Bahn B</td><td>Coil {{ settings.logo_marker_coil_start|int + 4 }}</td></tr>
-                <tr><td>M6</td><td>Störung Lichtschranke</td><td>Coil {{ settings.logo_marker_coil_start|int + 5 }}</td></tr>
+                <tr><td>M6 + I1</td><td>Störung Lichtschranke Bahn A</td><td>Coil {{ settings.logo_marker_coil_start|int + 5 }} + Eingang {{ settings.logo_light_barrier_1_address }}</td></tr>
+                <tr><td>M6 + I2</td><td>Störung Lichtschranke Bahn B</td><td>Coil {{ settings.logo_marker_coil_start|int + 5 }} + Eingang {{ settings.logo_light_barrier_2_address }}</td></tr>
                 <tr><td>V0/V4</td><td>Zeit Bahn A/B in Hundertstelsekunden</td><td>Holding Register {{ settings.logo_time_register_start }} bis {{ settings.logo_time_register_start|int + 3 }}</td></tr>
             </tbody>
         </table>

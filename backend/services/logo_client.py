@@ -68,6 +68,11 @@ def _empty_status(enabled: bool, message: str, ok: bool = False) -> dict[str, An
             "green": False,
             "red": False,
         },
+        "inputs": {
+            "lane_a_light_barrier": False,
+            "lane_b_light_barrier": False,
+            "read_error": "",
+        },
         "markers": {
             "lane_a_running": False,
             "lane_b_running": False,
@@ -75,6 +80,8 @@ def _empty_status(enabled: bool, message: str, ok: bool = False) -> dict[str, An
             "false_start_a": False,
             "false_start_b": False,
             "light_barrier_fault": False,
+            "light_barrier_fault_a": False,
+            "light_barrier_fault_b": False,
         },
     }
 
@@ -88,6 +95,8 @@ class LogoConfig:
     time_register_start: int
     output_coil_start: int
     marker_coil_start: int
+    light_barrier_1_address: int
+    light_barrier_2_address: int
     web_start_coil: int | None
     web_reset_coil: int | None
     pulse_duration: float
@@ -111,6 +120,8 @@ class LogoClient:
             time_register_start=_int_setting(settings, "logo_time_register_start", 0),
             output_coil_start=_int_setting(settings, "logo_output_coil_start", 8192),
             marker_coil_start=_int_setting(settings, "logo_marker_coil_start", 8256),
+            light_barrier_1_address=_int_setting(settings, "logo_light_barrier_1_address", 0),
+            light_barrier_2_address=_int_setting(settings, "logo_light_barrier_2_address", 1),
             web_start_coil=_optional_int_setting(settings, "logo_web_start_coil") or 8262,
             web_reset_coil=_optional_int_setting(settings, "logo_web_reset_coil") or 8264,
             pulse_duration=max(0.05, _float_setting(settings, "logo_pulse_duration", pulse_ms / 1000)),
@@ -269,6 +280,56 @@ class LogoClient:
                 except Exception:
                     pass
 
+    def read_inputs(self, client=None) -> dict[str, bool | str]:
+        if not self.config.enabled:
+            return self._disabled_result()["inputs"]
+
+        close_client = False
+
+        try:
+            if client is None:
+                client = self._connect()
+                close_client = True
+
+            first_address = min(
+                self.config.light_barrier_1_address,
+                self.config.light_barrier_2_address,
+            )
+            last_address = max(
+                self.config.light_barrier_1_address,
+                self.config.light_barrier_2_address,
+            )
+            count = last_address - first_address + 1
+
+            response = client.read_discrete_inputs(
+                address=first_address,
+                count=count,
+            )
+            bits = self._bits(response, count)
+
+            lane_a_index = self.config.light_barrier_1_address - first_address
+            lane_b_index = self.config.light_barrier_2_address - first_address
+
+            return {
+                "lane_a_light_barrier": bits[lane_a_index],
+                "lane_b_light_barrier": bits[lane_b_index],
+                "read_error": "",
+            }
+        finally:
+            if close_client and client is not None:
+                try:
+                    client.close()
+                except Exception:
+                    pass
+
+    def read_inputs_status(self, client=None) -> dict[str, bool | str]:
+        try:
+            return self.read_inputs(client)
+        except Exception as error:
+            inputs = self._disabled_result()["inputs"]
+            inputs["read_error"] = str(error)
+            return inputs
+
     def read_markers(self, client=None) -> dict[str, bool]:
         if not self.config.enabled:
             return self._disabled_result()["markers"]
@@ -311,7 +372,14 @@ class LogoClient:
             client = self._connect()
             times = self.read_times(client)
             outputs = self.read_outputs(client)
+            inputs = self.read_inputs_status(client)
             markers = self.read_markers(client)
+            markers["light_barrier_fault_a"] = (
+                markers["light_barrier_fault"] and bool(inputs["lane_a_light_barrier"])
+            )
+            markers["light_barrier_fault_b"] = (
+                markers["light_barrier_fault"] and bool(inputs["lane_b_light_barrier"])
+            )
 
             return {
                 "enabled": True,
@@ -320,6 +388,7 @@ class LogoClient:
                 "message": "LOGO-Status gelesen.",
                 "times": times,
                 "outputs": outputs,
+                "inputs": inputs,
                 "markers": markers,
             }
         except Exception as error:
