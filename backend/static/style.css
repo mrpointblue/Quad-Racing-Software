@@ -1528,17 +1528,28 @@ select {
 
 .monitor-output-actions {
     display: flex;
+    align-items: center;
     gap: 8px;
     flex-wrap: wrap;
     justify-content: flex-end;
+}
+
+.monitor-output-actions .button,
+.monitor-output-actions button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    margin-top: 0 !important;
+    line-height: 1.2;
 }
 
 .monitor-header-controls {
     min-width: 460px;
 }
 
-.monitor-header-controls .button,
-.monitor-header-controls button {
+.monitor-header-controls > .button,
+.monitor-header-controls > button {
     margin-top: 10px;
 }
 
@@ -1770,8 +1781,7 @@ select {
 }
 
 .monitor-output-savebar .button,
-.monitor-output-savebar button,
-.monitor-output-actions .button {
+.monitor-output-savebar button {
     margin-top: 0;
 }
 
