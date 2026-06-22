@@ -2005,10 +2005,10 @@ select {
 }
 
 .monitor-next-table th {
-    padding: 5px 9px;
+    padding: 6px 10px;
     color: #93c5fd;
     background: #111827;
-    font-size: 15px;
+    font-size: 17px;
     text-align: left;
     border-bottom: 1px solid #334155;
 }
@@ -2020,7 +2020,7 @@ select {
 }
 
 .monitor-next-table td {
-    padding: 5px 9px;
+    padding: 7px 10px;
     color: #f9fafb;
     background: #0f172a;
     border-bottom: 1px solid #1f2937;
@@ -2050,8 +2050,8 @@ select {
 }
 
 .monitor-next-item {
-    font-size: 18px;
-    line-height: 1.15;
+    font-size: 22px;
+    line-height: 1.2;
 }
 
 .monitor-next-item[hidden] {
