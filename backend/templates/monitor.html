@@ -531,7 +531,6 @@
     function fitNextRuns() {
         const container = document.getElementById("next_runs");
         const section = document.getElementById("next_starter_section");
-        const currentPanel = document.querySelector(".monitor-current");
 
         if (!container || !section) {
             return;
@@ -544,11 +543,7 @@
             return;
         }
 
-        if (currentPanel && currentPanel.offsetHeight > 0) {
-            section.style.height = currentPanel.offsetHeight + "px";
-        } else {
-            section.style.height = "";
-        }
+        section.style.height = "";
 
         items.forEach((item) => {
             item.hidden = false;
