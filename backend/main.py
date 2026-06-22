@@ -1734,6 +1734,7 @@ def build_monitor_payload(
             "name": event.name,
             "date": event.event_date or "",
             "organizer_club": event.organizer_club or "",
+            "active": bool(event.active),
         },
         "server_time": now_string(),
         "current_run": current_payload,
@@ -5243,6 +5244,14 @@ def ui_event_monitor(
     db: Session = Depends(get_db),
 ):
     active_event = require_event(event_id, db)
+    current_active_event = get_active_event(db)
+
+    if current_active_event is not None and current_active_event.id != active_event.id:
+        return RedirectResponse(
+            url=f"/ui/events/{current_active_event.id}/monitor",
+            status_code=303,
+        )
+
     monitor_data = build_monitor_output_payload(
         event=active_event,
         db=db,
@@ -5265,6 +5274,11 @@ def api_event_monitor(
     db: Session = Depends(get_db),
 ):
     active_event = require_event(event_id, db)
+    current_active_event = get_active_event(db)
+
+    if current_active_event is not None and current_active_event.id != active_event.id:
+        active_event = current_active_event
+
     return JSONResponse(
         content=build_monitor_output_payload(
             event=active_event,

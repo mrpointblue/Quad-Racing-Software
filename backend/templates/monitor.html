@@ -941,6 +941,11 @@
         fetch("/api/events/" + monitorEventId + "/monitor")
             .then((response) => response.json())
             .then((data) => {
+                if (data.event && data.event.active === false) {
+                    window.location.href = "/ui/monitor";
+                    return;
+                }
+
                 document.body.classList.toggle("monitor-portrait", data.display_setting.display_orientation === "portrait");
                 document.body.classList.toggle("monitor-landscape", data.display_setting.display_orientation !== "portrait");
                 document.body.classList.toggle("monitor-theme-light", data.display_setting.display_theme === "light");
