@@ -275,8 +275,6 @@ def build_class_export_rows(
         if round_key not in rows_by_round:
             rows_by_round[round_key] = []
 
-        round_number = ROUND_NUMBERS.get(round_key, 0)
-
         for participant in get_pairing_participants(pairing):
             result_1 = get_result_for_participant(
                 pairing=pairing,
@@ -328,12 +326,12 @@ def build_class_export_rows(
                     "youth_license_number": participant.youth_license_number or "",
                     "status": get_participant_status(participant),
                     "withdrawn": withdrawn,
-                    "run_1_display": f"{round_number}.1",
+                    "run_1_display": f"{pairing.pairing_number}.1",
                     "run_1_time": run_1_time,
                     "run_1_penalty": get_penalty_sum(result_1) if not withdrawn else "",
                     "run_1_result": run_1_result,
                     "run_1_result_ms": result_1_ms,
-                    "run_2_display": f"{round_number}.2",
+                    "run_2_display": f"{pairing.pairing_number}.2",
                     "run_2_time": run_2_time,
                     "run_2_penalty": get_penalty_sum(result_2) if not withdrawn else "",
                     "run_2_result": run_2_result,

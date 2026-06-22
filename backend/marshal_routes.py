@@ -233,7 +233,9 @@ def get_marshal_round_number(round_name: str | None) -> int:
 
 
 def get_marshal_run_label(run: RaceRun) -> str:
-    return f"{get_marshal_round_number(run.round_name)}.{run.run_number}"
+    pairing_number = run.pairing.pairing_number if run.pairing else 0
+
+    return f"{pairing_number}.{run.run_number}"
 
 
 def get_marshal_run_order_key(race_run: RaceRun, pairing: Pairing) -> tuple:
@@ -386,6 +388,7 @@ def build_marshal_status_rows(event: Event, db: Session) -> list[dict]:
                 {
                     "run_id": run.id,
                     "run_number": run.run_number,
+                    "run_label": get_marshal_run_label(run),
                     "race_class": run.race_class,
                     "lane": lane,
                     "type_label": station["type_label"],

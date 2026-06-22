@@ -2,16 +2,12 @@
 
 {% block content %}
 {% if race_run.round_name == "vorlauf" or race_run.round_name == "viertelfinale" %}
-    {% set round_number = 1 %}
     {% set round_label = "Viertelfinale" %}
 {% elif race_run.round_name == "halbfinale" %}
-    {% set round_number = 2 %}
     {% set round_label = "Halbfinale" %}
 {% elif race_run.round_name == "finale" %}
-    {% set round_number = 3 %}
     {% set round_label = "Finale" %}
 {% else %}
-    {% set round_number = 0 %}
     {% set round_label = race_run.round_name %}
 {% endif %}
 
@@ -19,7 +15,7 @@
     <div class="run-title-row">
         <div>
             <h2>
-                {{ round_label }} · Paarung {{ pairing.pairing_number }} · Lauf {{ round_number }}.{{ race_run.run_number }}
+                {{ round_label }} · Paarung {{ pairing.pairing_number }} · Lauf {{ pairing.pairing_number }}.{{ race_run.run_number }}
                 – Klasse {{ race_run.race_class }}
             </h2>
 
@@ -51,7 +47,7 @@
                     Nächster Lauf
                     · {{ next_unconfirmed_run.round_label }}
                     · Klasse {{ next_unconfirmed_run.race_class }}
-                    · {{ next_unconfirmed_run.round_number }}.{{ next_unconfirmed_run.run_number }}
+                    · {{ next_unconfirmed_run.pairing_number }}.{{ next_unconfirmed_run.run_number }}
                 </a>
             {% endif %}
 

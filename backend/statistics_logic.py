@@ -51,18 +51,13 @@ def format_result_run(result: RunResult) -> str:
         ROUND_SEMIFINAL: "Halbfinale",
         ROUND_FINAL: "Finale",
     }
-    round_numbers = {
-        "vorlauf": 1,
-        ROUND_PRELIMINARY: 1,
-        ROUND_SEMIFINAL: 2,
-        ROUND_FINAL: 3,
-    }
     lane_label = "Bahn A" if result.lane == "lane_a" else "Bahn B"
+    pairing_number = race_run.pairing.pairing_number if race_run.pairing else 0
 
     return (
         f"{round_labels.get(race_run.round_name, race_run.round_name)} "
         f"· Kl. {race_run.race_class} "
-        f"· Lauf {round_numbers.get(race_run.round_name, 0)}.{race_run.run_number} "
+        f"· Lauf {pairing_number}.{race_run.run_number} "
         f"· {lane_label}"
     )
 

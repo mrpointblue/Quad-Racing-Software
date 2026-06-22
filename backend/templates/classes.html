@@ -208,19 +208,14 @@
                         {% set lane_b = run_item.lane_b %}
 
                         {% if run_item.round_number is defined %}
-                            {% set round_number = run_item.round_number %}
                             {% set round_label = run_item.round_label %}
                         {% elif run.round_name == "vorlauf" or run.round_name == "viertelfinale" %}
-                            {% set round_number = 1 %}
                             {% set round_label = "Viertelfinale" %}
                         {% elif run.round_name == "halbfinale" %}
-                            {% set round_number = 2 %}
                             {% set round_label = "Halbfinale" %}
                         {% elif run.round_name == "finale" %}
-                            {% set round_number = 3 %}
                             {% set round_label = "Finale" %}
                         {% else %}
-                            {% set round_number = 0 %}
                             {% set round_label = run.round_name %}
                         {% endif %}
 
@@ -230,7 +225,7 @@
                             <td>Paarung {{ pairing.pairing_number }}</td>
 
                             <td>
-                                <strong>{{ round_number }}.{{ run.run_number }}</strong>
+                                <strong>{{ pairing.pairing_number }}.{{ run.run_number }}</strong>
                             </td>
 
                             <td class="qpr-driver-cell">
