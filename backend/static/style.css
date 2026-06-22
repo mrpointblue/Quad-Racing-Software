@@ -1532,6 +1532,7 @@ select {
     gap: 8px;
     flex-wrap: wrap;
     justify-content: flex-end;
+    margin-top: 14px;
 }
 
 .monitor-output-actions .button,
