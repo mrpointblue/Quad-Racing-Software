@@ -26,6 +26,42 @@ if ! /usr/bin/pgrep -x chromium >/dev/null 2>&1; then
     echo "$(date -Is) cleared stale Chromium profile lock" >> "$LOG"
 fi
 
+PROFILE="$PROFILE" /usr/bin/python3 <<'PY' >> "$LOG" 2>&1
+import json
+import os
+from pathlib import Path
+
+profile = Path(os.environ["PROFILE"])
+default_profile = profile / "Default"
+preferences_path = default_profile / "Preferences"
+
+default_profile.mkdir(parents=True, exist_ok=True)
+
+try:
+    preferences = json.loads(preferences_path.read_text())
+except (FileNotFoundError, json.JSONDecodeError):
+    preferences = {}
+
+preferences.setdefault("intl", {})
+preferences["intl"]["accept_languages"] = "de-DE,de"
+preferences["intl"]["selected_languages"] = "de-DE,de"
+
+preferences.setdefault("translate", {})
+preferences["translate"]["enabled"] = False
+
+preferences["translate_site_blacklist"] = ["127.0.0.1", "localhost", "race.local"]
+preferences["translate_site_blocklist_with_time"] = {
+    "127.0.0.1": 99999999999999999,
+    "localhost": 99999999999999999,
+    "race.local": 99999999999999999,
+}
+
+preferences_path.write_text(
+    json.dumps(preferences, ensure_ascii=True, separators=(",", ":")),
+)
+print("Chromium kiosk preferences updated: translate disabled, languages de-DE,de")
+PY
+
 exec /usr/bin/chromium \
     --user-data-dir="$PROFILE" \
     --ozone-platform=wayland \
