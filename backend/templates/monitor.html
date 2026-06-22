@@ -387,7 +387,7 @@
         nameElement.className = "monitor-next-name";
 
         numberElement.textContent = formatStarterNumber(data.start_number || fallback.startNumber);
-        nameElement.textContent = data.last_name || data.short_name || data.display_name || fallback.displayName;
+        nameElement.textContent = data.display_name || data.short_name || data.last_name || fallback.displayName;
         nameElement.title = data.display_name || fallback.displayName;
 
         wrapper.appendChild(numberElement);
