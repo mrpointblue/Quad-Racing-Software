@@ -32,8 +32,12 @@ exec /usr/bin/chromium \
     --kiosk \
     --start-maximized \
     --no-first-run \
+    --lang=de-DE \
+    --accept-lang=de-DE,de \
     --password-store=basic \
     --noerrdialogs \
     --disable-infobars \
+    --disable-translate \
+    --disable-features=Translate,TranslateUI \
     --disable-session-crashed-bubble \
     "$URL" >> "$LOG" 2>&1

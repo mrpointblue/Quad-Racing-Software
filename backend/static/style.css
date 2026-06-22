@@ -1527,14 +1527,18 @@ select {
 }
 
 .monitor-output-actions {
-    white-space: nowrap;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .monitor-header-controls {
     min-width: 460px;
 }
 
-.monitor-header-controls .button {
+.monitor-header-controls .button,
+.monitor-header-controls button {
     margin-top: 10px;
 }
 

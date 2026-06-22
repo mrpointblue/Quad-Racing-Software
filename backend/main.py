@@ -5303,6 +5303,8 @@ def ui_event_monitor_output(
             "monitor_data": build_monitor_output_payload(active_event, db),
             "marshal_station_options": build_marshal_station_options(active_event),
             "marshal_qr_expires_at": get_marshal_qr_expires_at(active_event, db),
+            "success": request.query_params.get("success"),
+            "error": request.query_params.get("error"),
             "event_year": get_event_year(active_event),
         },
     )
@@ -5353,6 +5355,24 @@ async def ui_event_update_monitor_output(
 
     return RedirectResponse(
         url=f"/ui/events/{active_event.id}/monitor-output",
+        status_code=303,
+    )
+
+
+@app.post("/ui/events/{event_id}/monitor-output/restart-browser")
+def ui_event_restart_monitor_browser(
+    event_id: int,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+
+    threading.Thread(
+        target=restart_monitor_browser_delayed,
+        daemon=True,
+    ).start()
+
+    return RedirectResponse(
+        url=f"/ui/events/{active_event.id}/monitor-output?success={quote('Monitor wird neu geladen.')}",
         status_code=303,
     )
 
@@ -7703,6 +7723,29 @@ def reboot_system_delayed():
         ["sudo", "-n", "reboot"],
         check=False,
         timeout=15,
+    )
+
+
+def restart_monitor_browser_delayed():
+    time.sleep(1)
+
+    kiosk_script = Path("/home/pi/.local/bin/quad-monitor-kiosk.sh")
+
+    subprocess.run(
+        ["/usr/bin/pkill", "-f", "chromium.*chromium-quad-kiosk"],
+        check=False,
+        timeout=5,
+    )
+    time.sleep(1)
+
+    if not kiosk_script.exists():
+        return
+
+    subprocess.Popen(
+        [str(kiosk_script)],
+        start_new_session=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
 
 

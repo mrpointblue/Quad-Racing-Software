@@ -3,6 +3,14 @@
 {% block title %}Ausgabe Monitor{% if active_event %} - {{ active_event.event_number }}{% endif %}{% endblock %}
 
 {% block content %}
+{% if success %}
+    <div class="success">{{ success }}</div>
+{% endif %}
+
+{% if error %}
+    <div class="error">{{ error }}</div>
+{% endif %}
+
 <form method="post" action="/ui/events/{{ active_event.id }}/monitor-output">
     <div class="card monitor-output-header">
         <div>
@@ -71,7 +79,17 @@
                 </div>
             </div>
 
-            <a class="button small-button" href="/ui/events/{{ active_event.id }}/monitor">Monitor öffnen</a>
+            <div class="monitor-output-actions">
+                <a class="button small-button" href="/ui/events/{{ active_event.id }}/monitor">Monitor öffnen</a>
+                <button
+                    type="submit"
+                    form="monitor-restart-browser-form"
+                    class="small-button"
+                    onclick="return confirm('Monitor-Browser wirklich neu laden?')"
+                >
+                    Monitor neu laden
+                </button>
+            </div>
         </div>
     </div>
 
@@ -305,6 +323,13 @@
         </span>
     </div>
 </form>
+
+<form
+    method="post"
+    action="/ui/events/{{ active_event.id }}/monitor-output/restart-browser"
+    id="monitor-restart-browser-form"
+    hidden
+></form>
 
 <script>
     function initializeMonitorOutputChangeWarning() {
