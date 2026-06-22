@@ -51,21 +51,28 @@
     function buildPairingRow(run, isCurrent) {
         const row = document.createElement("article");
         const meta = document.createElement("div");
+        const roundBadge = document.createElement("span");
+        const pairingLabel = document.createElement("strong");
+        const classLabel = document.createElement("span");
         const lanes = document.createElement("div");
         const laneA = document.createElement("div");
         const laneB = document.createElement("div");
 
         row.className = isCurrent ? "pairings-display-card current" : "pairings-display-card";
         meta.className = "pairings-display-meta";
+        roundBadge.className = "pairings-display-round";
+        pairingLabel.className = "pairings-display-pairing";
+        classLabel.className = "pairings-display-class";
         lanes.className = "pairings-display-lanes";
         laneA.className = "pairings-display-lane";
         laneB.className = "pairings-display-lane";
 
-        meta.textContent = (
-            run.round_label +
-            " · Klasse " + run.race_class +
-            " · Paarung " + run.pairing_number
-        );
+        roundBadge.textContent = run.round_label;
+        pairingLabel.textContent = "Paarung " + run.pairing_number;
+        classLabel.textContent = "Klasse " + run.race_class;
+        meta.appendChild(roundBadge);
+        meta.appendChild(pairingLabel);
+        meta.appendChild(classLabel);
 
         laneA.innerHTML = "<span>Bahn A</span><strong></strong>";
         laneB.innerHTML = "<span>Bahn B</span><strong></strong>";

@@ -2099,9 +2099,30 @@ select {
 }
 
 .pairings-display-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    align-items: center;
     margin-bottom: 10px;
     color: #cbd5e1;
     font-weight: 700;
+}
+
+.pairings-display-round {
+    border-radius: 999px;
+    padding: 4px 9px;
+    color: #0f172a;
+    background: #93c5fd;
+    font-size: 13px;
+}
+
+.pairings-display-pairing {
+    color: #f8fafc;
+    font-size: 20px;
+}
+
+.pairings-display-class {
+    color: #cbd5e1;
 }
 
 .pairings-display-lanes {
