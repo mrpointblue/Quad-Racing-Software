@@ -7789,11 +7789,23 @@ def restart_monitor_browser_delayed():
     if not kiosk_script.exists():
         return
 
-    subprocess.Popen(
-        [str(kiosk_script)],
-        start_new_session=True,
+    subprocess.run(
+        [
+            "sudo",
+            "-n",
+            "systemd-run",
+            "--unit=quad-monitor-kiosk-reload",
+            "--collect",
+            "--uid=pi",
+            "--setenv=XDG_RUNTIME_DIR=/run/user/1000",
+            "--setenv=WAYLAND_DISPLAY=wayland-0",
+            "--setenv=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            str(kiosk_script),
+        ],
+        check=False,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
+        timeout=10,
     )
 
 

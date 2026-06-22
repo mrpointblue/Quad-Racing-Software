@@ -11,9 +11,8 @@ echo "$(date -Is) starting quad monitor kiosk" >> "$LOG"
 export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/1000}
 export WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-wayland-0}
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-export LANG=de_DE.UTF-8
+export LANG=C.UTF-8
 export LANGUAGE=de_DE:de
-export LC_ALL=de_DE.UTF-8
 
 for i in $(seq 1 60); do
     if /usr/bin/curl -fsS "$URL" >/dev/null 2>&1; then
