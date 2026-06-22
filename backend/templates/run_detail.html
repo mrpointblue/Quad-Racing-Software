@@ -228,7 +228,9 @@
                         <button type="submit" class="start-button">START</button>
                     </form>
 
-                    {{ repeat_run_picker(active_event, race_run) }}
+                    {% if has_repeatable_results %}
+                        {{ repeat_run_picker(active_event, race_run) }}
+                    {% endif %}
                 </div>
             {% elif not race_run.confirmed %}
                 <div class="error">
@@ -242,13 +244,17 @@
                 {% endif %}
 
                 <div class="run-control-actions">
-                    {{ repeat_run_picker(active_event, race_run) }}
+                    {% if has_repeatable_results %}
+                        {{ repeat_run_picker(active_event, race_run) }}
+                    {% endif %}
                 </div>
             {% else %}
                 <div class="success compact-status-message">Lauf bestätigt</div>
 
                 <div class="run-control-actions">
-                    {{ repeat_run_picker(active_event, race_run) }}
+                    {% if has_repeatable_results %}
+                        {{ repeat_run_picker(active_event, race_run) }}
+                    {% endif %}
                 </div>
             {% endif %}
         {% endif %}

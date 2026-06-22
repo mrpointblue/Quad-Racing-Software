@@ -1090,6 +1090,20 @@ def prepare_result_for_display(result: RunResult, sectors: list[int]) -> RunResu
     return result
 
 
+def result_has_repeatable_values(result: RunResult) -> bool:
+    if result.raw_time_ms is not None:
+        return True
+
+    if result.general_penalty:
+        return True
+
+    for sector in range(1, 11):
+        if get_penalty_for_sector(result, sector):
+            return True
+
+    return False
+
+
 def get_digital_penalty_status(
     run_penalties: list[RunPenalty],
     penalty_type: str,
@@ -5537,6 +5551,10 @@ def ui_event_timekeeper_run(
 
     prepared_results = []
     repeat_scope = get_run_repeat_scope(db, race_run.id)
+    has_repeatable_results = any(
+        result_has_repeatable_values(result)
+        for result in results
+    )
 
     for result in results:
         prepared_result = prepare_result_for_display(result, sectors)
@@ -5604,6 +5622,7 @@ def ui_event_timekeeper_run(
             "logo_status": logo_status,
             "logo_poll_interval_ms": logo_poll_interval_ms,
             "repeat_scope": repeat_scope,
+            "has_repeatable_results": has_repeatable_results,
             "next_unconfirmed_run": next_unconfirmed_payload,
             "is_next_startable_run": is_next_startable_run,
             "start_error": request.query_params.get("start_error"),
