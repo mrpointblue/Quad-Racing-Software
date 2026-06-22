@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Anzeige Paarungen{% if active_event %} - {{ active_event.event_number }}{% endif %}{% endblock %}
+
+{% block body_class %}pairings-display-body{% endblock %}
+
+{% block content %}
+<main class="pairings-display-page">
+    <header class="pairings-display-header">
+        <div>
+            <h1>Anzeige Paarungen</h1>
+            <p id="pairings_event">
+                {{ active_event.event_number }} · {{ active_event.name }}
+            </p>
+        </div>
+        <div id="pairings_time" class="pairings-display-time">
+            {{ monitor_data.server_time }}
+        </div>
+    </header>
+
+    <section class="pairings-display-section">
+        <h2>Aktuell</h2>
+        <div id="pairings_current" class="pairings-display-current"></div>
+    </section>
+
+    <section class="pairings-display-section">
+        <h2>Nächste Paarungen</h2>
+        <div id="pairings_next" class="pairings-display-list"></div>
+    </section>
+</main>
+
+<script>
+    const pairingsEventId = {{ active_event.id }};
+
+    function setPairingsText(id, value) {
+        const element = document.getElementById(id);
+
+        if (element) {
+            element.textContent = value || "—";
+        }
+    }
+
+    function formatPairingsStarter(laneData) {
+        const data = laneData || {};
+        const number = data.start_number || "--";
+        const name = data.display_name || data.driver || "—";
+
+        return String(number) + " " + name;
+    }
+
+    function buildPairingRow(run, isCurrent) {
+        const row = document.createElement("article");
+        const meta = document.createElement("div");
+        const lanes = document.createElement("div");
+        const laneA = document.createElement("div");
+        const laneB = document.createElement("div");
+
+        row.className = isCurrent ? "pairings-display-card current" : "pairings-display-card";
+        meta.className = "pairings-display-meta";
+        lanes.className = "pairings-display-lanes";
+        laneA.className = "pairings-display-lane";
+        laneB.className = "pairings-display-lane";
+
+        meta.textContent = (
+            run.round_label +
+            " · Klasse " + run.race_class +
+            " · Paarung " + run.pairing_number
+        );
+
+        laneA.innerHTML = "<span>Bahn A</span><strong></strong>";
+        laneB.innerHTML = "<span>Bahn B</span><strong></strong>";
+        laneA.querySelector("strong").textContent = formatPairingsStarter(run.lane_a);
+        laneB.querySelector("strong").textContent = formatPairingsStarter(run.lane_b);
+
+        lanes.appendChild(laneA);
+        lanes.appendChild(laneB);
+        row.appendChild(meta);
+        row.appendChild(lanes);
+
+        return row;
+    }
+
+    function renderPairingsDisplay(data) {
+        const currentContainer = document.getElementById("pairings_current");
+        const nextContainer = document.getElementById("pairings_next");
+
+        if (!currentContainer || !nextContainer) {
+            return;
+        }
+
+        if (data.event && data.event.active === false) {
+            window.location.href = "/ui/pairings-display";
+            return;
+        }
+
+        setPairingsText(
+            "pairings_event",
+            data.event.event_number + " · " + data.event.name
+        );
+        setPairingsText("pairings_time", data.server_time);
+
+        currentContainer.innerHTML = "";
+        nextContainer.innerHTML = "";
+
+        if (data.current_run) {
+            currentContainer.appendChild(buildPairingRow(data.current_run, true));
+        } else {
+            currentContainer.textContent = "Keine aktuelle Paarung";
+        }
+
+        const nextRuns = data.next_runs || [];
+
+        if (nextRuns.length === 0) {
+            nextContainer.textContent = "Keine weiteren Paarungen";
+            return;
+        }
+
+        nextRuns.slice(0, 20).forEach((run) => {
+            nextContainer.appendChild(buildPairingRow(run, false));
+        });
+    }
+
+    function pollPairingsDisplay() {
+        fetch("/api/events/" + pairingsEventId + "/monitor")
+            .then((response) => response.json())
+            .then(renderPairingsDisplay)
+            .catch(() => {
+                setPairingsText("pairings_next", "Daten konnten nicht geladen werden.");
+            });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        renderPairingsDisplay({{ monitor_data|tojson }});
+        pollPairingsDisplay();
+        setInterval(pollPairingsDisplay, 2000);
+    });
+</script>
+{% endblock %}

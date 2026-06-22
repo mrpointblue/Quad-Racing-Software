@@ -4952,6 +4952,95 @@ def ui_event_class_round_pairings_print(
     )
 
 
+@app.get("/ui/events/{event_id}/classes/pairings/print")
+def ui_event_all_pairings_print(
+    event_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+
+    pairings = db.query(Pairing).filter(
+        Pairing.event_id == active_event.id,
+    ).all()
+
+    rows = []
+
+    for pairing in pairings:
+        round_number, round_label = get_round_display(pairing.round_name)
+
+        for race_run in sorted(pairing.runs, key=lambda run: run.run_number):
+            lane_a, lane_b = get_lane_results_for_run(race_run)
+
+            rows.append(
+                {
+                    "race_class": pairing.race_class,
+                    "round_number": round_number,
+                    "round_label": round_label,
+                    "pairing_number": pairing.pairing_number,
+                    "run_number": race_run.run_number,
+                    "lane_a": participant_start_label(
+                        lane_a.participant if lane_a else None
+                    ),
+                    "lane_b": participant_start_label(
+                        lane_b.participant if lane_b else None
+                    ),
+                }
+            )
+
+    rows.sort(
+        key=lambda row: (
+            row["round_number"],
+            row["race_class"],
+            row["pairing_number"],
+            row["run_number"],
+        )
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="all_pairings_print.html",
+        context={
+            "active_event": active_event,
+            "rows": rows,
+            "event_year": get_event_year(active_event),
+        },
+    )
+
+
+@app.get("/ui/events/{event_id}/pairings-display")
+def ui_event_pairings_display(
+    event_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    active_event = require_event(event_id, db)
+    current_active_event = get_active_event(db)
+
+    if current_active_event is not None and current_active_event.id != active_event.id:
+        return RedirectResponse(
+            url=f"/ui/events/{current_active_event.id}/pairings-display",
+            status_code=303,
+        )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="pairings_display.html",
+        context={
+            "active_event": active_event,
+            "monitor_data": build_monitor_output_payload(active_event, db),
+            "event_year": get_event_year(active_event),
+        },
+    )
+
+
+@app.get("/ui/pairings-display")
+def ui_pairings_display_redirect(
+    db: Session = Depends(get_db),
+):
+    return redirect_to_active_event_path(db, "/pairings-display")
+
+
 @app.post("/ui/events/{event_id}/classes/{race_class}/semifinal/start")
 def ui_event_start_semifinal(
     event_id: int,

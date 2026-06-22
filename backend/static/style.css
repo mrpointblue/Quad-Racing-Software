@@ -2029,6 +2029,122 @@ select {
     color: #b45309;
 }
 
+.pairings-display-body .header,
+.pairings-display-body .nav,
+.pairings-display-body .notification-bar {
+    display: none;
+}
+
+.pairings-display-body {
+    background: #0f172a;
+}
+
+.pairings-display-page {
+    min-height: 100vh;
+    padding: 16px;
+    color: #f8fafc;
+    background: #0f172a;
+}
+
+.pairings-display-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.pairings-display-header h1 {
+    margin: 0 0 4px;
+    font-size: 28px;
+}
+
+.pairings-display-header p {
+    margin: 0;
+    color: #bfdbfe;
+}
+
+.pairings-display-time {
+    flex: 0 0 auto;
+    color: #bbf7d0;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.pairings-display-section {
+    margin-bottom: 18px;
+}
+
+.pairings-display-section h2 {
+    margin: 0 0 10px;
+    font-size: 18px;
+    color: #93c5fd;
+}
+
+.pairings-display-list {
+    display: grid;
+    gap: 10px;
+}
+
+.pairings-display-card {
+    border: 1px solid #334155;
+    border-left: 5px solid #22c55e;
+    border-radius: 8px;
+    padding: 12px;
+    background: #1e293b;
+}
+
+.pairings-display-card.current {
+    border-left-color: #facc15;
+}
+
+.pairings-display-meta {
+    margin-bottom: 10px;
+    color: #cbd5e1;
+    font-weight: 700;
+}
+
+.pairings-display-lanes {
+    display: grid;
+    gap: 8px;
+}
+
+.pairings-display-lane {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 10px;
+    align-items: baseline;
+}
+
+.pairings-display-lane span {
+    color: #93c5fd;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.pairings-display-lane strong {
+    min-width: 0;
+    overflow: hidden;
+    color: #f8fafc;
+    font-size: 22px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+    .pairings-display-header {
+        display: block;
+    }
+
+    .pairings-display-time {
+        margin-top: 6px;
+    }
+
+    .pairings-display-lane strong {
+        font-size: 20px;
+    }
+}
+
 .monitor-note {
     color: #fde68a;
 }

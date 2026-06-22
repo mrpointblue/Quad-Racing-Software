@@ -37,6 +37,15 @@
                 Die nächste Runde wurde nicht erzeugt. Die Rennleitung muss entscheiden; ggf. ist ein Stechen bzw. eine Wiederholung des Finallaufs erforderlich.
             </div>
         {% endif %}
+
+        <div class="compact-info">
+            <a class="button small-button" href="/ui/events/{{ active_event.id }}/pairings-display">
+                Anzeige Paarungen
+            </a>
+            <a class="button small-button print-link" href="/ui/events/{{ active_event.id }}/classes/pairings/print">
+                Alle Paarungen drucken
+            </a>
+        </div>
     {% endif %}
 </div>
 

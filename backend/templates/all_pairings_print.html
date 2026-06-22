@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Paarungen Druck – Gesamt{% if active_event %} - {{ active_event.event_number }}{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Paarungen – Gesamt</h2>
+
+    {% if active_event %}
+        <p>
+            Veranstaltung:
+            <strong>{{ active_event.event_number }} – {{ active_event.name }}</strong>
+        </p>
+    {% endif %}
+
+    <div class="compact-info">
+        <a class="button small-button print-link" href="/ui/events/{{ active_event.id }}/classes">
+            Zurück zum Rennbetrieb
+        </a>
+        <button type="button" class="small-button print-button" onclick="window.print()">
+            Drucken
+        </button>
+    </div>
+</div>
+
+<div class="card print-page">
+    {% if rows|length > 0 %}
+        <table class="pairings-print-table">
+            <thead>
+                <tr>
+                    <th>Klasse</th>
+                    <th>Runde</th>
+                    <th>Paarung</th>
+                    <th>Lauf</th>
+                    <th>Bahn A</th>
+                    <th>Bahn B</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                    <tr>
+                        <td>Klasse {{ row.race_class }}</td>
+                        <td>{{ row.round_label }}</td>
+                        <td>Paarung {{ row.pairing_number }}</td>
+                        <td><strong>{{ row.round_number }}.{{ row.run_number }}</strong></td>
+                        <td>{{ row.lane_a }}</td>
+                        <td>{{ row.lane_b }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Keine Paarungen vorhanden.</p>
+    {% endif %}
+</div>
+
+<script>
+    window.addEventListener("load", () => window.print());
+</script>
+{% endblock %}
