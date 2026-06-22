@@ -10,6 +10,9 @@ echo "$(date -Is) starting quad monitor kiosk" >> "$LOG"
 
 export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/1000}
 export WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-wayland-0}
+export LANG=de_DE.UTF-8
+export LANGUAGE=de_DE:de
+export LC_ALL=de_DE.UTF-8
 
 for i in $(seq 1 60); do
     if /usr/bin/curl -fsS "$URL" >/dev/null 2>&1; then
@@ -70,6 +73,7 @@ exec /usr/bin/chromium \
     --no-first-run \
     --lang=de-DE \
     --accept-lang=de-DE,de \
+    --disable-search-engine-choice-screen \
     --password-store=basic \
     --noerrdialogs \
     --disable-infobars \
