@@ -78,8 +78,8 @@
 
         <div class="run-header-actions">
             {% if next_unconfirmed_run and next_unconfirmed_run.id != race_run.id %}
-                <a class="button small-button {% if race_run.confirmed %}next-run-button{% endif %}" href="/ui/events/{{ active_event.id }}/timekeeper/run/{{ next_unconfirmed_run.id }}">
-                    Nächster Lauf
+                <a class="button small-button {% if race_run.confirmed %}next-run-button next-run-button-prominent{% endif %}" href="/ui/events/{{ active_event.id }}/timekeeper/run/{{ next_unconfirmed_run.id }}">
+                    {% if race_run.confirmed %}Weiter zum nächsten Lauf{% else %}Nächster Lauf{% endif %}
                     · {{ next_unconfirmed_run.round_label }}
                     · Klasse {{ next_unconfirmed_run.race_class }}
                     · {{ next_unconfirmed_run.pairing_number }}.{{ next_unconfirmed_run.run_number }}
