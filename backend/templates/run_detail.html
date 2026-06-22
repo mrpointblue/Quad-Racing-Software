@@ -1,5 +1,40 @@
 {% extends "base.html" %}
 
+{% macro repeat_run_picker(active_event, race_run) %}
+    <details class="repeat-run-picker">
+        <summary class="repeat-button">LAUF WIEDERHOLEN</summary>
+        <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/repeat">
+            <button
+                type="submit"
+                name="repeat_scope"
+                value="lane_a"
+                class="small-button repeat-choice-button"
+                onclick="return confirm('Nur Bahn A wiederholen? Zeit und Fehlerpunkte von Bahn A werden gelöscht. Bahn B bleibt fixiert erhalten.')"
+            >
+                Bahn A wiederholen
+            </button>
+            <button
+                type="submit"
+                name="repeat_scope"
+                value="lane_b"
+                class="small-button repeat-choice-button"
+                onclick="return confirm('Nur Bahn B wiederholen? Zeit und Fehlerpunkte von Bahn B werden gelöscht. Bahn A bleibt fixiert erhalten.')"
+            >
+                Bahn B wiederholen
+            </button>
+            <button
+                type="submit"
+                name="repeat_scope"
+                value="both"
+                class="small-button repeat-choice-button repeat-choice-danger"
+                onclick="return confirm('Beide Bahnen wiederholen? Zeiten und Fehlerpunkte von Bahn A und Bahn B werden gelöscht.')"
+            >
+                Beide wiederholen
+            </button>
+        </form>
+    </details>
+{% endmacro %}
+
 {% block content %}
 {% if race_run.round_name == "vorlauf" or race_run.round_name == "viertelfinale" %}
     {% set round_label = "Viertelfinale" %}
@@ -83,6 +118,18 @@
         <div class="error">
             Reset fehlgeschlagen: {{ reset_error }}
         </div>
+    </div>
+{% endif %}
+
+{% if repeat_scope in ["lane_a", "lane_b"] and not race_run.confirmed %}
+    <div class="card repeat-scope-notice">
+        {% if repeat_scope == "lane_a" %}
+            <strong>Teilwiederholung aktiv:</strong>
+            Bahn A wird neu erfasst. Bahn B bleibt fixiert und gültig erhalten.
+        {% else %}
+            <strong>Teilwiederholung aktiv:</strong>
+            Bahn B wird neu erfasst. Bahn A bleibt fixiert und gültig erhalten.
+        {% endif %}
     </div>
 {% endif %}
 
@@ -181,15 +228,7 @@
                         <button type="submit" class="start-button">START</button>
                     </form>
 
-                    <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/repeat">
-                        <button
-                            type="submit"
-                            class="repeat-button"
-                            onclick="return confirm('Lauf wirklich wiederholen? Alle Zeiten und Fehlerpunkte dieses Laufes werden gelöscht und der Lauf wird neu geöffnet.')"
-                        >
-                            LAUF WIEDERHOLEN
-                        </button>
-                    </form>
+                    {{ repeat_run_picker(active_event, race_run) }}
                 </div>
             {% elif not race_run.confirmed %}
                 <div class="error">
@@ -203,29 +242,13 @@
                 {% endif %}
 
                 <div class="run-control-actions">
-                    <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/repeat">
-                        <button
-                            type="submit"
-                            class="repeat-button"
-                            onclick="return confirm('Lauf wirklich wiederholen? Alle Zeiten und Fehlerpunkte dieses Laufes werden gelöscht und der Lauf wird neu geöffnet.')"
-                        >
-                            LAUF WIEDERHOLEN
-                        </button>
-                    </form>
+                    {{ repeat_run_picker(active_event, race_run) }}
                 </div>
             {% else %}
                 <div class="success compact-status-message">Lauf bestätigt</div>
 
                 <div class="run-control-actions">
-                    <form method="post" action="/ui/events/{{ active_event.id }}/timekeeper/run/{{ race_run.id }}/repeat">
-                        <button
-                            type="submit"
-                            class="repeat-button"
-                            onclick="return confirm('Lauf wirklich wiederholen? Alle Zeiten und Fehlerpunkte dieses Laufes werden gelöscht und der Lauf wird neu geöffnet.')"
-                        >
-                            LAUF WIEDERHOLEN
-                        </button>
-                    </form>
+                    {{ repeat_run_picker(active_event, race_run) }}
                 </div>
             {% endif %}
         {% endif %}
@@ -284,6 +307,10 @@
                                 {% endif %}
                             </div>
                         {% endif %}
+
+                        {% if result.repeat_is_fixed %}
+                            <div class="fixed-lane-note">Fixiert - gültige Zeit bleibt erhalten</div>
+                        {% endif %}
                     </td>
 
                     <td>
@@ -298,7 +325,7 @@
                             inputmode="numeric"
                             pattern="[0-9]{1,6}"
                             oninput="updateTimeDisplays()"
-                            {% if race_run.confirmed or active_event.closed or result.participant.withdrawn %}disabled{% endif %}
+                            {% if race_run.confirmed or active_event.closed or result.participant.withdrawn or result.repeat_is_fixed %}disabled{% endif %}
                         >
                         <div class="time-display" id="time_display_{{ result.id }}">
                             —
@@ -314,7 +341,7 @@
                                 value="{{ result.sector_penalties[sector] }}"
                                 min="0"
                                 step="5"
-                                {% if active_event.closed %}disabled{% endif %}
+                                {% if active_event.closed or result.repeat_is_fixed %}disabled{% endif %}
                             >
                         </td>
                     {% endfor %}
@@ -327,7 +354,7 @@
                             value="{{ result.general_penalty or 0 }}"
                             min="0"
                             step="5"
-                            {% if active_event.closed %}disabled{% endif %}
+                            {% if active_event.closed or result.repeat_is_fixed %}disabled{% endif %}
                         >
                     </td>
 

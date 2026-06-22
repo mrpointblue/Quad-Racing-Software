@@ -1190,26 +1190,63 @@ def get_round_display(round_name: str) -> tuple[int, str]:
 def reset_run_values_for_repeat(
     race_run: RaceRun,
     results: list[RunResult],
+    repeat_scope: str = "both",
 ):
+    if repeat_scope not in ["lane_a", "lane_b", "both"]:
+        repeat_scope = "both"
+
+    reset_lanes = ["lane_a", "lane_b"] if repeat_scope == "both" else [repeat_scope]
+
     race_run.status = "created"
     race_run.confirmed = False
     race_run.traffic_light_status = "off"
     race_run.false_start_lane = "none"
     race_run.started_at = None
     race_run.finished_at = None
-    race_run.lane_a_time_ms = None
-    race_run.lane_b_time_ms = None
+
+    if "lane_a" in reset_lanes:
+        race_run.lane_a_time_ms = None
+
+    if "lane_b" in reset_lanes:
+        race_run.lane_b_time_ms = None
+
     race_run.reset_count = (race_run.reset_count or 0) + 1
     race_run.last_reset_at = now_string()
     race_run.last_reset_by = "Wiederholung"
 
     for result in results:
+        if result.lane not in reset_lanes:
+            continue
+
         result.raw_time_ms = None
         result.general_penalty = 0
         result.confirmed = False
 
         for sector in range(1, 11):
             set_penalty_for_sector(result, sector, 0)
+
+
+def repeat_scope_setting_key(run_id: int) -> str:
+    return f"repeat_scope_run_{run_id}"
+
+
+def normalize_repeat_scope(value: str | None) -> str:
+    value = (value or "both").strip().lower()
+
+    if value in ["lane_a", "lane_b", "both"]:
+        return value
+
+    return "both"
+
+
+def get_run_repeat_scope(db: Session, run_id: int) -> str:
+    return normalize_repeat_scope(
+        get_setting(db, repeat_scope_setting_key(run_id), "both")
+    )
+
+
+def is_lane_editable_for_repeat_scope(lane: str, repeat_scope: str) -> bool:
+    return repeat_scope == "both" or lane == repeat_scope
 
 
 # ------------------------------------------------------------
@@ -5499,9 +5536,14 @@ def ui_event_timekeeper_run(
         ).all()
 
     prepared_results = []
+    repeat_scope = get_run_repeat_scope(db, race_run.id)
 
     for result in results:
         prepared_result = prepare_result_for_display(result, sectors)
+        prepared_result.repeat_is_fixed = not is_lane_editable_for_repeat_scope(
+            result.lane,
+            repeat_scope,
+        )
         prepared_result.digital_penalty_statuses = []
         if marshal_enabled:
             prepared_result.digital_penalty_statuses = build_digital_penalty_statuses(
@@ -5561,6 +5603,7 @@ def ui_event_timekeeper_run(
             "marshal_enabled": marshal_enabled,
             "logo_status": logo_status,
             "logo_poll_interval_ms": logo_poll_interval_ms,
+            "repeat_scope": repeat_scope,
             "next_unconfirmed_run": next_unconfirmed_payload,
             "is_next_startable_run": is_next_startable_run,
             "start_error": request.query_params.get("start_error"),
@@ -5764,6 +5807,7 @@ def ui_reset_run_legacy(
 def ui_event_repeat_run(
     event_id: int,
     run_id: int,
+    repeat_scope: str = Form("both"),
     db: Session = Depends(get_db),
 ):
     active_event = require_event(event_id, db)
@@ -5784,11 +5828,14 @@ def ui_event_repeat_run(
         RunResult.event_id == active_event.id,
         RunResult.race_run_id == race_run.id,
     ).all()
+    repeat_scope = normalize_repeat_scope(repeat_scope)
 
     reset_run_values_for_repeat(
         race_run=race_run,
         results=results,
+        repeat_scope=repeat_scope,
     )
+    set_setting(db, repeat_scope_setting_key(race_run.id), repeat_scope)
 
     set_setting(db, "startdisplay_active_event_id", str(active_event.id))
     set_setting(db, "startdisplay_active_run_id", str(race_run.id))
@@ -5812,6 +5859,7 @@ def ui_event_repeat_run(
 @app.post("/ui/timekeeper/run/{run_id}/repeat")
 def ui_repeat_run_legacy(
     run_id: int,
+    repeat_scope: str = Form("both"),
     db: Session = Depends(get_db),
 ):
     active_event = require_active_event(db)
@@ -5819,6 +5867,7 @@ def ui_repeat_run_legacy(
     return ui_event_repeat_run(
         event_id=active_event.id,
         run_id=run_id,
+        repeat_scope=repeat_scope,
         db=db,
     )
 
@@ -5900,6 +5949,7 @@ async def ui_event_save_run(
 
     form = await request.form()
     can_update_times = not race_run.confirmed and not active_event.closed
+    repeat_scope = get_run_repeat_scope(db, race_run.id)
 
     results = db.query(RunResult).filter(
         RunResult.event_id == active_event.id,
@@ -5907,11 +5957,13 @@ async def ui_event_save_run(
     ).all()
 
     for result in results:
+        lane_editable = is_lane_editable_for_repeat_scope(result.lane, repeat_scope)
+
         if result.participant and result.participant.withdrawn:
-            if can_update_times:
+            if can_update_times and lane_editable:
                 result.raw_time_ms = None
 
-        if can_update_times:
+        if can_update_times and lane_editable:
             raw_time_value = form.get(f"raw_time_ms_{result.id}")
 
             if raw_time_value is None or str(raw_time_value).strip() == "":
@@ -5925,7 +5977,7 @@ async def ui_event_save_run(
                         status_code=303,
                     )
 
-        if not active_event.closed:
+        if not active_event.closed and lane_editable:
             for sector in range(1, 11):
                 penalty_value = form.get(f"sector_{sector}_penalty_{result.id}")
                 set_penalty_for_sector(
@@ -6011,6 +6063,7 @@ def ui_event_confirm_run(
     race_run.confirmed = True
     race_run.status = "confirmed"
     race_run.traffic_light_status = "off"
+    set_setting(db, repeat_scope_setting_key(race_run.id), "")
 
     db.commit()
 
@@ -6907,6 +6960,7 @@ def sync_logo_times_for_run(
         return status
 
     lane_a_result, lane_b_result = get_lane_results_for_run(race_run)
+    repeat_scope = get_run_repeat_scope(db, race_run.id)
     times = status.get("times", {})
     lane_a_ms = times.get("lane_a_ms")
     lane_b_ms = times.get("lane_b_ms")
@@ -6921,12 +6975,22 @@ def sync_logo_times_for_run(
 
     dirty = False
 
-    if isinstance(lane_a_ms, int) and lane_a_ms > 0 and lane_a_result:
+    if (
+        is_lane_editable_for_repeat_scope("lane_a", repeat_scope)
+        and isinstance(lane_a_ms, int)
+        and lane_a_ms > 0
+        and lane_a_result
+    ):
         lane_a_result.raw_time_ms = lane_a_ms
         race_run.lane_a_time_ms = lane_a_ms
         dirty = True
 
-    if isinstance(lane_b_ms, int) and lane_b_ms > 0 and lane_b_result:
+    if (
+        is_lane_editable_for_repeat_scope("lane_b", repeat_scope)
+        and isinstance(lane_b_ms, int)
+        and lane_b_ms > 0
+        and lane_b_result
+    ):
         lane_b_result.raw_time_ms = lane_b_ms
         race_run.lane_b_time_ms = lane_b_ms
         dirty = True

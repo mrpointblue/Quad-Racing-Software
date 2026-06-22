@@ -2707,6 +2707,10 @@ select {
     margin: 0;
 }
 
+.run-control-actions details {
+    flex: 0 0 auto;
+}
+
 .run-control-actions button {
     margin-top: 0 !important;
     white-space: nowrap;
@@ -2763,16 +2767,74 @@ select {
 }
 
 .repeat-button {
+    display: inline-flex;
+    align-items: center;
     background: #f97316 !important;
     color: #ffffff !important;
     border-color: #ea580c !important;
     font-size: 14px !important;
     padding: 8px 12px !important;
     font-weight: 700;
+    cursor: pointer;
 }
 
 .repeat-button:hover {
     background: #ea580c !important;
+}
+
+.repeat-run-picker {
+    position: relative;
+}
+
+.repeat-run-picker summary {
+    list-style: none;
+}
+
+.repeat-run-picker summary::-webkit-details-marker {
+    display: none;
+}
+
+.repeat-run-picker form {
+    display: grid;
+    min-width: 220px;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 10px;
+    border: 1px solid #fed7aa;
+    border-radius: 8px;
+    background: #fff7ed;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.15);
+}
+
+.repeat-choice-button {
+    width: 100%;
+    margin-top: 0 !important;
+    color: #9a3412 !important;
+    background: #ffedd5 !important;
+    border-color: #fdba74 !important;
+    text-align: left;
+}
+
+.repeat-choice-danger {
+    color: #991b1b !important;
+    background: #fee2e2 !important;
+    border-color: #fca5a5 !important;
+}
+
+.repeat-scope-notice {
+    border-left: 5px solid #f97316;
+    background: #fff7ed;
+}
+
+.fixed-lane-note {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 4px 7px;
+    border-radius: 999px;
+    color: #1d4ed8;
+    background: #dbeafe;
+    font-size: 12px;
+    font-weight: 700;
 }
 
 .confirm-run-button {
