@@ -496,7 +496,7 @@
             return;
         }
 
-        text("current_run_meta", runLabel(run) + " · Status: " + run.status);
+        text("current_run_meta", runLabel(run));
         text("current_lane_a_driver", formatCurrentDriver(run.lane_a));
         text("current_lane_a_time", run.lane_a.raw_time);
         text("current_lane_a_penalty", String(run.lane_a.penalty));
