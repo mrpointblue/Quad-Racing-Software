@@ -76,22 +76,22 @@
                 |
                 Status:
                 {% if item.final_complete %}
-                    <span class="success">Klasse abgeschlossen</span>
+                    <span class="class-status-pill class-status-done">Klasse abgeschlossen</span>
                 {% elif item.next_action_available is defined and item.next_action_available %}
-                    <span class="success">Aktion erforderlich</span>
+                    <span class="class-status-pill class-status-action">Aktion erforderlich</span>
                 {% elif item.preliminary_created or item.semifinal_created or item.final_created %}
-                    <span class="success">Rennbetrieb aktiv</span>
+                    <span class="class-status-pill class-status-active">Rennbetrieb aktiv</span>
                 {% else %}
-                    <span>Offen</span>
+                    <span class="class-status-pill class-status-open">Offen</span>
                 {% endif %}
             </p>
         </div>
 
         <div>
             {% if item.registration_released %}
-                <span class="success">Startfreigabe erteilt</span>
+                <span class="class-status-pill class-status-released">Startfreigabe erteilt</span>
             {% else %}
-                <span class="error">Nicht freigegeben</span>
+                <span class="class-status-pill class-status-blocked">Nicht freigegeben</span>
             {% endif %}
         </div>
     </div>
