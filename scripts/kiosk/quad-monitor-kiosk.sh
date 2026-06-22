@@ -3,7 +3,7 @@ set -u
 
 LOG=/home/pi/.local/share/quad-race/monitor-kiosk.log
 URL=http://127.0.0.1:8000/ui/monitor
-PROFILE=/home/pi/.config/chromium-quad-kiosk
+PROFILE=/tmp/chromium-quad-kiosk
 
 mkdir -p "$(dirname "$LOG")"
 echo "$(date -Is) starting quad monitor kiosk" >> "$LOG"
@@ -24,10 +24,8 @@ for i in $(seq 1 60); do
     sleep 2
 done
 
-if ! /usr/bin/pgrep -x chromium >/dev/null 2>&1; then
-    rm -f "$PROFILE/SingletonLock" "$PROFILE/SingletonCookie" "$PROFILE/SingletonSocket"
-    echo "$(date -Is) cleared stale Chromium profile lock" >> "$LOG"
-fi
+rm -f "$PROFILE/SingletonLock" "$PROFILE/SingletonCookie" "$PROFILE/SingletonSocket"
+echo "$(date -Is) cleared Chromium profile lock" >> "$LOG"
 
 PROFILE="$PROFILE" /usr/bin/python3 <<'PY' >> "$LOG" 2>&1
 import json
@@ -65,7 +63,11 @@ preferences_path.write_text(
 print("Chromium kiosk preferences updated: translate disabled, languages de-DE,de")
 PY
 
-exec /usr/bin/chromium \
+exec /usr/lib/chromium/chromium \
+    --force-renderer-accessibility \
+    --use-angle=gles \
+    --disable-dev-shm-usage \
+    --disable-background-networking \
     --user-data-dir="$PROFILE" \
     --ozone-platform=wayland \
     --kiosk \
