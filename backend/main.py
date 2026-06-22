@@ -7787,20 +7787,32 @@ def set_system_time(target_time: datetime) -> tuple[bool, str]:
         "Automatische Zeitsynchronisation deaktivieren",
     )
 
-    ok, message = run_system_time_command(
-        ["sudo", "-n", "date", "-s", formatted_time],
-        "Systemzeit setzen",
-    )
+    set_attempts = [
+        (
+            ["sudo", "-n", "timedatectl", "set-time", formatted_time],
+            "Systemzeit setzen (timedatectl)",
+        ),
+        (
+            ["sudo", "-n", "date", "-s", formatted_time],
+            "Systemzeit setzen (date)",
+        ),
+    ]
+    error_messages = []
 
-    if not ok:
-        return False, message
+    for command, command_label in set_attempts:
+        ok, message = run_system_time_command(command, command_label)
 
-    run_system_time_command(
-        ["sudo", "-n", "hwclock", "-w"],
-        "Hardware-Uhr speichern",
-    )
+        if ok:
+            run_system_time_command(
+                ["sudo", "-n", "hwclock", "-w"],
+                "Hardware-Uhr speichern",
+            )
 
-    return True, formatted_time
+            return True, formatted_time
+
+        error_messages.append(message)
+
+    return False, " / ".join(error_messages)
 
 
 def remove_existing_club_logos():
