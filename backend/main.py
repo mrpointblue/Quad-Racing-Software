@@ -6744,6 +6744,11 @@ def build_empty_logo_status(enabled: bool, message: str, ok: bool = False) -> di
             "green": False,
             "red": False,
         },
+        "inputs": {
+            "lane_a_light_barrier": False,
+            "lane_b_light_barrier": False,
+            "read_error": "",
+        },
         "markers": {
             "lane_a_running": False,
             "lane_b_running": False,
@@ -6751,6 +6756,8 @@ def build_empty_logo_status(enabled: bool, message: str, ok: bool = False) -> di
             "false_start_a": False,
             "false_start_b": False,
             "light_barrier_fault": False,
+            "light_barrier_fault_a": False,
+            "light_barrier_fault_b": False,
         },
     }
 
@@ -6937,6 +6944,15 @@ class LogoStatusCache:
 
     @staticmethod
     def _read_status_with_client(logo_client, client) -> dict:
+        inputs = logo_client.read_inputs_status(client)
+        markers = logo_client.read_markers(client)
+        markers["light_barrier_fault_a"] = (
+            markers["light_barrier_fault"] and bool(inputs["lane_a_light_barrier"])
+        )
+        markers["light_barrier_fault_b"] = (
+            markers["light_barrier_fault"] and bool(inputs["lane_b_light_barrier"])
+        )
+
         return {
             "enabled": True,
             "ok": True,
@@ -6944,7 +6960,8 @@ class LogoStatusCache:
             "message": "LOGO-Status gelesen.",
             "times": logo_client.read_times(client),
             "outputs": logo_client.read_outputs(client),
-            "markers": logo_client.read_markers(client),
+            "inputs": inputs,
+            "markers": markers,
         }
 
     @staticmethod
