@@ -8,9 +8,71 @@ Dieser Stand enthält Änderungen nach dem stabilen Release `1.7.3`. Vor einem p
 
 ---
 
-# How To Install
+# Empfohlene Installation: Docker
 
-Diese Anleitung beschreibt, wie die Quad Racing Software auf einem Raspberry Pi installiert, gestartet, aktualisiert und optional als Dienst eingerichtet wird.
+Die vollständige Anlage wird über Docker Compose betrieben. Dabei werden automatisch drei Dienste gestartet:
+
+- Rennsoftware auf Port 8000
+- Check-in-Terminal auf Port 8010
+- Chromium-Kiosk für den direkt angeschlossenen HDMI-Monitor
+
+Auf dem Raspberry Pi müssen weder Python, Chromium noch Python-Pakete separat installiert werden. Benötigt werden nur Docker Engine mit Compose-Plugin und Raspberry Pi OS mit aktiver Wayland-Desktop-Sitzung für den HDMI-Kiosk.
+
+## Installation mit einem Befehl
+
+Nach dem Klonen des Repositorys:
+
+```bash
+cd ~/Quad-Racing-Software
+chmod +x install_docker.sh
+./install_docker.sh
+```
+
+Das Skript erkennt Benutzer, Wayland-Sitzung sowie Video-Gruppen automatisch, baut alle Images und startet die gesamte Anlage. Der Kiosk wartet auf die Rennsoftware und öffnet anschließend selbstständig den Monitor unter `/ui/monitor`.
+
+Datenbank, Sicherungen, Unterschriften und Vereinslogo liegen persistent in:
+
+```text
+data/
+backend/static/uploads/
+```
+
+Ein Neuaufbau oder Update der Container löscht diese Daten nicht.
+
+## Docker-Betrieb
+
+```bash
+# Status
+docker compose --env-file .env.docker ps
+
+# Protokolle
+docker compose --env-file .env.docker logs -f
+
+# Update
+git pull
+docker compose --env-file .env.docker up -d --build --remove-orphans
+
+# Neustart
+docker compose --env-file .env.docker restart
+
+# Stoppen
+docker compose --env-file .env.docker down
+```
+
+Die Container starten nach einem Neustart des Raspberry Pi automatisch wieder. Die Schaltfläche zum Neustart der Monitoranzeige arbeitet im Docker-Betrieb über den Kiosk-Container.
+
+## Voraussetzungen für den HDMI-Kiosk
+
+- Der Monitor ist direkt am Raspberry Pi angeschlossen.
+- Für den vorgesehenen Benutzer läuft eine grafische Wayland-Sitzung.
+- Der Kiosk darf auf `/dev/dri` und den Wayland-Socket zugreifen; diese Freigaben setzt Docker Compose.
+- Auf dem Host darf nicht gleichzeitig ein anderer Browser dauerhaft denselben Bildschirm als Kiosk belegen.
+
+---
+
+# Alternative manuelle Installation
+
+Die manuelle Python-/systemd-Installation bleibt für bestehende Anlagen erhalten. Für neue Installationen wird Docker empfohlen.
 
 ---
 
@@ -306,8 +368,9 @@ Wichtig ist, dass der Raspberry Pi und das Anzeigegerät im gleichen Netzwerk si
 
 # Kiosk-Modus für Monitor-Anzeige
 
-Der Kiosk-Modus stellt ein Anzeigeterminal bereit, das automatisch den Monitor der gerade aktiven Veranstaltung anzeigt.
-Diese Lösung eignet sich für Bildschirme, die permanent im Veranstaltungsort hängen sollen.
+Der Kiosk ist fester Bestandteil der Docker-Installation. Der enthaltene Chromium-Browser startet automatisch, wartet auf eine erreichbare Rennsoftware und zeigt anschließend die aktive Veranstaltung an. Eine separate Chromium-Installation oder Desktop-Autostartdatei ist bei Docker nicht erforderlich.
+
+Die nachfolgende manuelle Konfiguration gilt nur für bestehende Installationen ohne Docker.
 
 ## Automatische Umschaltung zur aktiven Veranstaltung
 
@@ -387,6 +450,11 @@ esp32/startdisplay/README.md
 - LOGO!-Diagnoseskript auf die aktuelle Modbus-TCP-Struktur aktualisiert.
 - Installationsskript verwendet automatisch das tatsächliche Projektverzeichnis und den ausführenden Benutzer.
 - Installations- und LOGO!-Dokumentation korrigiert.
+- Vollständige Docker-Compose-Installation für Rennsoftware, Check-in und HDMI-Kiosk ergänzt.
+- Chromium ist im Kiosk-Image enthalten und muss nicht mehr auf dem Host installiert werden.
+- Persistente Speicherung für Datenbank, Backups, Logos und Unterschriften eingerichtet.
+- Monitor-Neustart aus der Weboberfläche mit dem Docker-Kiosk verbunden.
+- Docker-Konfiguration und beide Images werden durch GitHub Actions geprüft.
 
 ---
 
@@ -397,6 +465,7 @@ Vor einem Commit oder Update ausführen:
 ```bash
 python -m compileall -q backend scripts tests
 python -m unittest discover -s tests -v
+docker compose config --quiet
 ```
 
 GitHub Actions führt diese Prüfungen bei Änderungen an `main` und in Pull Requests automatisch aus.
