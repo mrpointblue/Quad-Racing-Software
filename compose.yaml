@@ -1,0 +1,85 @@
+name: quad-race
+
+x-app: &app
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: quad-race:1.7.4-dev
+  network_mode: host
+  restart: unless-stopped
+  environment:
+    CONTAINERIZED: "true"
+    KIOSK_RELOAD_FILE: /app/data/kiosk-reload.request
+  volumes:
+    - ./data:/app/data
+    - ./backend/static/uploads:/app/backend/static/uploads
+
+services:
+  race:
+    <<: *app
+    container_name: quad-race
+    command:
+      - python
+      - -m
+      - uvicorn
+      - backend.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+
+  checkin:
+    <<: *app
+    container_name: quad-race-checkin
+    command:
+      - python
+      - -m
+      - uvicorn
+      - backend.checkin_main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8010"
+    depends_on:
+      race:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/checkin', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+
+  kiosk:
+    build:
+      context: .
+      dockerfile: docker/kiosk/Dockerfile
+    image: quad-race-kiosk:1.7.4-dev
+    container_name: quad-race-kiosk
+    network_mode: host
+    restart: unless-stopped
+    depends_on:
+      race:
+        condition: service_healthy
+    user: "${KIOSK_UID:-1000}:${KIOSK_GID:-1000}"
+    group_add:
+      - "${VIDEO_GID:-44}"
+      - "${RENDER_GID:-109}"
+    environment:
+      XDG_RUNTIME_DIR: "${KIOSK_RUNTIME_DIR:-/run/user/1000}"
+      WAYLAND_DISPLAY: "${WAYLAND_DISPLAY:-wayland-0}"
+      MONITOR_URL: http://127.0.0.1:8000/ui/monitor
+      KIOSK_RELOAD_FILE: /control/kiosk-reload.request
+    volumes:
+      - type: bind
+        source: "${KIOSK_RUNTIME_DIR:-/run/user/1000}"
+        target: "${KIOSK_RUNTIME_DIR:-/run/user/1000}"
+      - ./data:/control
+    devices:
+      - /dev/dri:/dev/dri
+    ipc: host
+    shm_size: 512mb
