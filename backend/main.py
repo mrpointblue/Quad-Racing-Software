@@ -7774,6 +7774,9 @@ def get_system_status() -> dict:
 def restart_quad_race_service_delayed():
     time.sleep(1)
 
+    if os.environ.get("CONTAINERIZED", "").strip().lower() == "true":
+        os._exit(0)
+
     subprocess.run(
         ["sudo", "-n", "systemctl", "restart", "quad-race"],
         check=False,
