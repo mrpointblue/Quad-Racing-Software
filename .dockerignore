@@ -1,0 +1,15 @@
+.git
+.github
+.venv
+venv
+__pycache__
+*.py[cod]
+*.db
+*.sqlite
+*.sqlite3
+data
+backend/static/uploads/*
+!backend/static/uploads/.gitkeep
+logs
+*.log
+.env
