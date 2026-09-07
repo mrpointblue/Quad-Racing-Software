@@ -29,8 +29,13 @@ jobs:
       - name: Automatisierte Tests ausführen
         run: python -m unittest discover -s tests -v
 
+      - name: Installationsskripte prüfen
+        run: bash -n install_docker.sh install_release.sh install_service.sh
+
       - name: Docker Compose prüfen
-        run: docker compose config --quiet
+        run: |
+          docker compose config --quiet
+          docker compose --file compose.release.yaml config --quiet
 
       - name: Anwendungs-Image bauen
         run: docker build --tag quad-race:test .
