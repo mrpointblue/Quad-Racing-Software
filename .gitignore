@@ -10,6 +10,8 @@ venv/
 env/
 
 # Database / local data
+/data/
+/uploads/
 *.db
 *.sqlite
 *.sqlite3
@@ -26,6 +28,7 @@ logs/
 .env.*
 !.env.example
 .env.docker
+.env.release
 config.local.py
 
 # OS / editor
