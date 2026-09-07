@@ -35,5 +35,18 @@ jobs:
       - name: Anwendungs-Image bauen
         run: docker build --tag quad-race:test .
 
+      - name: Anwendung im Container prüfen
+        run: |
+          container_id="$(docker run --detach --publish 8000:8000 quad-race:test)"
+          trap 'docker rm --force "$container_id" >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8000/ui/monitor >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs "$container_id"
+          exit 1
+
       - name: Kiosk-Image bauen
         run: docker build --file docker/kiosk/Dockerfile --tag quad-race-kiosk:test .
