@@ -7794,6 +7794,13 @@ def reboot_system_delayed():
 def restart_monitor_browser_delayed():
     time.sleep(1)
 
+    reload_file = os.environ.get("KIOSK_RELOAD_FILE", "").strip()
+    if reload_file:
+        reload_path = Path(reload_file)
+        reload_path.parent.mkdir(parents=True, exist_ok=True)
+        reload_path.touch()
+        return
+
     kiosk_script = Path("/home/pi/.local/bin/quad-monitor-kiosk.sh")
 
     subprocess.run(
@@ -7824,7 +7831,6 @@ def restart_monitor_browser_delayed():
         stderr=subprocess.DEVNULL,
         timeout=10,
     )
-
 
 def parse_system_time_input(value: str | None) -> datetime:
     cleaned_value = (value or "").strip()
