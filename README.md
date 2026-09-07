@@ -66,6 +66,7 @@ Die Container starten nach einem Neustart des Raspberry Pi automatisch wieder. D
 - Der Monitor ist direkt am Raspberry Pi angeschlossen.
 - Für den vorgesehenen Benutzer läuft eine grafische Wayland-Sitzung.
 - Der Kiosk darf auf `/dev/dri` und den Wayland-Socket zugreifen; diese Freigaben setzt Docker Compose.
+- Der Renncontainer erhält gezielt `SYS_TIME`, damit die Oberfläche bei fehlendem Internet die Uhr des Raspberry Pi setzen kann. Andere zusätzliche Linux-Berechtigungen werden nicht vergeben.
 - Auf dem Host darf nicht gleichzeitig ein anderer Browser dauerhaft denselben Bildschirm als Kiosk belegen.
 
 ---
@@ -455,6 +456,8 @@ esp32/startdisplay/README.md
 - Persistente Speicherung für Datenbank, Backups, Logos und Unterschriften eingerichtet.
 - Monitor-Neustart aus der Weboberfläche mit dem Docker-Kiosk verbunden.
 - Docker-Konfiguration und beide Images werden durch GitHub Actions geprüft.
+- Offline-Zeitsetzung für Docker korrigiert: Host-Zeitzone wird übernommen und die Raspberry-Pi-Uhr über die freigegebene `SYS_TIME`-Berechtigung gesetzt.
+- Zeitlogik in einen eigenen Service ausgelagert und mit automatisierten Tests abgesichert.
 
 ---
 
