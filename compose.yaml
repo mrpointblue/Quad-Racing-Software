@@ -13,11 +13,15 @@ x-app: &app
   volumes:
     - ./data:/app/data
     - ./backend/static/uploads:/app/backend/static/uploads
+    - /etc/localtime:/etc/localtime:ro
+    - /etc/timezone:/etc/timezone:ro
 
 services:
   race:
     <<: *app
     container_name: quad-race
+    cap_add:
+      - SYS_TIME
     command:
       - python
       - -m
