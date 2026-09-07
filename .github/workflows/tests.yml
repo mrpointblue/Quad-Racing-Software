@@ -28,3 +28,12 @@ jobs:
 
       - name: Automatisierte Tests ausführen
         run: python -m unittest discover -s tests -v
+
+      - name: Docker Compose prüfen
+        run: docker compose config --quiet
+
+      - name: Anwendungs-Image bauen
+        run: docker build --tag quad-race:test .
+
+      - name: Kiosk-Image bauen
+        run: docker build --file docker/kiosk/Dockerfile --tag quad-race-kiosk:test .
