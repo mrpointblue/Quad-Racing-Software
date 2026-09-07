@@ -14,6 +14,7 @@ RUN apt-get update \
     && groupadd --gid 1000 kiosk \
     && useradd --uid 1000 --gid 1000 --create-home kiosk
 
+COPY scripts/kiosk/chromium-managed-policy.json /etc/chromium/policies/managed/quad-race.json
 COPY docker/kiosk/entrypoint.sh /usr/local/bin/quad-kiosk
 RUN chmod 0755 /usr/local/bin/quad-kiosk
 
