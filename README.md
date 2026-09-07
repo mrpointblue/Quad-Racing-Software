@@ -2,6 +2,10 @@
 
 Webbasierte Software zur Verwaltung und Durchführung von ADAC Quad Parallel Race Veranstaltungen.
 
+**Aktueller Entwicklungsstand:** `1.7.4-dev`
+
+Dieser Stand enthält Änderungen nach dem stabilen Release `1.7.3`. Vor einem produktiven Renneinsatz müssen die automatisierten Tests erfolgreich durchlaufen und die Funktionen mit der realen Siemens LOGO! geprüft werden.
+
 ---
 
 # How To Install
@@ -42,8 +46,8 @@ Falls das Repository privat ist, wird ein GitHub Login oder ein Personal Access 
 ## 3. Python-Umgebung erstellen
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
 Nach dem Aktivieren sollte vorne in der Terminalzeile ungefähr Folgendes stehen:
@@ -92,10 +96,6 @@ Die Check-in-Oberfläche ist dann erreichbar unter:
 
 ```text
 http://<IP-DES-PI>:8010/checkin
-```
-
-```text
-http://<IP-DES-PI>:8000
 ```
 
 Beispiel:
@@ -180,7 +180,7 @@ Um die Software auf einem bereits eingerichteten Pi zu aktualisieren:
 ```bash
 cd ~/Quad-Racing-Software
 git pull
-source venv/bin/activate
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -232,8 +232,8 @@ Führe das Installations-Script aus. Dieses prüft die Python-Version, erstellt 
 
 ```bash
 cd /home/pi/Quad-Racing-Software
-chmod +x scripts/install_service.sh
-./scripts/install_service.sh
+chmod +x install_service.sh
+./install_service.sh
 ```
 
 ---
@@ -259,21 +259,18 @@ Nach der Installation kann der Dienst mit folgenden Befehlen gesteuert werden:
 
 ---
 
-# Hinweise zur Siemens LOGO / Zeitmessanlage (Achtung, derzeit noch nicht implementiert)
+# Siemens LOGO! / Zeitmessanlage
 
-Die Anbindung an die Siemens LOGO beziehungsweise Zeitmessanlage erfolgt lokal über die Konfiguration der jeweiligen Installation.
+Die Siemens LOGO! ist über Modbus TCP produktiv angebunden. Verbindung, Signaladressen und Impulsdauer werden in den Einstellungen der jeweiligen Installation konfiguriert.
 
 Wichtige Punkte:
 
-- IP-Adresse der LOGO
-- Modbus-TCP-Port
-- Registeradressen
-- Reset-Signal
-- Startsignal
-- Zielsignal
-- Verhalten bei Laufwiederholung
-- Verhalten bei Neustart der Software
-- Verhalten bei Verbindungsverlust zur LOGO
+- IP-Adresse und Modbus-TCP-Port
+- Holding-Register für V0/V4
+- Coil-Adressen für Q1-Q3 und M1-M6
+- Discrete Inputs I1/I2 für die bahnbezogene Lichtschrankenstörung
+- WEB Start über M7 und WEB Reset über M9
+- Verhalten bei Laufwiederholung, Neustart und Verbindungsverlust
 
 Wichtig:
 
@@ -381,6 +378,33 @@ esp32/startdisplay/README.md
 
 ---
 
+# Version 1.7.4-dev
+
+- Entwicklungsstand nach Release 1.7.3; noch kein stabiler Release.
+- Renn- und Monitorabläufe, Check-in sowie LOGO!-Diagnose weiter stabilisiert.
+- M6-Lichtschrankenstörung wird mit I1/I2 einer Bahn zugeordnet; bei Eingangslesefehlern zeigt die Diagnose den Zustand als unklar.
+- Automatisierte LOGO!-Tests und GitHub-Actions-Prüfung ergänzt.
+- LOGO!-Diagnoseskript auf die aktuelle Modbus-TCP-Struktur aktualisiert.
+- Installationsskript verwendet automatisch das tatsächliche Projektverzeichnis und den ausführenden Benutzer.
+- Installations- und LOGO!-Dokumentation korrigiert.
+
+---
+
+# Tests und Entwicklungsregeln
+
+Vor einem Commit oder Update ausführen:
+
+```bash
+python -m compileall -q backend scripts tests
+python -m unittest discover -s tests -v
+```
+
+GitHub Actions führt diese Prüfungen bei Änderungen an `main` und in Pull Requests automatisch aus.
+
+`backend/main.py` enthält historisch noch viele unterschiedliche Verantwortlichkeiten. Eine vollständige Zerlegung erfolgt nicht innerhalb dieses Entwicklungsupdates, weil sie den Rennbetrieb unnötig gefährden würde. Neue Hardware-, Export-, Wertungs- und Integrationslogik gehört in eigene Module unter `backend/services` beziehungsweise in die bereits vorhandenen Logic- und Routes-Module. Bestehende Bereiche werden schrittweise und jeweils mit Tests ausgelagert.
+
+---
+
 # Version 1.7.2
 
 - Stabilisierung der Modbus-TCP Kommunikation zur Siemens LOGO!
@@ -393,9 +417,9 @@ esp32/startdisplay/README.md
 
 ---
 
-# Projektstand / Version 1.6.0
+# Release-Historie ab Version 1.6.0
 
-Dieser Stand basiert auf Version 1.6.0 der Quad Parallel Race Software.
+Die folgenden Abschnitte dokumentieren ältere Entwicklungsstände und Funktionen.
 
 Kernpunkte:
 
@@ -533,8 +557,8 @@ cd ~
 git clone https://github.com/mrpointblue/Quad-Racing-Software.git
 cd /home/pi/Quad-Racing-Software
 
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 
 pip install --upgrade pip
 pip install -r requirements.txt
