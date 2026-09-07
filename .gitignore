@@ -24,6 +24,8 @@ logs/
 # Environment / secrets
 .env
 .env.*
+!.env.example
+.env.docker
 config.local.py
 
 # OS / editor
