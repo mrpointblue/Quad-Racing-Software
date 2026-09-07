@@ -18,17 +18,34 @@ Die vollständige Anlage wird über Docker Compose betrieben. Dabei werden autom
 
 Auf dem Raspberry Pi müssen weder Python, Chromium noch Python-Pakete separat installiert werden. Benötigt werden nur Docker Engine mit Compose-Plugin und Raspberry Pi OS mit aktiver Wayland-Desktop-Sitzung für den HDMI-Kiosk.
 
-## Installation mit einem Befehl
+## Offizielle Image-Installation
 
 Nach dem Klonen des Repositorys:
 
 ```bash
 cd ~/Quad-Racing-Software
+chmod +x install_release.sh
+./install_release.sh
+```
+
+Diese Installation kompiliert keine Anwendung auf dem Raspberry Pi. Sie lädt die für ARM64 und AMD64 vorbereiteten Images aus der GitHub Container Registry und startet die vollständige Anlage. Während der Entwicklungsphase wird standardmäßig der Kanal `dev` verwendet. Nach dem stabilen Release kann eine feste Version gewählt werden:
+
+```bash
+QUAD_RACE_TAG=1.7.4 ./install_release.sh
+```
+
+Das Skript erkennt Benutzer, Wayland-Sitzung sowie Video-Gruppen automatisch. Der Kiosk wartet auf die Rennsoftware und öffnet anschließend selbstständig den Monitor unter `/ui/monitor`.
+
+## Lokale Entwicklungsinstallation
+
+Für Entwicklung oder Tests direkt aus dem ausgecheckten Quellcode:
+
+```bash
 chmod +x install_docker.sh
 ./install_docker.sh
 ```
 
-Das Skript erkennt Benutzer, Wayland-Sitzung sowie Video-Gruppen automatisch, baut alle Images und startet die gesamte Anlage. Der Kiosk wartet auf die Rennsoftware und öffnet anschließend selbstständig den Monitor unter `/ui/monitor`.
+Dieser Weg baut die Images lokal und verwendet `compose.yaml`. Die offizielle Auslieferung verwendet dagegen `compose.release.yaml` und fertige GHCR-Images.
 
 Datenbank, Sicherungen, Unterschriften und Vereinslogo liegen persistent in:
 
@@ -39,24 +56,24 @@ backend/static/uploads/
 
 Ein Neuaufbau oder Update der Container löscht diese Daten nicht.
 
-## Docker-Betrieb
+## Betrieb der offiziellen Installation
 
 ```bash
 # Status
-docker compose --env-file .env.docker ps
+docker compose --env-file .env.release -f compose.release.yaml ps
 
 # Protokolle
-docker compose --env-file .env.docker logs -f
+docker compose --env-file .env.release -f compose.release.yaml logs -f
 
-# Update
-git pull
-docker compose --env-file .env.docker up -d --build --remove-orphans
+# Aktualisierte Images laden
+docker compose --env-file .env.release -f compose.release.yaml pull
+docker compose --env-file .env.release -f compose.release.yaml up -d --remove-orphans
 
 # Neustart
-docker compose --env-file .env.docker restart
+docker compose --env-file .env.release -f compose.release.yaml restart
 
 # Stoppen
-docker compose --env-file .env.docker down
+docker compose --env-file .env.release -f compose.release.yaml down
 ```
 
 Die Container starten nach einem Neustart des Raspberry Pi automatisch wieder. Die Schaltfläche zum Neustart der Monitoranzeige arbeitet im Docker-Betrieb über den Kiosk-Container.
@@ -455,7 +472,9 @@ esp32/startdisplay/README.md
 - Chromium ist im Kiosk-Image enthalten und muss nicht mehr auf dem Host installiert werden.
 - Persistente Speicherung für Datenbank, Backups, Logos und Unterschriften eingerichtet.
 - Monitor-Neustart aus der Weboberfläche mit dem Docker-Kiosk verbunden.
-- Docker-Konfiguration und beide Images werden durch GitHub Actions geprüft.
+- Entwicklungs- und Release-Compose-Konfiguration sowie beide Images werden durch GitHub Actions geprüft.
+- Multi-Arch-Images für `linux/arm64` und `linux/amd64` werden automatisch in GHCR veröffentlicht.
+- `main` veröffentlicht den Kanal `dev`; Versions-Tags wie `v1.7.4` veröffentlichen `1.7.4`, `1.7` und `latest`.
 - Offline-Zeitsetzung für Docker korrigiert: Host-Zeitzone wird übernommen und die Raspberry-Pi-Uhr über die freigegebene `SYS_TIME`-Berechtigung gesetzt.
 - Zeitlogik in einen eigenen Service ausgelagert und mit automatisierten Tests abgesichert.
 
