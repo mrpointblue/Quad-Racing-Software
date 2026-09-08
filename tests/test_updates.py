@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from backend.services.updates import safety_reason, updater_request
-from scripts.update_agent import Agent, IMAGES, validate_manifest
+from scripts.update_agent import Agent, IMAGES, validate_manifest, matches_image
 
 
 def image(n):
@@ -149,7 +149,7 @@ class UpdateTests(unittest.TestCase):
                 return json.dumps({"config": {"Labels": {"org.opencontainers.image.revision": revision, "io.quad-race.updater.protocol": "1"}}})
             if "@" in ref:
                 return json.dumps({"config": {"digest": image(2)}})
-            return json.dumps({"manifests": [{"platform": {"os": "linux", "architecture": "arm64"}, "digest": image(3)}]})
+            return json.dumps({"digest": image(4), "manifests": [{"platform": {"os": "linux", "architecture": "arm64"}, "digest": image(3)}]})
         self.agent.run = run
 
     def test_dev_digest_comparison_detects_new_build(self):
@@ -165,6 +165,41 @@ class UpdateTests(unittest.TestCase):
         self.mock_registry(mixed=True)
         with self.assertRaisesRegex(RuntimeError, "unterschiedliche"):
             self.agent.check()
+
+    def test_all_docker_image_id_forms_detect_current_build(self):
+        self.mock_registry()
+        for digest in (image(2), image(3), image(4)):
+            with self.subTest(digest=digest):
+                self.agent.installed = lambda: {s: dict(self.old[s], id=digest) for s in IMAGES}
+                self.assertFalse(self.agent.check()[2])
+
+    def test_reported_pi_digests_are_the_same_image(self):
+        candidate = {
+            "index_digest": "sha256:912411aadfd0a0a92c3bc29e65126646d727d3767bfb721e11959db5214e898d",
+            "manifest_digest": "sha256:a638913b0faf195a5497b155f49dcbd087092b232dcd6b964162db9627bf39a5",
+            "id": "sha256:e7703236cf1bfe4871d6ab67f6061aa02fe03461988188cf92c27ef8ae7c85eb",
+        }
+        for digest in candidate.values():
+            self.assertTrue(matches_image(digest, candidate))
+        self.assertFalse(matches_image(image(9), candidate))
+        # Another architecture's manifest from the same index is not acceptable.
+        self.assertFalse(matches_image("sha256:c53eb7bef8b1d6ca3c7a13dac37d06324bcc285932f3b31ec7de79a0eb0ae133", candidate))
+        self.assertFalse(matches_image("", candidate))
+
+    def test_manifest_ids_pass_download_and_post_install_verification(self):
+        self.setup_install()
+        for c in self.new.values():
+            c.update(manifest_digest=image(3), index_digest=image(4))
+        self.agent.run = lambda args, timeout=120: json.dumps([{"Id": image(3)}]) if args[1:3] == ["image", "inspect"] else ""
+        self.agent.installed = lambda: {s: {"id": image(3)} for s in IMAGES}
+        with patch.object(self.agent, "compose"):
+            self.agent.install()
+        self.assertEqual(self.agent.snapshot()["phase"], "success")
+
+    def test_changed_digest_with_same_revision_remains_an_update(self):
+        self.mock_registry()
+        self.agent.installed = lambda: {s: dict(self.old[s], revision="a") for s in IMAGES}
+        self.assertTrue(self.agent.check()[2])
 
     def test_offline_check_clears_installability_without_stopping(self):
         self.agent.set(available=True)

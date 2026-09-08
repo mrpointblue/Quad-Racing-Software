@@ -48,6 +48,17 @@ def command(args, cwd, timeout=120):
         raise RuntimeError("Befehl fehlgeschlagen: " + " ".join(args[:3]) + ". Netzwerk/GHCR-Anmeldung und Docker prüfen.") from None
 
 
+def matches_image(local_id, candidate):
+    """Docker stores either the index, platform manifest or config as image ID.
+
+    These digests are linked by the exact registry index inspected in check().
+    A Git revision alone cannot distinguish two builds of the same source.
+    """
+    return bool(DIGEST.fullmatch(local_id or "")) and local_id in {
+        candidate.get("index_digest"), candidate.get("manifest_digest"), candidate.get("id")
+    }
+
+
 def validate_manifest(manifest, architecture):
     if "manifests" in manifest:
         matches = [m for m in manifest["manifests"] if m.get("platform", {}).get("os") == "linux"
@@ -127,7 +138,10 @@ class Agent:
             ref = config["services"][service]["image"]
             if not re.fullmatch(re.escape(IMAGES[service]) + r":[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}", ref):
                 raise RuntimeError("Nur der konfigurierte offizielle Image-Kanal wird unterstützt.")
-            index = json.loads(self.run(["docker", "buildx", "imagetools", "inspect", ref, "--raw"], 45))
+            index = json.loads(self.run(["docker", "buildx", "imagetools", "inspect", ref, "--format", "{{json .Manifest}}"], 45))
+            index_digest = index.get("digest", "")
+            if not DIGEST.fullmatch(index_digest):
+                raise RuntimeError("Ungültiger Multi-Arch-Index-Digest.")
             digest = validate_manifest(index, installed[service]["architecture"])
             pinned = IMAGES[service] + "@" + digest
             manifest = json.loads(self.run(["docker", "buildx", "imagetools", "inspect", pinned, "--raw"], 45))
@@ -137,6 +151,7 @@ class Agent:
             image_config = json.loads(self.run(["docker", "buildx", "imagetools", "inspect", pinned, "--format", "{{json .Image}}"], 45))
             labels = image_config.get("config", {}).get("Labels") or {}
             candidate[service] = {"ref": pinned, "id": image_id, "channel": ref.rsplit(":", 1)[1],
+                                  "index_digest": index_digest, "manifest_digest": digest,
                                   "revision": labels.get("org.opencontainers.image.revision", ""),
                                   "protocol": labels.get("io.quad-race.updater.protocol", "")}
         if not candidate["race"]["revision"] or candidate["race"]["revision"] != candidate["kiosk"]["revision"]:
@@ -144,7 +159,7 @@ class Agent:
         if any(c["protocol"] != PROTOCOL for c in candidate.values()):
             raise RuntimeError("Dieser Build benötigt eine manuelle Aktualisierung des Installers/Update-Dienstes.")
         candidate["checkin"] = dict(candidate["race"])
-        available = any(installed[s]["id"] != candidate[s]["id"] for s in IMAGES)
+        available = any(not matches_image(installed[s]["id"], candidate[s]) for s in IMAGES)
         self.set(phase="ready", available=available, installed=installed, candidate=candidate,
                  checked_at=time.strftime("%Y-%m-%d %H:%M:%S"),
                  message="Update verfügbar." if available else "Software ist aktuell.")
@@ -182,7 +197,7 @@ class Agent:
         for service in ("race", "kiosk"):
             self.run(["docker", "pull", candidate[service]["ref"]], 1800)
             actual = json.loads(self.run(["docker", "image", "inspect", candidate[service]["ref"]]))[0]
-            if actual["Id"] != candidate[service]["id"]:
+            if not matches_image(actual["Id"], candidate[service]):
                 raise RuntimeError("Geladenes Image entspricht nicht dem geprüften Build.")
         override = self.override("candidate.json", {s: candidate[s]["ref"] for s in IMAGES})
         old_override = self.override("previous.json", {s: installed[s]["id"] for s in IMAGES})
@@ -213,7 +228,7 @@ class Agent:
                 self.compose("up", "-d", "--no-build", "--pull", "never", "--wait", "--wait-timeout", "180", override=override, timeout=240)
                 self.set(phase="verifying", message="Prüfe gestartete Container …")
                 actual = self.installed()
-                if any(actual[s]["id"] != candidate[s]["id"] for s in IMAGES):
+                if any(not matches_image(actual[s]["id"], candidate[s]) for s in IMAGES):
                     raise RuntimeError("Nicht alle Container verwenden den erwarteten Build.")
                 self.set(phase="success", available=False, installed=actual, message="Update erfolgreich installiert. Seite neu laden.")
             except Exception:
