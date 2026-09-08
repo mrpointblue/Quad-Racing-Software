@@ -13,3 +13,8 @@ backend/static/uploads/*
 logs
 *.log
 .env
+
+# Host update service state and complete data backups
+.update/
+update-backups/
+

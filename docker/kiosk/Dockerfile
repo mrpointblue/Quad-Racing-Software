@@ -1,4 +1,5 @@
 FROM debian:bookworm-slim
+LABEL io.quad-race.updater.protocol="1"
 
 ENV DEBIAN_FRONTEND=noninteractive
 

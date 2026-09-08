@@ -27,10 +27,12 @@ jobs:
         run: python -m compileall -q backend scripts tests
 
       - name: Automatisierte Tests ausführen
-        run: python -m unittest discover -s tests -v
+        run: |
+          python -m pip install -r requirements.txt
+          python -m unittest discover -s tests -v
 
       - name: Installationsskripte prüfen
-        run: bash -n install_docker.sh install_release.sh install_service.sh
+        run: bash -n install_docker.sh install_release.sh install_service.sh install_update_service.sh
 
       - name: Docker Compose prüfen
         run: |

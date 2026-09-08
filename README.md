@@ -663,3 +663,77 @@ Danach im Browser öffnen:
 ```text
 http://<IP-DES-PI>:8000
 ```
+# Updates über die Systemeinstellungen (Docker-Auslieferung)
+
+Unter **Systemeinstellungen → Software-Update** stehen installierter Build,
+verfügbarer Build, Kanal, letzte Prüfung und **Installieren**. Der Host-Dienst
+prüft stündlich sowie auf Knopfdruck. Verglichen werden Image-Digests, nicht nur
+die unveränderte Versionsnummer `1.7.4-dev`. Der konfigurierte Kanal aus
+`.env.release` bleibt erhalten; ein fester Versions-Tag wechselt nicht automatisch
+auf eine andere Version. Für laufende Entwicklung ist der Kanal `dev` geeignet.
+
+## Einmalige Einrichtung bestehender Installationen
+
+In einer Rennpause, nachdem die beiden neuen Images vollständig veröffentlicht sind:
+
+```bash
+cd ~/Quad-Racing-Software
+git pull --ff-only
+bash install_release.sh
+```
+
+Der Installer richtet zusätzlich `quad-race-updater.service` ein. Als normaler
+Docker-Benutzer ausführen; `sudo` wird nur zur Einrichtung der systemd-Unit benutzt.
+Der Dienst verwendet Python 3 aus Raspberry Pi OS (keine zusätzlichen pip-Pakete),
+Docker Compose, Docker Buildx und die vorhandene GHCR-Anmeldung dieses Benutzers.
+Das erstmalige Einrichten benötigt deshalb noch das Terminal. Danach sind
+kompatible Image-Updates über den Browser möglich. Python 3 und Buildx müssen
+vorhanden sein; die Standardinstallation von Raspberry Pi OS und Docker bringt
+sie mit. Der Projektpfad darf für diese Service-Installation keine Leerzeichen enthalten.
+
+## Ablauf und Grenzen
+
+- Kein PIN-Schutz, wie für das vertrauenswürdige Rennnetz vorgesehen. Nicht ins
+  Internet freigeben. Browser-Anfragen von fremden Origins werden zurückgewiesen.
+- Der Host-Dienst lauscht ausschließlich an einem Unix-Socket. Nur der
+  Renncontainer erhält diesen Mount, schreibgeschützt. Weder Docker-Socket noch
+  Registry-Zugangsdaten werden in die Anwendung eingebunden.
+- Offline oder bei fehlenden GHCR-Rechten bleibt der Rennbetrieb unverändert;
+  die Anzeige meldet den Prüfungsfehler, es wird nichts installiert.
+- Nur vollständige Veröffentlichungen mit identischer Git-Revision von
+  Rennsoftware und Kiosk sowie passender Updater-Protokollversion sind zulässig.
+- Nach Klick auf **Installieren** werden zunächst unveränderlich per Digest
+  referenzierte Images heruntergeladen. Ein gestarteter, unbestätigter Lauf oder
+  laufende LOGO-Bahnen sperren die Installation. Bei aktivierter LOGO sperrt auch
+  ein unbekannter oder veralteter Hardwarestatus. Der Status wird nach dem
+  Download unter einer gemeinsamen Bedienungssperre erneut geprüft.
+- Erst danach werden Container gestoppt und `data/` sowie `uploads/` vollständig
+  in `update-backups/before-update-*.tar` gesichert. Bei fehlgeschlagener Sicherung
+  werden die bisherigen Images wieder gestartet. Sicherungen bleiben erhalten;
+  freien Speicher regelmäßig prüfen und Sicherungen extern aufbewahren.
+- Anschließend starten die neuen Images. Docker-Healthchecks prüfen Rennsoftware
+  und Check-in; beim Kiosk wird der laufende Container geprüft. Der echte HDMI-
+  Bildinhalt und LOGO-Funktionen können nicht automatisch verifiziert werden.
+- Während Installation/Neustart sind Oberfläche und Check-in kurz nicht erreichbar.
+  Die Einstellungsseite versucht die Verbindung automatisch wiederherzustellen.
+  Nach Erfolg die Seite neu laden.
+- **Keine physische Startsperre der LOGO:** nur in einer Rennpause installieren,
+  auch während des Updates keinen Hardwarestart auslösen. Die Software-Sperre
+  ersetzt keine Verriegelung der Zeitmesshardware.
+- Bei Stromausfall während des Austauschs oder fehlgeschlagenen Healthchecks
+  werden weitere Updates gesperrt. Kein automatisches Downgrade nach möglichen
+  Datenbankmigrationen. Container, Sicherung und Dienstprotokoll am Pi prüfen;
+  `.update/status.json` nicht ungeprüft löschen. Eine Wiederherstellung muss
+  passende alte Images **und** die gesicherten Daten berücksichtigen.
+- Diese Funktion aktualisiert Images, nicht den Host-Dienst oder die lokale
+  Compose-Datei. Änderungen daran benötigen weiterhin den einmaligen Terminalweg;
+  inkompatible Images müssen ihre `io.quad-race.updater.protocol`-Version erhöhen.
+
+Diagnose:
+
+```bash
+systemctl status quad-race-updater --no-pager
+journalctl -u quad-race-updater -n 80 --no-pager
+docker compose --env-file .env.release -f compose.release.yaml ps
+```
+

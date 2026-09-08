@@ -851,6 +851,22 @@
 </div>
 
 
+<div class="card" id="software-update-panel">
+    <h3>Software-Update</h3>
+    <p>Version {{ app_version }} · Rennsoftware, Check-in und HDMI-Kiosk</p>
+    <p id="software-update-status" role="status" aria-live="polite">Update-Status wird geladen …</p>
+    <p id="software-update-build"></p>
+    <p id="software-update-safety"></p>
+    <p id="software-update-backup"></p>
+    <button type="button" class="small-button" id="software-update-check" disabled>Nach Updates suchen</button>
+    <button type="button" class="small-button" id="software-update-install" disabled>Installieren</button>
+    <p>Automatische Prüfung stündlich, Installation nur per Klick. Während eines gestarteten,
+       unbestätigten Laufs ist die Installation gesperrt. In einer Rennpause installieren;
+       währenddessen auch keinen Start an der LOGO auslösen. Oberfläche und Check-in sind kurz nicht erreichbar.</p>
+    <p>Kein PIN-Schutz: Diese Funktion ist für Geräte im vertrauenswürdigen Rennnetz zugänglich.</p>
+</div>
+<script src="/static/updates.js" defer></script>
+
 <script>
     const defaultOpenSettingsAccordions = {
         logo_connection: true,

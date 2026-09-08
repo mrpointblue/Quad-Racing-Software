@@ -4,6 +4,12 @@ set -euo pipefail
 BASE_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 cd "$BASE_DIR"
 
+if [ "$(id -u)" -eq 0 ]; then
+    echo "Bitte als normaler Docker-Benutzer ausführen, nicht mit sudo."
+    exit 1
+fi
+command -v python3 >/dev/null || { echo "Python 3 vom Raspberry-Pi-OS fehlt."; exit 1; }
+
 COMPOSE_FILE="compose.release.yaml"
 QUAD_RACE_TAG="${QUAD_RACE_TAG:-dev}"
 
@@ -17,6 +23,7 @@ if ! docker compose version >/dev/null 2>&1; then
     echo "FEHLER: Das Docker-Compose-Plugin ist nicht verfügbar."
     exit 1
 fi
+docker buildx version >/dev/null || { echo "Docker Buildx fehlt für die Updateprüfung."; exit 1; }
 
 if [ ! -f "$COMPOSE_FILE" ]; then
     echo "FEHLER: $COMPOSE_FILE wurde nicht gefunden."
@@ -48,6 +55,9 @@ VIDEO_GID="${VIDEO_GID:-$KIOSK_GID}"
 RENDER_GID="${RENDER_GID:-$VIDEO_GID}"
 
 mkdir -p data uploads/signatures
+mkdir -p .update
+chmod 700 .update
+touch data/update-maintenance.lock
 if [ "$(id -u)" -eq 0 ]; then
     chown -R "$KIOSK_UID:$KIOSK_GID" data uploads
 fi
@@ -72,6 +82,9 @@ echo "Lade Quad Race $QUAD_RACE_TAG..."
 
 echo "Starte Rennsoftware, Check-in und HDMI-Kiosk..."
 "${COMPOSE[@]}" up -d --remove-orphans
+
+# Host worker uses the existing user's Docker login; no Docker socket in the app.
+bash "$BASE_DIR/install_update_service.sh"
 
 echo
 echo "Quad Race $QUAD_RACE_TAG wurde gestartet:"

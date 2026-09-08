@@ -8,6 +8,7 @@ x-app: &app
   environment:
     CONTAINERIZED: "true"
     KIOSK_RELOAD_FILE: /app/data/kiosk-reload.request
+    QUAD_UPDATE_LOCK: /app/data/update-maintenance.lock
   volumes:
     - ./data:/app/data
     - ./uploads:/app/backend/static/uploads
@@ -18,6 +19,17 @@ services:
   race:
     <<: *app
     container_name: quad-race
+    environment:
+      CONTAINERIZED: "true"
+      KIOSK_RELOAD_FILE: /app/data/kiosk-reload.request
+      QUAD_UPDATE_LOCK: /app/data/update-maintenance.lock
+      QUAD_UPDATE_SOCKET: /run/quad-update/agent.sock
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/backend/static/uploads
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - ./.update:/run/quad-update:ro
     cap_add:
       - SYS_TIME
     command:

@@ -70,6 +70,7 @@ from backend.export_logic import build_class_export_rows, build_overall_rows
 from backend.statistics_logic import build_result_statistics
 from backend.services.logo_client import build_logo_client
 from backend.services.system_time import parse_system_time_input, set_system_time
+from backend.services.updates import install_update_guard, updater_request, safety_reason
 
 
 EVENT_YEAR = datetime.now().year
@@ -94,6 +95,7 @@ app = FastAPI(
     title="Quad Parallel Race",
     version=APP_VERSION,
 )
+install_update_guard(app)
 
 Base.metadata.create_all(bind=engine)
 CLUB_LOGO_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -7925,6 +7927,38 @@ def get_database_backup_items() -> list[dict]:
         )
 
     return backup_items
+
+
+@app.get("/api/system/update/safety")
+def update_safety(db: Session = Depends(get_db)):
+    running = db.query(RaceRun).filter(
+        RaceRun.confirmed.is_(False), RaceRun.status.in_(["running", "started"])
+    ).first() is not None
+    logo = get_logo_status_payload()
+    age = logo.get("cache_age_ms", 6000) / 1000
+    reason = safety_reason(running, get_logo_settings(db).get("logo_enabled") == "true", logo, age)
+    return {"protocol": "1", "safe": not bool(reason), "reason": reason}
+
+
+@app.get("/api/system/update")
+def update_status(db: Session = Depends(get_db)):
+    state = updater_request("status")
+    state["safety"] = update_safety(db)
+    return state
+
+
+@app.post("/api/system/update/{action}")
+def update_action(action: str, request: Request, db: Session = Depends(get_db)):
+    # No PIN by design. Block cross-site browser requests; no CORS enabled here.
+    if request.headers.get("origin") != str(request.base_url).rstrip("/"):
+        raise HTTPException(403, "Update-Aktion nur aus dieser Oberfläche erlaubt.")
+    if request.headers.get("x-quad-update") != "1" or action not in {"check", "install"}:
+        raise HTTPException(400, "Ungültige Update-Aktion.")
+    if action == "install":
+        safety = update_safety(db)
+        if not safety["safe"]:
+            raise HTTPException(409, safety["reason"])
+    return updater_request(action)
 
 
 @app.get("/ui/settings")

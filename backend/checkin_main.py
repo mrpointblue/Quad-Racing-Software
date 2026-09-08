@@ -19,11 +19,13 @@ from backend.database import Base, DATA_DIR, engine, get_db
 from backend.models import Event, DriverProfile, Participant, Registration, RegistrationSignature
 from backend.template_helpers import register_template_helpers
 from backend.version import APP_VERSION
+from backend.services.updates import install_update_guard
 
 app = FastAPI(
     title="Quad Parallel Race Check-in",
     version=APP_VERSION,
 )
+install_update_guard(app)
 
 Base.metadata.create_all(bind=engine)
 DATA_DIR.mkdir(parents=True, exist_ok=True)

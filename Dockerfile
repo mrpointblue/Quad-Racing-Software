@@ -1,4 +1,5 @@
 FROM python:3.11-slim-bookworm
+LABEL io.quad-race.updater.protocol="1"
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
