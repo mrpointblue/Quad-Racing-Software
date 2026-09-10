@@ -647,10 +647,6 @@
 
                 <dl class="diagnostics-list">
                     <div>
-                        <dt>Software-Version</dt>
-                        <dd>v{{ app_version }}</dd>
-                    </div>
-                    <div>
                         <dt>Aktuelle Pi-Zeit</dt>
                         <dd>{{ system_status.current_time }}</dd>
                     </div>
@@ -862,12 +858,12 @@
             <section class="diagnostics-panel diagnostics-panel-wide">
                 <div class="diagnostics-panel-heading">
                     <h3>Softwarestand</h3>
-                    <span>v{{ app_version }}</span>
                 </div>
                 <div id="software-update-status" class="diagnostics-note" role="status" aria-live="polite">
                     Update-Status wird geladen …
                 </div>
                 <dl class="diagnostics-list" id="software-update-build">
+                    <div><dt>Software-Version</dt><dd>v{{ app_version }}</dd></div>
                     <div><dt>Installierter Build</dt><dd id="software-update-current">—</dd></div>
                     <div><dt>Verfügbarer Build</dt><dd id="software-update-next">—</dd></div>
                     <div><dt>Updatekanal</dt><dd id="software-update-channel">—</dd></div>
