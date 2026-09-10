@@ -230,7 +230,7 @@ class Agent:
                 actual = self.installed()
                 if any(not matches_image(actual[s]["id"], candidate[s]) for s in IMAGES):
                     raise RuntimeError("Nicht alle Container verwenden den erwarteten Build.")
-                self.set(phase="success", available=False, installed=actual, message="Update erfolgreich installiert. Seite neu laden.")
+                self.set(phase="success", available=False, installed=actual, message="Update erfolgreich installiert.")
             except Exception:
                 if stopped and not launched:
                     try:

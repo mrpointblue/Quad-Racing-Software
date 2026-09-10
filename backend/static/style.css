@@ -3401,3 +3401,13 @@ select {
         page-break-after: auto;
     }
 }
+
+/* Update panel reuses the settings and diagnostics components. */
+#software-update-panel [hidden] {
+    display: none;
+}
+
+#software-update-status {
+    margin: 0 0 14px;
+}
+

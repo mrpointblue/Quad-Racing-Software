@@ -851,19 +851,50 @@
 </div>
 
 
-<div class="card" id="software-update-panel">
-    <h3>Software-Update</h3>
-    <p>Version {{ app_version }} · Rennsoftware, Check-in und HDMI-Kiosk</p>
-    <p id="software-update-status" role="status" aria-live="polite">Update-Status wird geladen …</p>
-    <p id="software-update-build"></p>
-    <p id="software-update-safety"></p>
-    <p id="software-update-backup"></p>
-    <button type="button" class="small-button" id="software-update-check" disabled>Nach Updates suchen</button>
-    <button type="button" class="small-button" id="software-update-install" disabled>Installieren</button>
-    <p>Automatische Prüfung stündlich, Installation nur per Klick. Während eines gestarteten,
-       unbestätigten Laufs ist die Installation gesperrt. In einer Rennpause installieren;
-       währenddessen auch keinen Start an der LOGO auslösen. Oberfläche und Check-in sind kurz nicht erreichbar.</p>
-    <p>Kein PIN-Schutz: Diese Funktion ist für Geräte im vertrauenswürdigen Rennnetz zugänglich.</p>
+<div class="card settings-accordion-card" id="software-update-panel">
+    <button type="button" class="settings-accordion-header"
+            onclick="toggleSettingsAccordion('software_update')">
+        <span>Software-Update</span>
+        <span class="settings-accordion-indicator" id="indicator_software_update">▼</span>
+    </button>
+    <div class="settings-accordion-body" id="accordion_software_update">
+        <div class="diagnostics-overview">
+            <section class="diagnostics-panel diagnostics-panel-wide">
+                <div class="diagnostics-panel-heading">
+                    <h3>Softwarestand</h3>
+                    <span>v{{ app_version }}</span>
+                </div>
+                <div id="software-update-status" class="diagnostics-note" role="status" aria-live="polite">
+                    Update-Status wird geladen …
+                </div>
+                <dl class="diagnostics-list" id="software-update-build">
+                    <div><dt>Installierter Build</dt><dd id="software-update-current">—</dd></div>
+                    <div><dt>Verfügbarer Build</dt><dd id="software-update-next">—</dd></div>
+                    <div><dt>Updatekanal</dt><dd id="software-update-channel">—</dd></div>
+                    <div><dt>Letzte Prüfung</dt><dd id="software-update-checked">—</dd></div>
+                    <div id="software-update-backup-row" hidden>
+                        <dt>Letzte Sicherung</dt><dd id="software-update-backup">—</dd>
+                    </div>
+                </dl>
+            </section>
+            <section class="diagnostics-panel diagnostics-panel-wide">
+                <div class="diagnostics-panel-heading">
+                    <h3>Aktionen</h3>
+                    <span>Rennsoftware, Check-in und HDMI-Kiosk</span>
+                </div>
+                <div id="software-update-safety" class="error" hidden></div>
+                <div class="diagnostics-actions">
+                    <button type="button" class="small-button" id="software-update-check" disabled>Nach Updates suchen</button>
+                    <button type="button" class="small-button" id="software-update-install" disabled>Installieren</button>
+                </div>
+            </section>
+        </div>
+        <p class="diagnostics-note diagnostics-footer-note">
+            Automatische Prüfung stündlich. Updates nur in einer Rennpause installieren;
+            währenddessen keinen Start an der LOGO auslösen. Oberfläche und Check-in sind kurz nicht erreichbar.
+            Die Funktion ist ohne PIN für Geräte im vertrauenswürdigen Rennnetz zugänglich.
+        </p>
+    </div>
 </div>
 <script src="/static/updates.js" defer></script>
 
@@ -876,6 +907,7 @@
         marshals: false,
         database_backup: false,
         system_status: true,
+        software_update: true,
         startdisplay: false,
     };
 

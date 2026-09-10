@@ -34,6 +34,12 @@ jobs:
       - name: Installationsskripte prüfen
         run: bash -n install_docker.sh install_release.sh install_service.sh install_update_service.sh
 
+      - name: Update-Oberfläche prüfen
+        run: node tests/test_updates_ui.cjs
+
+      - name: JavaScript-Syntax prüfen
+        run: node --check backend/static/updates.js
+
       - name: Docker Compose prüfen
         run: |
           docker compose config --quiet
