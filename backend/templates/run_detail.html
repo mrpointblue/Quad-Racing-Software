@@ -84,6 +84,12 @@
                     · Klasse {{ next_unconfirmed_run.race_class }}
                     · {{ next_unconfirmed_run.pairing_number }}.{{ next_unconfirmed_run.run_number }}
                 </a>
+            {% elif race_run.confirmed and not next_unconfirmed_run %}
+                <a class="button small-button red-button next-run-button-prominent"
+                   style="box-shadow: none;"
+                   href="/ui/events/{{ active_event.id }}/classes">
+                    Durchlauf abgeschlossen – Zur Rennübersicht
+                </a>
             {% endif %}
 
             <a class="button small-button" href="/ui/events/{{ active_event.id }}/classes">
