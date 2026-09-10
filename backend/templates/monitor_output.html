@@ -55,15 +55,25 @@
 
                 <div>
                     <div class="selection-label">Format</div>
-                    <div class="pill-grid monitor-format-picker">
+                    <div class="pill-grid monitor-format-picker monitor-orientation-picker">
                         <label class="select-pill">
                             <input
                                 type="radio"
                                 name="display_orientation"
                                 value="landscape"
-                                {% if setting.display_orientation != "portrait" %}checked{% endif %}
+                                {% if setting.display_orientation not in ["portrait", "portrait_left"] %}checked{% endif %}
                             >
                             <span>Normal</span>
+                        </label>
+
+                        <label class="select-pill">
+                            <input
+                                type="radio"
+                                name="display_orientation"
+                                value="portrait_left"
+                                {% if setting.display_orientation == "portrait_left" %}checked{% endif %}
+                            >
+                            <span>Gedreht links</span>
                         </label>
 
                         <label class="select-pill">
@@ -73,7 +83,7 @@
                                 value="portrait"
                                 {% if setting.display_orientation == "portrait" %}checked{% endif %}
                             >
-                            <span>Gedreht 90°</span>
+                            <span>Gedreht rechts</span>
                         </label>
                     </div>
                 </div>

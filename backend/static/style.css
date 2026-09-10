@@ -3455,3 +3455,12 @@ select {
         width: 100%;
     }
 }
+
+/* Both mounting directions share the existing portrait layout. */
+.monitor-portrait.monitor-portrait-left .container {
+    transform: rotate(-90deg) translateX(-100%);
+}
+
+.monitor-orientation-picker {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}

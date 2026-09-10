@@ -2,7 +2,7 @@
 
 {% block title %}Monitor{% if active_event %} - {{ active_event.event_number }}{% endif %}{% endblock %}
 
-{% block body_class %}monitor-body monitor-{{ monitor_data.display_setting.display_orientation or 'landscape' }} monitor-theme-{{ monitor_data.display_setting.display_theme or 'dark' }}{% endblock %}
+{% block body_class %}monitor-body {% if monitor_data.display_setting.display_orientation in ["portrait", "portrait_left"] %}monitor-portrait{% if monitor_data.display_setting.display_orientation == "portrait_left" %} monitor-portrait-left{% endif %}{% else %}monitor-landscape{% endif %} monitor-theme-{{ monitor_data.display_setting.display_theme or 'dark' }}{% endblock %}
 
 {% block content %}
 {% set club_logo_path = get_club_logo_path() %}
@@ -891,8 +891,11 @@
                     return;
                 }
 
-                document.body.classList.toggle("monitor-portrait", data.display_setting.display_orientation === "portrait");
-                document.body.classList.toggle("monitor-landscape", data.display_setting.display_orientation !== "portrait");
+                const orientation = data.display_setting.display_orientation;
+                const isPortrait = orientation === "portrait" || orientation === "portrait_left";
+                document.body.classList.toggle("monitor-portrait", isPortrait);
+                document.body.classList.toggle("monitor-portrait-left", orientation === "portrait_left");
+                document.body.classList.toggle("monitor-landscape", !isPortrait);
                 document.body.classList.toggle("monitor-theme-light", data.display_setting.display_theme === "light");
                 document.body.classList.toggle("monitor-theme-dark", data.display_setting.display_theme !== "light");
 

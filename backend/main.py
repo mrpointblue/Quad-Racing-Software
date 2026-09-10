@@ -5391,8 +5391,8 @@ async def ui_event_update_monitor_output(
     setting.show_statistics = form.get("show_statistics") == "1"
     setting.show_checkin_qr = form.get("show_checkin_qr") == "1"
     setting.display_orientation = (
-        "portrait"
-        if form.get("display_orientation") == "portrait"
+        form.get("display_orientation")
+        if form.get("display_orientation") in ("landscape", "portrait", "portrait_left")
         else "landscape"
     )
     setting.display_theme = (
