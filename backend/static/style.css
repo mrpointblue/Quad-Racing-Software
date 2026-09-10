@@ -3411,3 +3411,47 @@ select {
     margin: 0 0 14px;
 }
 
+
+/* More breathing room without changing the shared settings design. */
+#software-update-panel .diagnostics-overview {
+    gap: 20px;
+}
+#software-update-panel .diagnostics-panel {
+    padding: 20px;
+}
+#software-update-panel .diagnostics-panel-heading {
+    margin-bottom: 20px;
+    gap: 16px;
+}
+#software-update-panel .software-update-version {
+    font-size: 20px;
+    color: #111827;
+}
+#software-update-status {
+    margin-bottom: 22px;
+}
+#software-update-build {
+    gap: 16px;
+}
+#software-update-build > div {
+    column-gap: 24px;
+}
+#software-update-panel .diagnostics-actions {
+    gap: 14px;
+}
+#software-update-panel .diagnostics-actions .small-button {
+    padding: 12px 18px;
+    min-height: 44px;
+}
+#software-update-panel .diagnostics-footer-note {
+    margin-top: 20px;
+    line-height: 1.6;
+}
+@media (max-width: 600px) {
+    #software-update-panel .diagnostics-panel {
+        padding: 16px;
+    }
+    #software-update-panel .diagnostics-actions .small-button {
+        width: 100%;
+    }
+}

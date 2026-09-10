@@ -67,4 +67,4 @@ class GuardTests(unittest.TestCase):
         env.parse(Path("backend/templates/settings.html").read_text())
         source = Path("backend/templates/settings.html").read_text()
         self.assertIn('id="software-update-install"', source)
-        self.assertIn('src="/static/updates.js"', source)
+        self.assertIn('src="/static/updates.js?v=', source)

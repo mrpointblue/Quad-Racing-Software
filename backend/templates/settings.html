@@ -849,12 +849,12 @@
             <section class="diagnostics-panel diagnostics-panel-wide">
                 <div class="diagnostics-panel-heading">
                     <h3>Softwarestand</h3>
+                    <span class="software-update-version" aria-label="Software-Version">v{{ app_version }}</span>
                 </div>
                 <div id="software-update-status" class="diagnostics-note" role="status" aria-live="polite">
                     Update-Status wird geladen …
                 </div>
                 <dl class="diagnostics-list" id="software-update-build">
-                    <div><dt>Software-Version</dt><dd>v{{ app_version }}</dd></div>
                     <div><dt>Installierter Build</dt><dd id="software-update-current">—</dd></div>
                     <div><dt>Verfügbarer Build</dt><dd id="software-update-next">—</dd></div>
                     <div><dt>Updatekanal</dt><dd id="software-update-channel">—</dd></div>
@@ -883,7 +883,7 @@
         </p>
     </div>
 </div>
-<script src="/static/updates.js" defer></script>
+<script src="/static/updates.js?v=20260910-02" defer></script>
 
 <script>
     const defaultOpenSettingsAccordions = {
