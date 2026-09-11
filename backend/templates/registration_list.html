@@ -68,7 +68,7 @@
             <p>Veranstaltung: <strong>{{ active_event.event_number }} – {{ active_event.name }}</strong></p>
         </div>
 
-        <a class="button" href="http://race.local:8010/checkin" target="_blank" rel="noopener">
+        <a class="button" href="{{ request.url.replace(scheme='http', port=8010, path='/checkin', query='', fragment='') }}" target="_blank" rel="noopener">
             Check-in Terminal öffnen
         </a>
     </div>
