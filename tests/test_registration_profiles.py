@@ -5,6 +5,12 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+try:
+    import sqlalchemy
+    import fastapi
+except ImportError as error:
+    raise unittest.SkipTest("Application dependencies are installed in the full test job") from error
+
 from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
