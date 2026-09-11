@@ -68,6 +68,7 @@ from backend.results_logic import (
 )
 from backend.export_logic import build_class_export_rows, build_overall_rows
 from backend.statistics_logic import build_result_statistics
+from backend.services.registration_profiles import save_registration_driver_profile
 from backend.services.logo_client import build_logo_client
 from backend.services.system_time import parse_system_time_input, set_system_time
 from backend.services.updates import install_update_guard, updater_request, safety_reason
@@ -3150,6 +3151,8 @@ def ui_event_registration_approve(
     registration.updated_at = now_string()
 
     try:
+        profile = save_registration_driver_profile(db, registration)
+        participant.driver_profile_id = profile.id
         db.commit()
     except IntegrityError:
         db.rollback()
