@@ -8,6 +8,10 @@
 - Die Hilfeseite wurde übersichtlicher aufgebaut und verwendet die Bezeichnungen der sichtbaren Oberfläche.
 - Der Docker-Veröffentlichungsablauf installiert die benötigten Python-Abhängigkeiten vor den Regressionstests.
 
+## Auslieferung
+
+Die Stable-Docker-Images werden für ARM64 und AMD64 veröffentlicht. Der Versions-Tag `1.7.5` bleibt fest auf diesem Stand; `latest` verweist auf die aktuelle Stable-Version.
+
 ## Aktualisierung
 
 Bestehende Stable-Installationen können das Update unter **Systemeinstellungen → Software-Update → Nach Updates suchen → Installieren** einspielen, sobald beide Docker-Images vollständig veröffentlicht sind.
