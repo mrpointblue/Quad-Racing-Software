@@ -3,14 +3,11 @@
 {% block content %}
 
 <div class="card help-link-card">
-    <h2>Hilfe / Anleitung</h2>
-
+    <h2>Hilfe</h2>
     <p>
-        Diese Seite erklärt die wichtigsten Funktionen der Quad Parallel Race Software.
-        Die Software unterstützt die Veranstaltung von der Teilnehmererfassung über die Startfreigabe
-        bis zum Rennbetrieb, zur Zeitnahme, Ergebnisanzeige, Monitor-Ausgabe und zum Export.
+        Hier finden Sie den Ablauf von der Veranstaltung bis zur fertigen Wertung.
+        Die Bezeichnungen entsprechen den Menüs und Schaltflächen der Oberfläche.
     </p>
-
     <p>
         <a
             class="button"
@@ -21,628 +18,299 @@
             Aktuelle ADAC Reglements und Unterlagen öffnen
         </a>
     </p>
-
     <div class="hint">
-        Hinweis: Maßgeblich sind immer die aktuellen Reglements und Ausschreibungen.
-        Die Software unterstützt den Ablauf, ersetzt aber keine Prüfung durch Zeitnahme oder Rennleitung.
+        Maßgeblich sind immer die aktuellen Reglements und Ausschreibungen.
+        Die Software unterstützt den Ablauf; Entscheidungen trifft die Rennleitung.
     </div>
 </div>
 
+<div class="card">
+    <h3>Schnellstart am Veranstaltungstag</h3>
+    <ol>
+        <li>Unter <strong>Veranstaltung</strong> eine Veranstaltung öffnen oder neu anlegen.</li>
+        <li>Unter <strong>Nennung</strong> Teilnehmer erfassen und den <strong>Check-in</strong> bearbeiten.</li>
+        <li>Die <strong>Teilnehmerliste</strong> kontrollieren und anschließend die <strong>Startfreigabe</strong> erteilen.</li>
+        <li>Unter <strong>Rennen</strong> den <strong>Rennbetrieb</strong> öffnen und die Läufe durchführen.</li>
+        <li>Unter <strong>Wertung</strong> die <strong>Ergebnisse</strong> und die <strong>Mannschaftswertung</strong> prüfen.</li>
+        <li>Unter <strong>Anzeige</strong> festlegen, was auf dem <strong>Monitor</strong> erscheint.</li>
+        <li>Nach der Veranstaltung unter <strong>Konfiguration</strong> eine <strong>Datenbank-Sicherung</strong> erstellen.</li>
+    </ol>
+</div>
+
 <div class="card settings-accordion-card">
-    <button
-        type="button"
-        class="settings-accordion-header"
-        onclick="toggleSettingsAccordion('basics')"
-    >
-        <span>1. Grundprinzip der Software</span>
-        <span class="settings-accordion-indicator" id="indicator_basics">▼</span>
+    <button type="button" class="settings-accordion-header" onclick="toggleHelpAccordion('event')">
+        <span>1. Veranstaltung</span>
+        <span class="settings-accordion-indicator" id="indicator_event">▼</span>
     </button>
-
-    <div class="settings-accordion-body" id="accordion_basics">
-
-    <p>
-        Die Software ist veranstaltungsbezogen aufgebaut. Jede Veranstaltung besitzt eigene Teilnehmer,
-        Startfreigaben, Läufe, Ergebnisse, Mannschaftswertungen, Monitor-Einstellungen und Exporte.
-    </p>
-
-    <p>
-        Eine aktive Veranstaltung wird im Kopfbereich angezeigt. Die Navigation arbeitet immer mit der
-        aktiven oder ausgewählten Veranstaltung.
-    </p>
-
-    <ul>
-        <li><strong>Veranstaltungen:</strong> Veranstaltung anlegen, aktivieren, bearbeiten oder schließen.</li>
-        <li><strong>Dashboard:</strong> Übersicht über Teilnehmer, Klassen und Freigabestatus.</li>
-        <li><strong>Teilnehmer erfassen:</strong> Fahrer erfassen und automatisch einer Klasse zuordnen.</li>
-        <li><strong>Teilnehmerliste:</strong> Teilnehmer prüfen, bearbeiten, löschen oder als ausgeschieden markieren.</li>
-        <li><strong>Startfreigabe:</strong> Startgruppen für den Rennbetrieb freigeben.</li>
-        <li><strong>Rennbetrieb:</strong> Paarungen erzeugen, Läufe öffnen, Zeiten erfassen und Runden starten.</li>
-        <li><strong>Streckenposten:</strong> optionale mobile Erfassung von Fehlerpunkten je Bahn und Position.</li>
-        <li><strong>Ergebnisse:</strong> Ergebnisse anzeigen, drucken und exportieren.</li>
-        <li><strong>Mannschaftswertung:</strong> Teams erfassen und Mannschaftsergebnis berechnen.</li>
-        <li><strong>Ausgabe Monitor:</strong> Monitor-Anzeige konfigurieren.</li>
-        <li><strong>Ergebnisse anzeigen:</strong> Ergebnisse, Monitor und Exporte.</li>
-    </ul>
+    <div class="settings-accordion-body" id="accordion_event">
+        <p>
+            Unter <strong>Veranstaltung</strong> sehen Sie offene und geschlossene Veranstaltungen.
+            Mit <strong>Veranstaltung anlegen</strong> erstellen Sie eine neue Veranstaltung.
+        </p>
+        <ul>
+            <li><strong>Dashboard:</strong> zeigt den aktuellen Stand der ausgewählten Veranstaltung.</li>
+            <li><strong>Offene Veranstaltung:</strong> zeigt Veranstaltungen, die noch bearbeitet werden können.</li>
+            <li><strong>Geschlossene Veranstaltung:</strong> zeigt abgeschlossene Veranstaltungen.</li>
+        </ul>
+        <p>
+            Prüfen Sie vor der ersten Nennung Name, Datum, Ort und die Anzahl der Sektoren pro Bahn.
+            Eine geschlossene Veranstaltung ist vor weiteren Änderungen geschützt.
+        </p>
     </div>
 </div>
 
 <div class="card settings-accordion-card">
-    <button
-        type="button"
-        class="settings-accordion-header"
-        onclick="toggleSettingsAccordion('events')"
-    >
-        <span>2. Veranstaltungen verwalten</span>
-        <span class="settings-accordion-indicator" id="indicator_events">▼</span>
+    <button type="button" class="settings-accordion-header" onclick="toggleHelpAccordion('registration')">
+        <span>2. Nennung</span>
+        <span class="settings-accordion-indicator" id="indicator_registration">▼</span>
     </button>
+    <div class="settings-accordion-body" id="accordion_registration">
+        <h3>Teilnehmer erfassen</h3>
+        <p>
+            Erfassen Sie Startnummer, Name, Geburtsjahr, Verein und bei Bedarf weitere Angaben.
+            Die Klasse wird aus Geburtsjahr und Veranstaltungsjahr ermittelt.
+            Vorhandene Fahrer können aus der <strong>Fahrerdatenbank</strong> übernommen werden.
+        </p>
 
-    <div class="settings-accordion-body" id="accordion_events">
+        <h3>Check-in</h3>
+        <p>
+            Im <strong>Check-in</strong> werden eingegangene Nennungen geprüft und bestätigt.
+            Neue Fahrer werden beim Bestätigen in die <strong>Fahrerdatenbank</strong> übernommen.
+        </p>
 
-    <p>
-        Unter <strong>Veranstaltungen</strong> werden neue Rennen angelegt. Dabei werden Veranstaltungsnummer,
-        Name, Datum, Ort, Ortsclub/Veranstalter und die Anzahl der Sektoren pro Bahn erfasst.
-    </p>
+        <h3>Teilnehmerliste</h3>
+        <p>
+            In der <strong>Teilnehmerliste</strong> können Sie suchen, filtern und Teilnehmer bearbeiten.
+            Ein ausgeschiedener Teilnehmer kann mit einem Grund auf <strong>Ausgeschieden</strong> gesetzt werden.
+            Mit <strong>Zurücknehmen</strong> lässt sich dies wieder aufheben.
+        </p>
 
-    <p>
-        Zusätzlich können je Veranstaltung die Nennschlusszeiten für die Startfreigabe-Gruppen gepflegt werden:
-    </p>
-
-    <ul>
-        <li><strong>Klasse 1 &amp; 2</strong> gemeinsame Nennschlusszeit</li>
-        <li><strong>Klasse 3 &amp; 4</strong> gemeinsame Nennschlusszeit</li>
-        <li><strong>Klasse 5</strong> eigene Nennschlusszeit</li>
-    </ul>
-
-    <p>
-        Bei Samstag- und Sonntag-Veranstaltungen können Standardzeiten vorgeschlagen werden. Diese Zeiten sind
-        nur Vorschläge und können manuell angepasst werden.
-    </p>
-
-    <p>
-        Eine geschlossene Veranstaltung ist gegen weitere Änderungen geschützt. Ergebnisse und Daten bleiben
-        erhalten.
-    </p>
+        <h3>Startfreigabe</h3>
+        <p>
+            Prüfen Sie die angezeigten Angaben und erteilen Sie die <strong>Startfreigabe</strong>
+            für die jeweilige Gruppe. Die Freigabe erfolgt immer bewusst durch den Bediener.
+        </p>
     </div>
 </div>
 
 <div class="card settings-accordion-card">
-    <button
-        type="button"
-        class="settings-accordion-header"
-        onclick="toggleSettingsAccordion('participants')"
-    >
-        <span>3. Teilnehmer erfassen</span>
-        <span class="settings-accordion-indicator" id="indicator_participants">▼</span>
-    </button>
-
-    <div class="settings-accordion-body" id="accordion_participants">
-
-    <p>
-        Teilnehmer werden mit Startnummer, Name, Geburtsjahr, Verein, Team sowie optional ADAC Nummer,
-        Jugendausweisnummer und digitaler Jugendkarte erfasst.
-    </p>
-
-    <p>
-        Die Klasse wird automatisch anhand des Geburtsjahres und des Veranstaltungsjahres berechnet.
-        Das Veranstaltungsjahr wird aus dem Veranstaltungsdatum abgeleitet.
-    </p>
-
-    <ul>
-        <li><strong>Klasse 1:</strong> 7 bis 8 Jahre</li>
-        <li><strong>Klasse 2:</strong> 9 bis 11 Jahre</li>
-        <li><strong>Klasse 3:</strong> 12 bis 14 Jahre</li>
-        <li><strong>Klasse 4:</strong> 15 bis 18 Jahre</li>
-        <li><strong>Klasse 5:</strong> ab 19 Jahre</li>
-    </ul>
-
-    <p>
-        Wiederkehrende Fahrer werden über den Fahrerstamm unterstützt. Dadurch können vorhandene Daten schneller
-        übernommen und aktualisiert werden.
-    </p>
-    </div>
-</div>
-
-<div class="card settings-accordion-card">
-    <button
-        type="button"
-        class="settings-accordion-header"
-        onclick="toggleSettingsAccordion('startrelease')"
-    >
-        <span>4. Teilnehmerliste und Ausscheiden</span>
-        <span class="settings-accordion-indicator" id="indicator_startrelease">▼</span>
-    </button>
-
-    <div class="settings-accordion-body" id="accordion_startrelease">
-
-    <p>
-        In der Teilnehmerliste können Fahrer gesucht, gefiltert und bearbeitet werden.
-        Angezeigt werden unter anderem Startnummer, Name, Klasse, Verein, Team, ADAC Nummer,
-        Jugendausweisnummer, Status und Fahrerstamm-Verknüpfung.
-    </p>
-
-    <p>
-        Fahrer können während der Veranstaltung als ausgeschieden markiert werden, zum Beispiel wegen:
-    </p>
-
-    <ul>
-        <li>Verletzung</li>
-        <li>Disqualifizierung</li>
-        <li>Aufgabe</li>
-        <li>Entscheidung Rennleitung</li>
-    </ul>
-
-    <p>
-        Ausgeschiedene Fahrer werden in der weiteren Wertung und Paarungslogik entsprechend berücksichtigt.
-        Das Ausscheiden kann bei Bedarf wieder zurückgenommen werden.
-    </p>
-    </div>
-</div>
-
-<div class="card settings-accordion-card">
-    <button
-        type="button"
-        class="settings-accordion-header"
-        onclick="toggleSettingsAccordion('startrelease')"
-    >
-        <span>5. Startfreigabe</span>
-        <span class="settings-accordion-indicator" id="indicator_startrelease_2">▼</span>
-    </button>
-
-    <div class="settings-accordion-body" id="accordion_startrelease_2">
-
-    <p>
-        Die Startfreigabe ersetzt die frühere Bezeichnung „Nennfreigabe“.
-        Jede Startgruppe muss separat durch Zeitnahme oder Rennleitung freigegeben werden.
-    </p>
-
-    <ul>
-        <li><strong>Klasse 1 &amp; 2:</strong> gemeinsame Startfreigabe</li>
-        <li><strong>Klasse 3 &amp; 4:</strong> gemeinsame Startfreigabe</li>
-        <li><strong>Klasse 5:</strong> eigene Startfreigabe</li>
-    </ul>
-
-    <p>
-        In jeder Kachel wird die Nennschlusszeit angezeigt. Ein Timer zeigt, wie lange noch bis zum Nennschluss
-        verbleibt. Ist die Zeit überschritten, erscheint der Hinweis <strong>Nennzeit überschritten</strong>.
-    </p>
-
-    <p>
-        Die Startfreigabe ist eine manuelle Entscheidung. Die Software zeigt Zeiten und Status an, erteilt die
-        Startfreigabe aber nicht automatisch.
-    </p>
-    </div>
-</div>
-
-<div class="card settings-accordion-card">
-    <button
-        type="button"
-        class="settings-accordion-header"
-        onclick="toggleSettingsAccordion('race')"
-    >
-        <span>6. Rennbetrieb</span>
+    <button type="button" class="settings-accordion-header" onclick="toggleHelpAccordion('race')">
+        <span>3. Rennen</span>
         <span class="settings-accordion-indicator" id="indicator_race">▼</span>
     </button>
-
     <div class="settings-accordion-body" id="accordion_race">
+        <h3>Rennbetrieb</h3>
+        <p>
+            Im <strong>Rennbetrieb</strong> wählen Sie eine Klasse und erzeugen die Läufe.
+            Eine Klasse kann erst gestartet werden, wenn die passende <strong>Startfreigabe</strong> vorliegt.
+        </p>
 
-    <p>
-        Im Bereich <strong>Rennbetrieb</strong> werden die Läufe einer Klasse erzeugt und durchgeführt.
-        Eine Klasse kann erst gestartet werden, wenn die zugehörige Startfreigabe erfolgt ist und das
-        Veranstaltungsdatum erreicht wurde.
-    </p>
+        <h3>Paarungen</h3>
+        <p>
+            Im <strong>Viertelfinale</strong> wird nach Startnummer gepaart:
+            kleinste Startnummer gegen größte Startnummer, danach zweitkleinste gegen zweitgrößte.
+            Bei den Startnummern 1 bis 8 entstehen somit die Paarungen
+            <strong>1–8, 2–7, 3–6 und 4–5</strong>.
+        </p>
+        <p>
+            Für <strong>Halbfinale</strong> und <strong>Finale</strong> zählt die Reihenfolge der bisherigen
+            <strong>Ergebnisse</strong>. Gestartet wird aus der Mitte und anschließend nach außen.
+            Bei den Plätzen 1 bis 8 lautet die Reihenfolge
+            <strong>4–5, 3–6, 2–7 und 1–8</strong>.
+            Bei neun Teilnehmern fährt Platz 9 anschließend allein.
+        </p>
 
-    <p>
-        Die Software arbeitet mit folgenden Runden:
-    </p>
-
-    <ul>
-        <li><strong>Viertelfinale</strong></li>
-        <li><strong>Halbfinale</strong></li>
-        <li><strong>Finale</strong></li>
-    </ul>
-
-    <p>
-        Die Läufe müssen in der vorgesehenen Reihenfolge gefahren werden. Ist Lauf 1.1 noch nicht bestätigt,
-        kann Lauf 1.2 noch nicht gestartet werden. Spätere Läufe werden in der Übersicht als
-        <strong>Start noch nicht möglich</strong> angezeigt.
-    </p>
-
-    <p>
-        Bereits bestätigte Läufe bleiben zur Kontrolle weiterhin öffnbar.
-    </p>
+        <h3>Läufe durchführen</h3>
+        <p>
+            Öffnen Sie die Läufe in der angezeigten Reihenfolge.
+            Ein noch gesperrter Lauf wird mit <strong>Start noch nicht möglich</strong> angezeigt.
+            Speichern Sie die Eingaben und bestätigen Sie den Lauf erst nach der Kontrolle.
+        </p>
     </div>
 </div>
 
 <div class="card settings-accordion-card">
-    <button
-        type="button"
-        class="settings-accordion-header"
-        onclick="toggleSettingsAccordion('race')"
-    >
-        <span>7. Zeitnahme und Fehlerpunkte</span>
-        <span class="settings-accordion-indicator" id="indicator_race_2">▼</span>
+    <button type="button" class="settings-accordion-header" onclick="toggleHelpAccordion('timing')">
+        <span>4. Zeitnahme und Fehlerpunkte</span>
+        <span class="settings-accordion-indicator" id="indicator_timing">▼</span>
     </button>
-
-    <div class="settings-accordion-body" id="accordion_race_2">
-
-    <p>
-        Im Laufdetail werden Bahn A und Bahn B angezeigt. Zeiten werden technisch in Millisekunden gespeichert
-        und als <strong>MM:SS,HH</strong> dargestellt.
-    </p>
-
-    <p>
-        Die Zeitnahme erfolgt gemäß Reglement mit einer Genauigkeit von 1/100 Sekunden. Die Software kann Zeiten
-        technisch in Millisekunden speichern, verwendet für Anzeige, Wertung, Sortierung, Paarungslogik, Monitor
-        und Exporte jedoch ausschließlich auf 1/100 Sekunde gerundete Zeiten.
-        Unterschiede unterhalb von 1/100 Sekunde entscheiden keine Platzierung.
-    </p>
-
-    <p>
-        Je nach Veranstaltung können mehrere Sektoren pro Bahn gepflegt werden. Fehlerpunkte werden pro Sektor
-        sowie als allgemeine Fehlerpunkte erfasst. Die gewertete Zeit ergibt sich aus:
-    </p>
-
-    <p>
-        <strong>Rohzeit + Fehlerpunkte in Sekunden = gewertete Zeit</strong>
-    </p>
-
-    <p>
-        Wenn beim Speichern noch Zeiten fehlen, fragt die Software nach, ob wirklich gespeichert werden soll.
-        Bestätigt der Bediener dies, werden fehlende Zeiten mit <strong>00:00,00</strong> gespeichert.
-        Das ist wichtig, wenn ein Teilnehmer während eines Laufes ausscheidet oder die Zeit nicht mehr regulär
-        erfasst werden kann.
-    </p>
-
-    <p>
-        Ein Lauf kann erst bestätigt werden, wenn er gespeichert wurde. Dadurch werden Fehlbedienungen reduziert.
-    </p>
+    <div class="settings-accordion-body" id="accordion_timing">
+        <p>
+            Im geöffneten Lauf werden <strong>Bahn A</strong> und <strong>Bahn B</strong> angezeigt.
+            Kontrollieren Sie die Zeiten und tragen Sie Fehlerpunkte an den vorgesehenen Stellen ein.
+        </p>
+        <p>
+            Die gewertete Zeit besteht aus der gemessenen Zeit und den Fehlerpunkten.
+            Für Anzeige, Wertung und Paarungen zählt die Zeit auf 1/100 Sekunde.
+        </p>
+        <p>
+            Speichern Sie den Lauf zuerst. Prüfen Sie danach noch einmal beide Bahnen und wählen Sie
+            erst anschließend <strong>Bestätigen</strong>. Bereits bestätigte Läufe bleiben zur Kontrolle erreichbar.
+        </p>
     </div>
 </div>
 
 <div class="card settings-accordion-card">
-    <button
-        type="button"
-        class="settings-accordion-header"
-        onclick="toggleSettingsAccordion('marshals')"
-    >
-        <span>8. Streckenposten</span>
+    <button type="button" class="settings-accordion-header" onclick="toggleHelpAccordion('marshals')">
+        <span>5. Streckenposten</span>
         <span class="settings-accordion-indicator" id="indicator_marshals">▼</span>
     </button>
-
     <div class="settings-accordion-body" id="accordion_marshals">
-
-    <p>
-        Die digitale Streckenpostenfunktion ist optional und wird je Veranstaltung in den Einstellungen aktiviert.
-        Wenn sie deaktiviert ist, werden Fehlerpunkte wie gewohnt durch die Zeitnahme manuell erfasst.
-    </p>
-
-    <p>
-        Es gibt zwei mobile Rollen:
-    </p>
-
-    <ul>
-        <li><strong>Start-/Zielposten:</strong> erfasst allgemeine Fehlerpunkte je Bahn und Fahrer.</li>
-        <li><strong>Streckenposten Position:</strong> erfasst positionsbezogene Fehlerpunkte je Bahn und Position.</li>
-    </ul>
-
-    <p>
-        Die Anzahl der Streckenposten stammt aus den Veranstaltungsvorgaben. Intern können diese technisch weiterhin
-        als Sektoren geführt werden.
-    </p>
-
-    <p>
-        Für jede Station kann ein QR-Code angezeigt oder gedruckt werden. Über <strong>Ausgabe Monitor</strong>
-        können einzelne Stations-QR-Codes, alle Stations-QR-Codes oder die mobile Auswahlseite
-        <strong>Auswahl Station</strong> für bis zu fünf Minuten auf dem Monitor angezeigt werden.
-    </p>
-
-    <p>
-        Die mobile Oberfläche ist für Smartphones und Tablets optimiert. Fehlerpunkte werden in 5er-Schritten
-        erfasst. Nach der Übermittlung werden die Werte in der Zeitnahme sichtbar; 0 Fehlerpunkte übermittelt
-        ist dabei klar von keiner Meldung unterscheidbar.
-    </p>
-
-    <p>
-        Die Zeitnahme bleibt führend. Digitale Meldungen sind keine Pflicht für die Laufbestätigung.
-        Nach Bestätigung eines Laufes ist die mobile Korrektur gesperrt; die Zeitnahme kann notwendige
-        Korrekturen weiterhin bewusst vornehmen.
-    </p>
+        <p>
+            Die <strong>Streckenpostenfunktion</strong> wird unter <strong>Konfiguration</strong> ein- oder ausgeschaltet.
+            Ist sie ausgeschaltet, werden Fehlerpunkte direkt in der Zeitnahme eingetragen.
+        </p>
+        <p>
+            Unter <strong>Streckenposten</strong> können die benötigten Zugänge angezeigt und ausgedruckt werden.
+            Eingegangene Fehlerpunkte erscheinen anschließend im geöffneten Lauf.
+        </p>
+        <p>
+            Die Zeitnahme bleibt führend. Nach dem Bestätigen eines Laufes sind Änderungen durch
+            Streckenposten gesperrt.
+        </p>
     </div>
 </div>
 
 <div class="card settings-accordion-card">
-    <button
-        type="button"
-        class="settings-accordion-header"
-        onclick="toggleSettingsAccordion('logo_connection')"
-    >
-        <span>9. Siemens LOGO! / Signal-Mapping</span>
-        <span class="settings-accordion-indicator" id="indicator_logo_connection">▼</span>
-    </button>
-
-    <div class="settings-accordion-body" id="accordion_logo_connection">
-
-    <p>
-        In den Einstellungen kann die Siemens LOGO!-Anbindung vorbereitet werden.
-        Dort werden Verbindung, Simulationsmodus, IP-Adresse, Port, Timeout und Signal-Mapping gepflegt.
-    </p>
-
-    <p>
-        Das Signal-Mapping bereitet die technische Zuordnung für Start, Reset, Zeiten, Lichtschranken,
-        Fehlstart und Statussignale vor.
-    </p>
-
-    <p>
-        Solange die echte LOGO! nicht physisch angebunden ist, kann im Simulationsmodus gearbeitet werden.
-    </p>
-    </div>
-</div>
-
-<div class="card settings-accordion-card">
-    <button
-        type="button"
-        class="settings-accordion-header"
-        onclick="toggleSettingsAccordion('results')"
-    >
-        <span>10. Ergebnisse</span>
+    <button type="button" class="settings-accordion-header" onclick="toggleHelpAccordion('results')">
+        <span>6. Wertung</span>
         <span class="settings-accordion-indicator" id="indicator_results">▼</span>
     </button>
-
     <div class="settings-accordion-body" id="accordion_results">
+        <h3>Ergebnisse</h3>
+        <p>
+            Unter <strong>Ergebnisse</strong> wählen Sie Viertelfinale, Halbfinale, Finale oder Gesamtwertung.
+            Zuerst zählt die Gesamtzeit einschließlich Fehlerpunkten.
+            Bei gleicher Gesamtzeit entscheidet die geringere Zahl an Fehlerpunkten.
+        </p>
+        <p>
+            Besteht danach weiterhin Gleichstand, trifft die Rennleitung die Entscheidung.
+            Ergebnisse können angezeigt, gedruckt und als Excel-Datei ausgegeben werden.
+        </p>
 
-    <p>
-        Im Bereich <strong>Ergebnisse</strong> können Runden- und Gesamtwertungen angezeigt werden.
-        Die Ergebnisansicht kann nach Viertelfinale, Halbfinale, Finale oder Gesamtwertung gewählt werden.
-    </p>
-
-    <p>
-        Für die Platzierung gilt:
-    </p>
-
-    <ul>
-        <li>Zuerst zählt die Gesamtzeit inklusive Fehlerpunkte.</li>
-        <li>Bei gleicher Gesamtzeit entscheidet die geringere Fehlerpunktzahl.</li>
-        <li>Wenn danach weiterhin Gleichstand besteht, erfolgt keine automatische Entscheidung durch die Software. Die Rennleitung muss entscheiden; in der Praxis ist ein Stechen bzw. eine Wiederholung des Finallaufs erforderlich.</li>
-    </ul>
-
-    <p>
-        Ergebnisse können angezeigt, gedruckt und als Excel-Datei exportiert werden.
-        Wenn ein Vereinslogo hinterlegt ist, wird es in die Exporte eingebunden.
-    </p>
+        <h3>Mannschaftswertung</h3>
+        <p>
+            Unter <strong>Mannschaftswertung</strong> legen Sie Mannschaften an und ordnen Fahrer zu.
+            Ein Fahrer kann nur einer Mannschaft zugeordnet sein.
+        </p>
     </div>
 </div>
 
 <div class="card settings-accordion-card">
-    <button
-        type="button"
-        class="settings-accordion-header"
-        onclick="toggleSettingsAccordion('teams')"
-    >
-        <span>11. Mannschaftswertung</span>
-        <span class="settings-accordion-indicator" id="indicator_teams">▼</span>
+    <button type="button" class="settings-accordion-header" onclick="toggleHelpAccordion('display')">
+        <span>7. Anzeige</span>
+        <span class="settings-accordion-indicator" id="indicator_display">▼</span>
     </button>
-
-    <div class="settings-accordion-body" id="accordion_teams">
-
-    <p>
-        In der Mannschaftswertung können Teams für die Veranstaltung angelegt werden.
-        Fahrer werden einem Team zugeordnet und die Software berechnet daraus die Mannschaftswertung.
-    </p>
-
-    <p>
-        Bereits zugeordnete Fahrer können nicht gleichzeitig in einem anderen Team verwendet werden.
-        Dadurch werden Doppelzuordnungen vermieden.
-    </p>
+    <div class="settings-accordion-body" id="accordion_display">
+        <p>
+            Unter <strong>Ausgabe Monitor</strong> wählen Sie, welche Seite auf dem angeschlossenen Bildschirm
+            angezeigt wird. Unter <strong>Monitor</strong> sehen Sie die aktuelle Ausgabe.
+        </p>
+        <p>
+            Die Monitoranzeige aktualisiert sich automatisch.
+            Prüfen Sie vor dem Rennstart, ob Klasse, Runde und Fahrer richtig angezeigt werden.
+        </p>
     </div>
 </div>
 
 <div class="card settings-accordion-card">
-    <button
-        type="button"
-        class="settings-accordion-header"
-        onclick="toggleSettingsAccordion('monitor')"
-    >
-        <span>12. Ausgabe Monitor und Monitor</span>
-        <span class="settings-accordion-indicator" id="indicator_monitor">▼</span>
+    <button type="button" class="settings-accordion-header" onclick="toggleHelpAccordion('configuration')">
+        <span>8. Konfiguration</span>
+        <span class="settings-accordion-indicator" id="indicator_configuration">▼</span>
     </button>
-
-    <div class="settings-accordion-body" id="accordion_monitor">
-
-    <p>
-        Unter <strong>Ausgabe Monitor</strong> wird festgelegt, welche Informationen auf dem Monitor angezeigt werden.
-        Dazu gehören Rennsteuerung, Klassen, Runden, Gesamtwertung, Mannschaftswertung, Statistik und LOGO!-Signal.
-    </p>
-
-    <p>
-        Bei aktivierter Streckenpostenfunktion können hier außerdem QR-Codes für einzelne Stationen, alle Stationen
-        oder die mobile Auswahlseite auf dem Monitor angezeigt werden. Die QR-Anzeige läuft automatisch nach fünf
-        Minuten ab oder kann manuell zurückgesetzt werden.
-    </p>
-
-    <p>
-        Der Bereich <strong>Monitor</strong> ist die eigentliche Live-Anzeige für einen Bildschirm oder TV.
-        Die Seite kann auf einem separaten Gerät oder direkt auf dem Raspberry Pi im Vollbildmodus angezeigt werden.
-    </p>
-
-    <p>
-        Die Monitor-Ausgabe ist für kompakte Anzeige optimiert und aktualisiert sich automatisch.
-    </p>
+    <div class="settings-accordion-body" id="accordion_configuration">
+        <p>Die <strong>Konfiguration</strong> öffnen Sie über das Zahnrad oben rechts.</p>
+        <ul>
+            <li><strong>Siemens LOGO! Verbindung:</strong> Verbindung einrichten und Hardwarestatus prüfen.</li>
+            <li><strong>Signal-Mapping:</strong> Signale der Zeitmessanlage zuordnen.</li>
+            <li><strong>Streckenpostenfunktion:</strong> Nutzung der Streckenposten ein- oder ausschalten.</li>
+            <li><strong>Startdisplay:</strong> Anzeige der Startnummern einrichten und prüfen.</li>
+            <li><strong>Vereinslogo:</strong> Logo für Oberfläche und Ausgaben hinterlegen.</li>
+            <li><strong>ADAC Jugendkarte:</strong> Erfassung ein- oder ausschalten.</li>
+            <li><strong>Datenbank-Sicherung:</strong> Daten sichern oder wiederherstellen.</li>
+            <li><strong>Status / Diagnose:</strong> System, Netzwerk und freien Speicher prüfen.</li>
+            <li><strong>Software-Update:</strong> nach Updates suchen und diese installieren.</li>
+        </ul>
     </div>
 </div>
 
 <div class="card settings-accordion-card">
-    <button
-        type="button"
-        class="settings-accordion-header"
-        onclick="toggleSettingsAccordion('settings')"
-    >
-        <span>13. Einstellungen</span>
-        <span class="settings-accordion-indicator" id="indicator_settings">▼</span>
-    </button>
-
-    <div class="settings-accordion-body" id="accordion_settings">
-
-    <p>
-        Die Einstellungen enthalten wichtige System- und Verwaltungsfunktionen:
-    </p>
-
-    <ul>
-        <li><strong>Siemens LOGO! Verbindung:</strong> Verbindung und Statusprüfung.</li>
-        <li><strong>Signal-Mapping:</strong> Zuordnung der technischen Signale.</li>
-        <li><strong>Streckenpostenfunktion:</strong> digitale Streckenposten je Veranstaltung aktivieren oder deaktivieren.</li>
-        <li><strong>Startdisplay:</strong> ESP32-LED-Matrix für externe Startnummernanzeige konfigurieren.</li>
-        <li><strong>Vereinslogo:</strong> Logo hochladen, anzeigen und in Exporte einbinden.</li>
-        <li><strong>ADAC Jugendkarte:</strong> Scan-/Erfassungsfunktion aktivieren.</li>
-        <li><strong>Datenbank-Sicherung:</strong> Datenbank exportieren oder importieren.</li>
-        <li><strong>Status / Diagnose:</strong> Systemstatus, Netzwerk, Speicher, Neustart und Diagnose.</li>
-    </ul>
-
-    <p>
-        Vor einem Wechsel auf einen anderen Raspberry Pi sollte immer ein Datenbankexport erstellt werden.
-        Beim Datenbankimport wird vorher automatisch ein Backup der aktuellen Datenbank angelegt.
-    </p>
-    </div>
-</div>
-
-<div class="card settings-accordion-card">
-    <button
-        type="button"
-        class="settings-accordion-header"
-        onclick="toggleSettingsAccordion('startdisplay')"
-    >
-        <span>14. Startdisplay</span>
+    <button type="button" class="settings-accordion-header" onclick="toggleHelpAccordion('startdisplay')">
+        <span>9. Startdisplay</span>
         <span class="settings-accordion-indicator" id="indicator_startdisplay">▼</span>
     </button>
-
     <div class="settings-accordion-body" id="accordion_startdisplay">
-
-    <p>
-        Das ESP32-Startdisplay zeigt die aktuellen Startnummern für Bahn A (links) und Bahn B (rechts) auf einer externen LED-Matrix an.
-        Die Anzeige wird automatisch mit dem Monitor synchronisiert.
-    </p>
-
-    <h4>Konfiguration</h4>
-    <ul>
-        <li><strong>Aktivieren:</strong> Startdisplay-Funktion in den Einstellungen unter "Startdisplay" aktivieren.</li>
-        <li><strong>ESP32 Host/IP:</strong> IP-Adresse oder Hostname des ESP32 (z.B. 192.168.178.80 oder quad-startdisplay.local).</li>
-        <li><strong>Port:</strong> HTTP-Port des ESP32 (Standard: 80).</li>
-        <li><strong>Endpoint:</strong> API-Endpunkt auf dem ESP32 (Standard: /display).</li>
-    </ul>
-
-    <h4>Funktionsweise</h4>
-    <ul>
-        <li><strong>Automatische Synchronisation:</strong> Die Anzeige wird bei jeder Änderung der Bahnbelegung aktualisiert.</li>
-        <li><strong>Bahn-Zuordnung:</strong> Monitor links = Bahn A, Monitor rechts = Bahn B.</li>
-        <li><strong>Ausgeschiedene Fahrer:</strong> Werden nicht mehr auf dem Startdisplay angezeigt.</li>
-        <li><strong>Idle-Modus:</strong> Wenn kein aktueller Lauf vorhanden, wird das Display geleert.</li>
-        <li><strong>Asynchrone Kommunikation:</strong> Der Rennbetrieb wird durch die Display-Kommunikation nicht blockiert.</li>
-    </ul>
-
-    <h4>Technische Details</h4>
-    <ul>
-        <li><strong>Protokoll:</strong> HTTP POST mit JSON-Payload.</li>
-        <li><strong>Startnummern-Payload:</strong> <code>{"mode": "start_numbers", "lane_a_start_number": 23, "lane_b_start_number": 54}</code></li>
-        <li><strong>Idle-Payload:</strong> <code>{"mode": "idle", "lane_a_start_number": null, "lane_b_start_number": null}</code></li>
-        <li><strong>Timeout:</strong> 1 Sekunde für alle Anfragen.</li>
-        <li><strong>Fehlerbehandlung:</strong> Verbindungsprobleme beeinflussen nicht den Rennbetrieb.</li>
-    </ul>
-
-    <h4>Test und Status</h4>
-    <ul>
-        <li><strong>Verbindungstest:</strong> "Verbindung testen" Button sendet Test-Payload mit Startnummern 23 und 54.</li>
-        <li><strong>Statusanzeige:</strong> Zeigt letzten Sendeversuch, Erfolg, Fehler und zuletzt gesendete Startnummern.</li>
-        <li><strong>Test-Payload:</strong> Zeigt was aktuell an das ESP32 gesendet werden würde.</li>
-    </ul>
-
-    <div class="hint">
-        <strong>Hinweis:</strong> Das Startdisplay ist ein optionaler Ausgabekanal. Die Software funktioniert auch vollständig ohne ESP32-Verbindung.
-    </div>
+        <p>
+            Das <strong>Startdisplay</strong> zeigt die Startnummern für <strong>Bahn A</strong> und
+            <strong>Bahn B</strong>. Es wird unter <strong>Konfiguration</strong> eingerichtet.
+        </p>
+        <ol>
+            <li><strong>Startdisplay aktivieren</strong> auf <strong>Ja</strong> stellen.</li>
+            <li><strong>ESP32 Host/IP</strong> und <strong>Port</strong> eintragen.</li>
+            <li><strong>Speichern</strong> wählen.</li>
+            <li>Mit <strong>Verbindung testen</strong> die Anzeige prüfen.</li>
+        </ol>
+        <p>
+            Ist kein Lauf geöffnet, wird das Startdisplay geleert.
+            Ein Verbindungsfehler am Startdisplay unterbricht den Rennbetrieb nicht.
+        </p>
     </div>
 </div>
 
 <div class="card settings-accordion-card">
-    <button
-        type="button"
-        class="settings-accordion-header"
-        onclick="toggleSettingsAccordion('workflow')"
-    >
-        <span>15. Empfohlener Ablauf am Veranstaltungstag</span>
-        <span class="settings-accordion-indicator" id="indicator_workflow">▼</span>
+    <button type="button" class="settings-accordion-header" onclick="toggleHelpAccordion('update')">
+        <span>10. Software-Update</span>
+        <span class="settings-accordion-indicator" id="indicator_update">▼</span>
     </button>
-
-    <div class="settings-accordion-body" id="accordion_workflow">
-
-    <ol>
-        <li>Veranstaltung prüfen oder anlegen.</li>
-        <li>Teilnehmer erfassen und Teilnehmerliste kontrollieren.</li>
-        <li>ADAC Nummern, Jugendausweise und Klassen prüfen.</li>
-        <li>Nennschlusszeiten kontrollieren.</li>
-        <li>Bei Bedarf digitale Streckenposten aktivieren und QR-Codes bereitstellen.</li>
-        <li>Startfreigabe je Startgruppe erteilen.</li>
-        <li>Rennbetrieb für die Klasse starten.</li>
-        <li>Läufe der Reihe nach fahren, speichern und bestätigen.</li>
-        <li>Nach Abschluss einer Runde die nächste Runde erzeugen.</li>
-        <li>Ergebnisse kontrollieren, anzeigen, drucken oder exportieren.</li>
-        <li>Mannschaftswertung prüfen.</li>
-        <li>Nach Veranstaltungsende Datenbank sichern.</li>
-    </ol>
+    <div class="settings-accordion-body" id="accordion_update">
+        <p>
+            Unter <strong>Software-Update</strong> werden der installierte und der verfügbare Build angezeigt.
+            Wählen Sie zuerst <strong>Nach Updates suchen</strong>.
+        </p>
+        <p>
+            Ist ein Update verfügbar, installieren Sie es mit <strong>Installieren</strong>.
+            Führen Sie Updates nur in einer Rennpause durch, da Oberfläche, Check-in und Monitor kurz
+            nicht erreichbar sind.
+        </p>
     </div>
 </div>
 
 <div class="card settings-accordion-card">
-    <button
-        type="button"
-        class="settings-accordion-header"
-        onclick="toggleSettingsAccordion('notes')"
-    >
-        <span>16. Wichtige Hinweise</span>
-        <span class="settings-accordion-indicator" id="indicator_notes">▼</span>
+    <button type="button" class="settings-accordion-header" onclick="toggleHelpAccordion('problems')">
+        <span>11. Wenn etwas nicht funktioniert</span>
+        <span class="settings-accordion-indicator" id="indicator_problems">▼</span>
     </button>
-
-    <div class="settings-accordion-body" id="accordion_notes">
-
-    <ul>
-        <li>Die Software unterstützt die Zeitnahme, ersetzt aber keine Entscheidung der Rennleitung.</li>
-        <li>Reglements und Ausschreibungen sind immer maßgeblich.</li>
-        <li>Vor wichtigen Änderungen sollte ein Datenbankexport erstellt werden.</li>
-        <li>Eine geschlossene Veranstaltung sollte nur geschlossen werden, wenn keine Änderungen mehr nötig sind.</li>
-        <li>Beim Import einer Datenbank wird die aktuelle Datenbank ersetzt. Vorher wird ein Backup erstellt.</li>
-        <li>Die digitale Streckenpostenfunktion ist optional; die Zeitnahme bleibt immer führend.</li>
-        <li>Bei technischen Problemen zuerst Status / Diagnose und die LOGO!-Statusprüfung nutzen.</li>
-    </ul>
+    <div class="settings-accordion-body" id="accordion_problems">
+        <ol>
+            <li>Unter <strong>Status / Diagnose</strong> System, Netzwerk und Speicher prüfen.</li>
+            <li>Bei Problemen mit der Zeitmessanlage unter <strong>Siemens LOGO! Verbindung</strong> den <strong>Hardwarestatus</strong> prüfen.</li>
+            <li>Bei Problemen mit der Anzeige <strong>Ausgabe Monitor</strong> und <strong>Monitor</strong> kontrollieren.</li>
+            <li>Vor einer Wiederherstellung immer zuerst eine <strong>Datenbank-Sicherung</strong> erstellen.</li>
+            <li><strong>Software Neustart</strong> oder <strong>System neu starten</strong> nur verwenden, wenn kein Lauf aktiv ist.</li>
+        </ol>
     </div>
 </div>
 
 <script>
-    const defaultOpenSettingsAccordions = {
-        logo_connection: false,
-        signal_mapping: false,
-        club_logo: false,
-        youth_card: false,
-        marshals: false,
-        database_backup: false,
-        system_status: false,
-        startdisplay: false,
-        basics: true,
-        events: false,
-        participants: false,
-        startrelease: false,
-        startrelease_2: false,
+    const defaultOpenHelpAccordions = {
+        event: false,
+        registration: false,
         race: false,
-        race_2: false,
+        timing: false,
+        marshals: false,
         results: false,
-        monitor: false,
-        teams: false,
-        settings: false,
-        workflow: false,
-        notes: false,
+        display: false,
+        configuration: false,
+        startdisplay: false,
+        update: false,
+        problems: false,
     };
 
-    function getSettingsAccordionStorageKey(id) {
-        return "quad_race_settings_accordion_" + id;
+    function getHelpAccordionStorageKey(id) {
+        return "quad_race_help_accordion_" + id;
     }
 
-    function setSettingsAccordionState(id, open) {
+    function setHelpAccordionState(id, open) {
         const body = document.getElementById("accordion_" + id);
         const indicator = document.getElementById("indicator_" + id);
 
@@ -657,29 +325,34 @@
         }
 
         try {
-            localStorage.setItem(getSettingsAccordionStorageKey(id), open ? "open" : "closed");
+            localStorage.setItem(getHelpAccordionStorageKey(id), open ? "open" : "closed");
         } catch (error) {
             return;
         }
     }
 
-    function toggleSettingsAccordion(id) {
+    function toggleHelpAccordion(id) {
         const body = document.getElementById("accordion_" + id);
 
         if (!body) {
             return;
         }
 
-        const isOpen = body.style.display !== "none";
-        setSettingsAccordionState(id, !isOpen);
+        setHelpAccordionState(id, body.style.display === "none");
     }
 
-    // Initialize accordions on page load
     document.addEventListener("DOMContentLoaded", function() {
-        for (const [id, defaultOpen] of Object.entries(defaultOpenSettingsAccordions)) {
-            const savedState = localStorage.getItem(getSettingsAccordionStorageKey(id));
+        for (const [id, defaultOpen] of Object.entries(defaultOpenHelpAccordions)) {
+            let savedState = null;
+
+            try {
+                savedState = localStorage.getItem(getHelpAccordionStorageKey(id));
+            } catch (error) {
+                savedState = null;
+            }
+
             const isOpen = savedState === "open" || (savedState === null && defaultOpen);
-            setSettingsAccordionState(id, isOpen);
+            setHelpAccordionState(id, isOpen);
         }
     });
 </script>
