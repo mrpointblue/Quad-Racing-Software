@@ -4,7 +4,7 @@ x-app: &app
   build:
     context: .
     dockerfile: Dockerfile
-  image: quad-race:1.7.4-dev
+  image: quad-race:1.7.5-dev
   network_mode: host
   restart: unless-stopped
   environment:
@@ -62,7 +62,7 @@ services:
     build:
       context: .
       dockerfile: docker/kiosk/Dockerfile
-    image: quad-race-kiosk:1.7.4-dev
+    image: quad-race-kiosk:1.7.5-dev
     container_name: quad-race-kiosk
     network_mode: host
     restart: unless-stopped
