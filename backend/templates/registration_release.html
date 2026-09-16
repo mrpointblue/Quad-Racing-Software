@@ -72,7 +72,7 @@
                     Zurückziehen der Nennung nicht mehr möglich.<br>
                     Rennbetrieb gestartet.
                 </div>
-            {% elif not active_event.closed %}
+            {% elif active_event.active and not active_event.closed %}
                 <form method="post" action="/ui/events/{{ active_event.id }}/registration/{{ group.group_key }}/revoke">
                     <label>Zurückgenommen durch</label>
                     <input
@@ -121,7 +121,7 @@
                 </p>
             {% endif %}
 
-            {% if not active_event.closed %}
+            {% if active_event.active and not active_event.closed %}
                 <form method="post" action="/ui/events/{{ active_event.id }}/registration/{{ group.group_key }}/release">
                     <label>Freigegeben durch</label>
                     <input

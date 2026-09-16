@@ -116,6 +116,8 @@
                 {% elif not item.registration_released %}
                     <p>Klasse kann erst nach Startfreigabe gestartet werden.</p>
                     <a class="button small-button" href="/ui/events/{{ active_event.id }}/registration">Zur Startfreigabe</a>
+                {% elif not active_event.active %}
+                    <p>Klasse kann nur in der aktiven Veranstaltung gestartet werden.</p>
                 {% elif not event_date_reached %}
                     <p>Klasse kann erst am Veranstaltungstag gestartet werden.</p>
                 {% elif item.event_closed %}
@@ -135,7 +137,7 @@
                 Alle Viertelfinal-Läufe sind abgeschlossen.
             </div>
 
-            {% if not active_event.closed %}
+            {% if active_event.active and not active_event.closed %}
                 <form method="post" action="/ui/events/{{ active_event.id }}/classes/{{ item.race_class }}/semifinal/start">
                     <button type="submit" class="small-button">
                         Halbfinale erzeugen
@@ -149,7 +151,7 @@
                 Alle Halbfinal-Läufe sind abgeschlossen.
             </div>
 
-            {% if not active_event.closed %}
+            {% if active_event.active and not active_event.closed %}
                 <form method="post" action="/ui/events/{{ active_event.id }}/classes/{{ item.race_class }}/final/start">
                     <button type="submit" class="small-button">
                         Finale erzeugen

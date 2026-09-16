@@ -69,7 +69,7 @@
                 </p>
             {% endif %}
 
-            {% if active_event.closed %}
+            {% if active_event.closed or not active_event.active %}
                 <div class="error">
                     Diese Veranstaltung ist geschlossen. Änderungen sind nicht mehr möglich.
                 </div>
@@ -195,6 +195,8 @@
 
         {% if race_run.confirmed %}
             <div class="success compact-status-message">Lauf bestätigt</div>
+        {% elif not active_event.active %}
+            <div class="error compact-status-message">Veranstaltung nicht aktiv</div>
         {% elif active_event.closed %}
             <div class="error compact-status-message">Veranstaltung geschlossen</div>
         {% else %}
@@ -224,7 +226,7 @@
             </form>
         </div>
 
-        {% if active_event.closed %}
+        {% if active_event.closed or not active_event.active %}
             <div class="error">Gesperrt</div>
         {% else %}
             {% if not race_run.confirmed and is_next_startable_run %}
@@ -336,7 +338,7 @@
                             inputmode="numeric"
                             pattern="[0-9]{1,6}"
                             oninput="updateTimeDisplays()"
-                            {% if race_run.confirmed or active_event.closed or result.participant.withdrawn or result.repeat_is_fixed %}disabled{% endif %}
+                            {% if race_run.confirmed or active_event.closed or not active_event.active or result.participant.withdrawn or result.repeat_is_fixed %}disabled{% endif %}
                         >
                         <div class="time-display" id="time_display_{{ result.id }}">
                             —
@@ -352,7 +354,7 @@
                                 value="{{ result.sector_penalties[sector] }}"
                                 min="0"
                                 step="5"
-                                {% if active_event.closed or result.repeat_is_fixed %}disabled{% endif %}
+                                {% if active_event.closed or not active_event.active or result.repeat_is_fixed %}disabled{% endif %}
                             >
                         </td>
                     {% endfor %}
@@ -365,7 +367,7 @@
                             value="{{ result.general_penalty or 0 }}"
                             min="0"
                             step="5"
-                            {% if active_event.closed or result.repeat_is_fixed %}disabled{% endif %}
+                            {% if active_event.closed or not active_event.active or result.repeat_is_fixed %}disabled{% endif %}
                         >
                     </td>
 
@@ -411,7 +413,7 @@
 
         <div class="monitor-output-savebar">
             <button type="submit" class="small-button" id="run-detail-save-button">
-            {% if race_run.confirmed or active_event.closed %}
+            {% if race_run.confirmed or active_event.closed or not active_event.active %}
                 Fehlerpunkte speichern
             {% else %}
                 Speichern

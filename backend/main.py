@@ -424,6 +424,17 @@ def ensure_event_is_open(event: Event):
         )
 
 
+def ensure_event_is_active(event: Event):
+    if event.active is not True:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Diese Veranstaltung ist nicht aktiv. "
+                "Unter Veranstaltung zuerst Aktiv setzen."
+            ),
+        )
+
+
 def redirect_to_active_event_path(
     db: Session,
     path_suffix: str,
@@ -4302,6 +4313,7 @@ def ui_event_release_registration_group(
     db: Session = Depends(get_db),
 ):
     active_event = require_event(event_id, db)
+    ensure_event_is_active(active_event)
     ensure_event_is_open(active_event)
 
     ensure_registration_groups(db, active_event.id)
@@ -4365,6 +4377,7 @@ def ui_event_revoke_registration_group(
     db: Session = Depends(get_db),
 ):
     active_event = require_event(event_id, db)
+    ensure_event_is_active(active_event)
     ensure_event_is_open(active_event)
 
     group = db.query(RegistrationGroup).filter(
@@ -4921,6 +4934,7 @@ def ui_event_start_class(
     db: Session = Depends(get_db),
 ):
     active_event = require_event(event_id, db)
+    ensure_event_is_active(active_event)
     ensure_event_is_open(active_event)
 
     if not is_event_date_reached(active_event):
@@ -5153,6 +5167,7 @@ def ui_event_start_semifinal(
     db: Session = Depends(get_db),
 ):
     active_event = require_event(event_id, db)
+    ensure_event_is_active(active_event)
     ensure_event_is_open(active_event)
 
     participants = db.query(Participant).filter(
@@ -5231,6 +5246,7 @@ def ui_event_start_final(
     db: Session = Depends(get_db),
 ):
     active_event = require_event(event_id, db)
+    ensure_event_is_active(active_event)
     ensure_event_is_open(active_event)
 
     participants = db.query(Participant).filter(
@@ -5716,6 +5732,7 @@ def ui_event_start_run(
     db: Session = Depends(get_db),
 ):
     active_event = require_event(event_id, db)
+    ensure_event_is_active(active_event)
 
     race_run = db.query(RaceRun).filter(
         RaceRun.event_id == active_event.id,
@@ -5794,6 +5811,7 @@ def ui_event_reset_run(
     db: Session = Depends(get_db),
 ):
     active_event = require_event(event_id, db)
+    ensure_event_is_active(active_event)
 
     race_run = db.query(RaceRun).filter(
         RaceRun.event_id == active_event.id,
@@ -5870,6 +5888,7 @@ def ui_event_timekeeper_reset(
     db: Session = Depends(get_db),
 ):
     active_event = require_event(event_id, db)
+    ensure_event_is_active(active_event)
 
     reset_active_run_hardware(active_event.id, db)
 
@@ -5904,6 +5923,7 @@ def ui_event_repeat_run(
     db: Session = Depends(get_db),
 ):
     active_event = require_event(event_id, db)
+    ensure_event_is_active(active_event)
     ensure_event_is_open(active_event)
 
     race_run = db.query(RaceRun).filter(
@@ -5973,6 +5993,7 @@ def ui_event_set_false_start(
     db: Session = Depends(get_db),
 ):
     active_event = require_event(event_id, db)
+    ensure_event_is_active(active_event)
     ensure_event_is_open(active_event)
 
     valid_values = ["none", "lane_a", "lane_b", "both"]
@@ -6028,6 +6049,7 @@ async def ui_event_save_run(
     db: Session = Depends(get_db),
 ):
     active_event = require_event(event_id, db)
+    ensure_event_is_active(active_event)
 
     race_run = db.query(RaceRun).filter(
         RaceRun.event_id == active_event.id,
@@ -6132,6 +6154,7 @@ def ui_event_confirm_run(
     db: Session = Depends(get_db),
 ):
     active_event = require_event(event_id, db)
+    ensure_event_is_active(active_event)
     ensure_event_is_open(active_event)
 
     race_run = db.query(RaceRun).filter(
