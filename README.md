@@ -4,7 +4,7 @@ Webbasierte Verwaltung und Zeitnahme für ADAC Quad Parallel Race: Veranstaltung
 Fahrerstamm, Nennung, Check-in mit Unterschrift, Rennbetrieb, Ergebnisse und
 optionale digitale Streckenposten.
 
-**Softwareversion: 1.7.4** · [Releases und Veröffentlichungsstatus](https://github.com/mrpointblue/Quad-Racing-Software/releases)
+**Softwareversion: 1.7.5** · [Releases und Veröffentlichungsstatus](https://github.com/mrpointblue/Quad-Racing-Software/releases)
 
 ## Installation mit Docker
 
@@ -73,7 +73,7 @@ Leerzeichen enthalten.
 Für eine festgelegte Version stattdessen:
 
 ```bash
-QUAD_RACE_TAG=1.7.4 bash install_release.sh
+QUAD_RACE_TAG=1.7.5 bash install_release.sh
 ```
 
 Das Skript schreibt die gewählte Version nach `.env.release`. Ohne explizite
@@ -103,7 +103,7 @@ stündlich; er vergleicht Image-Digests.
 | Kanal in .env.release | Verhalten |
 | --- | --- |
 | `latest` | jeweils veröffentlichte stabile Docker-Version |
-| `1.7.4` | feste Version; kein automatischer Wechsel zur nächsten Version |
+| `1.7.5` | feste Version; kein automatischer Wechsel zur nächsten Version |
 | `dev` | laufender Entwicklungsstand von main, nicht der stabile Kanal |
 
 Eine bestehende `dev`-Installation wechselt durch ein normales Image-Update
@@ -205,19 +205,21 @@ im Rennnetz aufgerufen werden.
 Das optionale ESP32-LED-Matrix-Startdisplay wird per HTTP angebunden.
 Siehe [Startdisplay-Anleitung](esp32/startdisplay/README.md).
 
-## Änderungen in 1.7.4
+## Änderungen in 1.7.5
 
-- Docker-Auslieferung mit Rennsoftware, Check-in und integriertem HDMI-Kiosk;
-  Multi-Arch-Images und Updates über die Systemeinstellungen.
-- Offline-Zeitsetzung, LOGO!-Diagnose und M6-Bahnzuordnung verbessert.
-- Konsistente Einstellungsoberfläche mit Softwareversion im Updatebereich.
-- Monitorrotation nach links oder rechts.
-- Klare Rückkehr zur Rennübersicht nach abgeschlossenem Durchlauf.
-- Check-in-Link übernimmt die verwendete IP bzw. den Hostnamen.
-- Bestätigte neue Check-in-Teilnehmer werden im Fahrerstamm gespeichert und
-  verknüpft; vorhandene passende Fahrer werden wiederverwendet.
-  Bereits früher bestätigte Teilnehmer werden nicht rückwirkend ergänzt.
-- Automatisierte Tests für kritische Logik, Oberflächen und Containerbetrieb.
+- Das initiale Viertelfinale wird nicht mehr zufällig ausgelost. Die numerisch
+  kleinste Startnummer fährt gegen die größte, danach die zweitkleinste gegen
+  die zweitgrößte. Mehrstellige Startnummern werden korrekt eingeordnet.
+- Halbfinale und Finale bleiben ergebnisbasiert: Die qualifizierten Fahrer
+  werden von der Mitte nach außen gepaart. Bei einer ungeraden Teilnehmerzahl
+  fährt der letztplatzierte qualifizierte Teilnehmer allein.
+- Startfreigabe und Rennbetrieb sind nur noch in der aktiven Veranstaltung
+  möglich. In inaktiven Veranstaltungen werden die betreffenden Aktionen
+  ausgeblendet oder gesperrt und zusätzlich serverseitig abgewiesen.
+- Die Hilfeseite folgt jetzt der sichtbaren Oberfläche, verwendet deren
+  Bezeichnungen und erklärt die Abläufe übersichtlicher.
+- Der Docker-Veröffentlichungsablauf installiert vor den Regressionstests alle
+  benötigten Python-Abhängigkeiten.
 
 Ältere Änderungsstände stehen in den
 [GitHub-Releases](https://github.com/mrpointblue/Quad-Racing-Software/releases)
