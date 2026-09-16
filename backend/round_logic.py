@@ -399,10 +399,15 @@ def create_middle_out_pairs(
     """
     Paart nach Reglement aus der sortierten Wertung von der Mitte heraus.
 
+    Bei einer ungeraden Teilnehmerzahl bleibt zuerst der Letztplatzierte
+    als Einzelfahrer übrig. Die verbleibende gerade Teilnehmerzahl wird
+    anschließend von der Mitte nach außen gepaart.
+
     Beispiele:
     4 Fahrer: 2-3, 1-4
-    5 Fahrer: 3-4, 2-5, 1-Freilos
+    5 Fahrer: 2-3, 1-4, 5-Freilos
     6 Fahrer: 3-4, 2-5, 1-6
+    9 Fahrer: 4-5, 3-6, 2-7, 1-8, 9-Freilos
 
     Die Liste ordered_participants muss bereits nach Wertung sortiert sein:
     Platz 1, Platz 2, Platz 3, ...
@@ -418,29 +423,22 @@ def create_middle_out_pairs(
         return pairs
 
     remaining = list(participants)
+    bye_participant = remaining.pop() if len(remaining) % 2 == 1 else None
 
-    while len(remaining) > 1:
-        if len(remaining) % 2 == 0:
-            left_index = (len(remaining) // 2) - 1
-            right_index = len(remaining) // 2
-        else:
-            left_index = len(remaining) // 2
-            right_index = left_index + 1
+    while remaining:
+        left_index = (len(remaining) // 2) - 1
+        right_index = len(remaining) // 2
 
         driver_1 = remaining.pop(left_index)
-
-        if right_index > left_index:
-            right_index -= 1
-
+        right_index -= 1
         driver_2 = remaining.pop(right_index)
 
         pairs.append((driver_1, driver_2))
 
-    if remaining:
-        pairs.append((remaining[0], None))
+    if bye_participant is not None:
+        pairs.append((bye_participant, None))
 
     return pairs
-
 
 def create_semifinal_pairings(
     event_id: int,
