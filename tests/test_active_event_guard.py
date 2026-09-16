@@ -12,7 +12,7 @@ RUN_TEMPLATE = Path("backend/templates/run_detail.html").read_text()
 
 def function_source(name: str) -> str:
     match = re.search(
-        rf"^def {re.escape(name)}\(.*?(?=^@app\.|\Z)",
+        rf"^(?:async )?def {re.escape(name)}\(.*?(?=^@app\.|\Z)",
         MAIN_SOURCE,
         flags=re.MULTILINE | re.DOTALL,
     )
