@@ -7,6 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: write
   contents: write
 
 concurrency:
@@ -19,6 +20,8 @@ jobs:
     steps:
       - name: Repository laden
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - name: Version und Release Notes prüfen
         id: version
@@ -50,7 +53,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
-          VERSION: ${{ steps.version.outputs.version }}
         shell: bash
         run: |
           gh release create "$TAG" \
@@ -58,3 +60,27 @@ jobs:
             --title "Quad Parallel Race $TAG" \
             --notes-file RELEASE_NOTES.md \
             --latest
+
+      - name: Vorhandene Release Notes aktualisieren
+        if: steps.existing.outputs.exists == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          gh release edit "$TAG" \
+            --title "Quad Parallel Race $TAG" \
+            --notes-file RELEASE_NOTES.md \
+            --latest
+
+      - name: Stable Docker-Veröffentlichung starten
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          if git diff --quiet "$GITHUB_SHA^" "$GITHUB_SHA" -- RELEASE_NOTES.md; then
+            echo "Release Notes unverändert; kein neuer Stable-Docker-Build."
+            exit 0
+          fi
+          gh workflow run publish-images.yml --ref "$TAG"
