@@ -1,5 +1,3 @@
-import random
-
 from backend.models import Participant, Pairing, RaceRun, RunResult
 
 
@@ -151,27 +149,40 @@ def create_two_runs_for_pairing(
     return [run_1, run_2]
 
 
-def create_random_preliminary_pairings(
+def create_outer_pairs_by_start_number(
+    participants: list[Participant],
+) -> list[tuple[Participant, Participant | None]]:
+    """
+    Sortiert numerisch nach Startnummer und paart von außen nach innen.
+
+    Beispiele:
+    8 Fahrer: 1-8, 2-7, 3-6, 4-5
+    5 Fahrer: 1-5, 2-4, 3-Freilos
+    """
+    remaining = sorted(
+        participants,
+        key=lambda participant: participant.start_number,
+    )
+
+    pairs: list[tuple[Participant, Participant | None]] = []
+
+    while remaining:
+        driver_1 = remaining.pop(0)
+        driver_2 = remaining.pop(-1) if remaining else None
+        pairs.append((driver_1, driver_2))
+
+    return pairs
+
+
+def create_start_number_preliminary_pairings(
     participants: list[Participant],
     race_class: int,
     event_id: int,
 ) -> list[Pairing]:
-    shuffled = participants[:]
-    random.shuffle(shuffled)
-
+    pairs = create_outer_pairs_by_start_number(participants)
     pairings: list[Pairing] = []
-    pairing_number = 1
 
-    while shuffled:
-        driver_1 = shuffled.pop(0)
-
-        if shuffled:
-            driver_2 = shuffled.pop(0)
-            is_single_driver = False
-        else:
-            driver_2 = None
-            is_single_driver = True
-
+    for pairing_number, (driver_1, driver_2) in enumerate(pairs, start=1):
         pairing = Pairing(
             event_id=event_id,
             race_class=race_class,
@@ -179,7 +190,7 @@ def create_random_preliminary_pairings(
             pairing_number=pairing_number,
             driver_1_id=driver_1.id,
             driver_2_id=driver_2.id if driver_2 else None,
-            is_single_driver=is_single_driver,
+            is_single_driver=driver_2 is None,
             status="created",
         )
 
@@ -187,8 +198,24 @@ def create_random_preliminary_pairings(
             event_id=event_id,
             pairing=pairing,
         )
-
         pairings.append(pairing)
-        pairing_number += 1
 
     return pairings
+
+
+def create_random_preliminary_pairings(
+    participants: list[Participant],
+    race_class: int,
+    event_id: int,
+) -> list[Pairing]:
+    """
+    Kompatibilitätsname für bestehende Aufrufer.
+
+    Die Paarungen sind nicht mehr zufällig, sondern werden nach Startnummer
+    von außen nach innen gebildet.
+    """
+    return create_start_number_preliminary_pairings(
+        participants=participants,
+        race_class=race_class,
+        event_id=event_id,
+    )
