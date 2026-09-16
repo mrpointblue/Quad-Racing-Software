@@ -155,6 +155,14 @@
     {% endif %}
 
     <div class="container">
+        {% if active_event and not active_event.active and not active_event.closed %}
+            <div class="warning">
+                <strong>Diese Veranstaltung ist nicht aktiv.</strong>
+                Startfreigabe und Rennbetrieb sind gesperrt.
+                Unter <strong>Veranstaltung</strong> zuerst <strong>Aktiv setzen</strong>.
+            </div>
+        {% endif %}
+
         {% block content %}{% endblock %}
     </div>
 
