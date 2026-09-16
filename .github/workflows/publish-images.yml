@@ -34,8 +34,17 @@ jobs:
       - name: Repository auschecken
         uses: actions/checkout@v4
 
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Python-Abhängigkeiten installieren
+        run: python3 -m pip install -r requirements.txt
+
       - name: QEMU einrichten
-        # Only publish builds that pass the dependency-free regression suite.
+        # Only publish builds that pass the full regression suite.
         uses: docker/setup-qemu-action@v3
 
       - name: Regressionstests vor Veröffentlichung
