@@ -284,52 +284,10 @@ from backend.common import redirect_to_active_event_path
 from backend.application.registration_service import create_registration_notification
 
 
-@app.post("/ui/notifications/{notification_id}/acknowledge")
-def acknowledge_registration_notification(
-    notification_id: int,
-    request: Request,
-    acknowledged_by: str = Form("Zeitnahme"),
-    db: Session = Depends(get_db),
-):
-    notification = db.query(RegistrationNotification).filter(
-        RegistrationNotification.id == notification_id,
-    ).first()
-
-    if notification:
-        notification.acknowledged = True
-        notification.acknowledged_at = now_string()
-        notification.acknowledged_by = acknowledged_by.strip() or "Zeitnahme"
-        db.commit()
-
-    return RedirectResponse(
-        url=request.headers.get("referer") or "/ui/events",
-        status_code=303,
-    )
+from backend.routers.notifications import acknowledge_registration_notification
 
 
-@app.get("/api/events/{event_id}/notifications/pending")
-def api_pending_registration_notifications(
-    event_id: int,
-    db: Session = Depends(get_db),
-):
-    notifications = db.query(RegistrationNotification).filter(
-        RegistrationNotification.event_id == event_id,
-        RegistrationNotification.acknowledged == False,
-    ).order_by(
-        RegistrationNotification.id.desc()
-    ).all()
-
-    return {
-        "notifications": [
-            {
-                "id": notification.id,
-                "group_name": notification.group_name,
-                "message": notification.message,
-                "created_at": notification.created_at or "",
-            }
-            for notification in notifications
-        ]
-    }
+from backend.routers.notifications import api_pending_registration_notifications
 
 
 # ------------------------------------------------------------
@@ -5629,6 +5587,9 @@ def ui_reboot_system():
 # ------------------------------------------------------------
 # Zusatz-Router
 # ------------------------------------------------------------
+
+from backend.routers.notifications import router as r_notifications_router
+app.include_router(r_notifications_router)
 
 from backend.export_routes import router as export_router
 app.include_router(export_router)
