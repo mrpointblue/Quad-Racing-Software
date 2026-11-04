@@ -19,6 +19,25 @@ Die vollständige Installation besteht aus drei Containern:
 Marshal benötigt keinen zusätzlichen Container. Smartphones und Tablets müssen
 den Pi im Rennnetz erreichen können.
 
+### Compose-Beispiele
+
+Die vollständigen Compose-Dateien liegen direkt im Repository:
+
+| Beispiel | Verwendung |
+| --- | --- |
+| [compose.release.yaml](compose.release.yaml) | Rennsoftware, Check-in und HDMI-Kiosk mit fertigen Images aus GHCR; für die reguläre Installation mit `install_release.sh`. |
+| [compose.yaml](compose.yaml) | Dieselben drei Dienste aus lokalen Docker-Builds; für Entwicklung und Tests mit `install_docker.sh`. |
+
+Für Nutzer ist die unten beschriebene **Release-Installation** vorgesehen.
+`install_release.sh` verwendet `compose.release.yaml`, erkennt die
+Wayland-Konfiguration und erzeugt die passende `.env.release`. Ein einfaches
+`docker compose up -d` verwendet dagegen `compose.yaml` für lokale Builds.
+
+**V2.0.1 DEV:** Der Docker-Tag `dev` wird aus `main` veröffentlicht.
+Er enthält nicht automatisch den Stand von `dev/v2.0.1`. Zum Testen dieses
+Entwicklungsbranches die lokalen Builds aus [compose.yaml](compose.yaml)
+verwenden; siehe [Entwicklung](#entwicklung-und-bestehende-installationen-ohne-docker).
+
 ### Voraussetzungen
 
 - Raspberry Pi mit 64-Bit Raspberry Pi OS **mit Desktop**, angeschlossenem
