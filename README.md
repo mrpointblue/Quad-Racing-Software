@@ -4,7 +4,7 @@ Webbasierte Verwaltung und Zeitnahme für ADAC Quad Parallel Race: Veranstaltung
 Fahrerstamm, Nennung, Check-in mit Unterschrift, Rennbetrieb, Ergebnisse und
 optionale digitale Streckenposten.
 
-**Softwareversion: 1.7.5** · [Releases und Veröffentlichungsstatus](https://github.com/mrpointblue/Quad-Racing-Software/releases)
+**Softwareversion: 2.0.1-dev** · [Releases und Veröffentlichungsstatus](https://github.com/mrpointblue/Quad-Racing-Software/releases)
 
 ## Installation mit Docker
 
