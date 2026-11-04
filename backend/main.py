@@ -6396,61 +6396,13 @@ from backend.constants import CLUB_LOGO_DEFAULT_SETTINGS
 from backend.constants import STARTDISPLAY_DEFAULT_SETTINGS
 
 
-def get_setting(
-    db: Session,
-    key: str,
-    default_value: str = "",
-) -> str:
-    setting = db.query(SystemSetting).filter(
-        SystemSetting.key == key
-    ).first()
-
-    if not setting:
-        return default_value
-
-    return setting.value or ""
+from backend.application.settings_service import get_setting
 
 
-def set_setting(
-    db: Session,
-    key: str,
-    value: str | None,
-):
-    setting = db.query(SystemSetting).filter(
-        SystemSetting.key == key
-    ).first()
-
-    if not setting:
-        setting = SystemSetting(
-            key=key,
-            value=value or "",
-            updated_at=now_string(),
-        )
-        db.add(setting)
-    else:
-        setting.value = value or ""
-        setting.updated_at = now_string()
-
-    db.flush()
+from backend.application.settings_service import set_setting
 
 
-def get_logo_settings(db: Session) -> dict:
-    settings = {}
-
-    for key, default_value in LOGO_DEFAULT_SETTINGS.items():
-        settings[key] = get_setting(
-            db=db,
-            key=key,
-            default_value=default_value,
-        )
-
-    if not str(settings.get("logo_web_start_coil", "")).strip():
-        settings["logo_web_start_coil"] = LOGO_DEFAULT_SETTINGS["logo_web_start_coil"]
-
-    if not str(settings.get("logo_web_reset_coil", "")).strip():
-        settings["logo_web_reset_coil"] = LOGO_DEFAULT_SETTINGS["logo_web_reset_coil"]
-
-    return settings
+from backend.application.settings_service import get_logo_settings
 
 
 def parse_logo_poll_interval_ms(settings: dict | None) -> int:
@@ -6873,39 +6825,10 @@ def pulse_logo_web_reset_background():
         db.close()
 
 
-def get_app_settings(db: Session) -> dict:
-    settings = get_logo_settings(db)
-
-    for key, default_value in YOUTH_CARD_DEFAULT_SETTINGS.items():
-        settings[key] = get_setting(
-            db=db,
-            key=key,
-            default_value=default_value,
-        )
-
-    for key, default_value in CLUB_LOGO_DEFAULT_SETTINGS.items():
-        settings[key] = get_setting(
-            db=db,
-            key=key,
-            default_value=default_value,
-        )
-
-    for key, default_value in STARTDISPLAY_DEFAULT_SETTINGS.items():
-        settings[key] = get_setting(
-            db=db,
-            key=key,
-            default_value=default_value,
-        )
-
-    return settings
+from backend.application.settings_service import get_app_settings
 
 
-def get_club_logo_path_from_db(db: Session) -> str:
-    return get_setting(
-        db=db,
-        key="club_logo_path",
-        default_value="",
-    )
+from backend.application.settings_service import get_club_logo_path_from_db
 
 
 # Startdisplay Service Functions
@@ -7041,47 +6964,10 @@ def get_club_logo_file_path_from_db(db: Session) -> str | None:
 templates.env.globals["get_club_logo_path"] = get_club_logo_path
 
 
-def save_logo_settings(
-    db: Session,
-    form_values: dict,
-):
-    for key, value in form_values.items():
-        set_setting(
-            db=db,
-            key=key,
-            value=str(value) if value is not None else "",
-        )
-
-    db.commit()
+from backend.application.settings_service import save_logo_settings
 
 
-def build_logo_status(settings: dict) -> dict:
-    required_keys = [
-        "logo_ip",
-        "logo_port",
-        "logo_timeout_ms",
-        "logo_access_mode",
-        "logo_time_register_start",
-        "logo_output_coil_start",
-        "logo_marker_coil_start",
-    ]
-
-    configuration_complete = "Ja"
-
-    for key in required_keys:
-        if not str(settings.get(key, "")).strip():
-            configuration_complete = "Nein"
-            break
-
-    if settings.get("logo_enabled") != "true":
-        mode = "LOGO deaktiviert"
-    else:
-        mode = "Modbus TCP aktiv"
-
-    return {
-        "configuration_complete": configuration_complete,
-        "mode": mode,
-    }
+from backend.application.settings_service import build_logo_status
 
 
 def format_storage_size(size_bytes: int) -> str:
