@@ -228,9 +228,7 @@ ensure_schema_column(
 )
 
 app.mount("/static", StaticFiles(directory="backend/static"), name="static")
-templates = Jinja2Templates(directory="backend/templates")
-register_template_helpers(templates)
-templates.env.globals["format_time_input_code"] = format_time_input_code
+from backend.template_runtime import templates
 
 
 from backend.constants import REGISTRATION_GROUPS
