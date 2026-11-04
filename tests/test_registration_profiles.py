@@ -43,7 +43,7 @@ class RegistrationProfileTests(unittest.TestCase):
         self.db.commit()
         self.templates = SimpleNamespace(TemplateResponse=Mock(return_value="error"))
         # Import only the handler, not main.py's startup migrations/hardware threads.
-        module = ast.parse(Path("backend/main.py").read_text())
+        module = ast.parse(Path("backend/routers/registration.py").read_text())
         handler = next(n for n in module.body if isinstance(n, ast.FunctionDef)
                        and n.name == "ui_event_registration_approve")
         handler.decorator_list = []

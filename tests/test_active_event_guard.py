@@ -1,9 +1,8 @@
-import re
+import ast
 import unittest
 from pathlib import Path
 
 
-MAIN_SOURCE = Path("backend/main.py").read_text()
 BASE_TEMPLATE = Path("backend/templates/base.html").read_text()
 REGISTRATION_TEMPLATE = Path("backend/templates/registration_release.html").read_text()
 CLASSES_TEMPLATE = Path("backend/templates/classes.html").read_text()
@@ -11,14 +10,15 @@ RUN_TEMPLATE = Path("backend/templates/run_detail.html").read_text()
 
 
 def function_source(name: str) -> str:
-    match = re.search(
-        rf"^(?:async )?def {re.escape(name)}\(.*?(?=^@app\.|\Z)",
-        MAIN_SOURCE,
-        flags=re.MULTILINE | re.DOTALL,
-    )
-    if match is None:
-        raise AssertionError(f"Funktion nicht gefunden: {name}")
-    return match.group(0)
+    matches = []
+    for path in [Path("backend/main.py"), *sorted(Path("backend/routers").glob("*.py"))]:
+        source = path.read_text()
+        for node in ast.parse(source).body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name:
+                matches.append("\n".join(source.splitlines()[node.lineno - 1:node.end_lineno]))
+    if len(matches) != 1:
+        raise AssertionError(f"Funktion nicht eindeutig gefunden: {name} ({len(matches)} Treffer)")
+    return matches[0]
 
 
 class ActiveEventGuardTests(unittest.TestCase):
