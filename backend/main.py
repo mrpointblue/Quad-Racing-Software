@@ -1,88 +1,18 @@
-import shutil
-import copy
-import os
-import socket
-import sqlite3
-import subprocess
-import threading
-import time
-import base64
 
-from datetime import datetime, date
-from io import BytesIO
-from pathlib import Path
-from urllib.parse import quote, urlencode
 
-from fastapi import FastAPI, Depends, File, HTTPException, Request, Form, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from backend.database import Base, DATABASE_FILE_PATH, DATA_DIR, SessionLocal, engine, get_db
-from backend.marshal_urls import build_marshal_station_url, normalize_marshal_url
-from backend.template_helpers import register_template_helpers
-from backend.time_utils import (
-    format_time_input_code,
-    format_time_ms as format_centiseconds_time_ms,
-    normalize_time_to_centiseconds_ms,
-    parse_time_input_to_ms,
-)
+from backend.database import Base, engine, get_db
 from backend.version import APP_VERSION
-from backend.models import (
-    Event,
-    SystemSetting,
-    DriverProfile,
-    Participant,
-    Pairing,
-    RaceRun,
-    RunResult,
-    RegistrationGroup,
-    RegistrationNotification,
-    Registration,
-    RegistrationAccessToken,
-    RegistrationProtocol,
-    RegistrationSignature,
-    MonitorDisplaySetting,
-    Team,
-    TeamMember,
-    RunPenalty,
-)
-from backend.schemas import ParticipantCreate, ParticipantResponse, PairingResponse
-from backend.pairing_logic import create_random_preliminary_pairings
-from backend.round_logic import (
-    ROUND_PRELIMINARY,
-    ROUND_SEMIFINAL,
-    ROUND_FINAL,
-    is_round_complete,
-    round_exists,
-    create_semifinal_pairings,
-    create_final_pairings,
-    has_unresolved_ranking_ties,
-)
-from backend.results_logic import (
-    build_class_results,
-    build_compact_round_results,
-    get_participant_status,
-)
-from backend.export_logic import build_class_export_rows, build_overall_rows
-from backend.statistics_logic import build_result_statistics
-from backend.services.registration_profiles import save_registration_driver_profile
-from backend.services.logo_client import build_logo_client
-from backend.services.system_time import parse_system_time_input, set_system_time
+from backend.models import RaceRun
 from backend.services.updates import install_update_guard, updater_request, safety_reason
 
 
-from backend.constants import EVENT_YEAR
 from backend.constants import CLUB_LOGO_UPLOAD_DIR
-from backend.constants import CLUB_LOGO_ALLOWED_EXTENSIONS
-from backend.constants import CLUB_LOGO_MAX_SIZE_BYTES
 from backend.constants import DATABASE_BACKUP_DIR
 from backend.constants import DATABASE_IMPORT_DIR
-from backend.constants import DATABASE_IMPORT_ALLOWED_EXTENSIONS
-from backend.constants import DATABASE_IMPORT_MAX_SIZE_BYTES
-from backend.constants import REQUIRED_DATABASE_TABLES
 
 
 app = FastAPI(
@@ -231,705 +161,87 @@ app.mount("/static", StaticFiles(directory="backend/static"), name="static")
 from backend.template_runtime import templates
 
 
-from backend.constants import REGISTRATION_GROUPS
-
-
-from backend.constants import ROUND_ORDER
-
-from backend.constants import CLASS_ROUND_CONFIGS
-
-from backend.constants import POINTS_TABLE_C
-
-
 # ------------------------------------------------------------
 # Allgemeine Hilfsfunktionen
 # ------------------------------------------------------------
-
-from backend.common import now_string
-
-
-from backend.common import parse_event_date
-
-
-from backend.common import get_event_year
-
-
-from backend.common import is_event_date_reached
-
-
-from backend.common import get_event_date_block_message
-
-
-from backend.common import determine_race_class
-
-
-from backend.common import get_active_event
-
-
-from backend.common import require_active_event
-
-
-from backend.common import require_event
-
-
-from backend.common import ensure_event_is_open
-
-
-from backend.common import ensure_event_is_active
-
-
-from backend.common import redirect_to_active_event_path
-
-
-from backend.application.registration_service import create_registration_notification
-
-
-from backend.routers.notifications import acknowledge_registration_notification
-
-
-from backend.routers.notifications import api_pending_registration_notifications
 
 
 # ------------------------------------------------------------
 # Fahrerstamm / Registrierung
 # ------------------------------------------------------------
 
-from backend.application.registration_service import find_or_create_driver_profile
-
-
-from backend.common import clean_optional_form_value
-
-
-from backend.common import parse_form_bool
-
-
-from backend.common import get_youth_card_checked_at
-
-
-from backend.application.registration_service import get_group_key_for_class
-
-
-from backend.application.registration_service import ensure_registration_groups
-
-
-from backend.application.registration_service import normalize_registration_deadline
-
-
-from backend.application.registration_service import get_default_registration_deadlines_for_event_date
-
-
-from backend.application.registration_service import get_registration_deadlines_for_event
-
-
-from backend.application.registration_service import update_registration_group_deadlines
-
-
-from backend.application.registration_service import get_registration_group_for_class
-
-
-from backend.application.registration_service import is_race_class_released
-
-
-from backend.application.registration_service import parse_registration_group_classes
-
-
-from backend.application.registration_service import is_registration_group_race_started
-
-
-from backend.application.registration_service import registration_matches_participant
-
-
-from backend.application.registration_service import delete_linked_registrations_for_participant_before_start_release
-
-
-from backend.application.registration_service import delete_registration_relations
-
-
-from backend.application.registration_service import delete_registrations_for_event
-
-
-from backend.application.registration_service import is_registration_deletable
-
-
-from backend.application.teams import get_points_table_c
-
-
-from backend.application.teams import sort_place_or_last
-
-
-from backend.application.teams import build_participant_points
-
-
-from backend.application.teams import build_team_standings
-
 
 # ------------------------------------------------------------
 # Zeit / Lauf-Helfer
 # ------------------------------------------------------------
-
-from backend.application.runs import format_time_ms
-
-
-from backend.application.runs import get_penalty_for_sector
-
-
-from backend.application.runs import set_penalty_for_sector
-
-
-from backend.application.runs import prepare_result_for_display
-
-
-from backend.application.runs import result_has_repeatable_values
-
-
-from backend.application.runs import get_digital_penalty_status
-
-
-from backend.application.runs import build_digital_penalty_statuses
-
-
-from backend.application.runs import get_lane_results_for_run
-
-
-from backend.application.runs import get_round_display
-
-
-from backend.application.runs import reset_run_values_for_repeat
-
-
-from backend.application.runs import repeat_scope_setting_key
-
-
-from backend.application.runs import normalize_repeat_scope
-
-
-from backend.application.runs import get_run_repeat_scope
-
-
-from backend.application.runs import is_lane_editable_for_repeat_scope
 
 
 # ------------------------------------------------------------
 # Monitor-Helfer
 # ------------------------------------------------------------
 
-from backend.application.monitor_live import get_monitor_penalty_sum
-
-
-from backend.application.runs import normalize_penalty_input
-
-
-from backend.application.monitor_live import get_monitor_valued_time_ms_for_raw
-
-
-from backend.application.monitor_live import get_monitor_valued_time_ms
-
-
-from backend.application.monitor_live import monitor_driver_name
-
-
-from backend.application.monitor_live import monitor_driver_display_name
-
-
-from backend.application.monitor_live import monitor_result_payload
-
-
-from backend.application.monitor_live import monitor_run_payload
-
-
-from backend.application.monitor_live import get_monitor_order_key
-
-
-from backend.application.monitor_live import get_monitor_runs
-
-
-from backend.application.runs import get_run_start_order_key
-
-
-from backend.application.runs import get_start_ordered_class_runs
-
-
-from backend.application.runs import pick_next_unconfirmed_run
-
-
-from backend.application.runs import build_run_navigation_payload
-
-
-from backend.application.runs import get_class_round_config
-
-
-from backend.application.runs import participant_start_label
-
-
-from backend.application.monitor_live import pick_monitor_current_run
-
-
-from backend.application.monitor_live import pick_monitor_next_runs
-
-
-from backend.application.monitor_live import get_monitor_result_classes
-
-
-from backend.application.monitor_live import get_monitor_live_result_runs
-
-
-from backend.application.monitor_live import build_monitor_logo_signal_payload
-
-
-from backend.application.monitor_live import build_monitor_payload
-
-
-from backend.constants import MONITOR_ROUND_OPTIONS
-
-
-from backend.application.monitor_settings import parse_monitor_csv
-
-
-from backend.application.monitor_settings import get_or_create_monitor_display_setting
-
-
-from backend.application.monitor_settings import monitor_display_setting_payload
-
-
-from backend.application.monitor_output import build_monitor_result_rows_for_round
-
-
-from backend.application.monitor_output import build_monitor_result_sections
-
-
-from backend.application.monitor_output import build_monitor_team_rows
-
-
-from backend.application.monitor_output import build_monitor_overall_sections
-
-
-from backend.application.monitor_output import build_monitor_output_payload
-
-
-from backend.application.monitor_qr import build_qr_data_uri
-
-
-from backend.constants import CHECKIN_QR_BASE_URL
-
-
-from backend.application.monitor_qr import build_checkin_url
-
-
-from backend.application.monitor_qr import get_monitor_checkin_qr_payload
-
-
-from backend.application.monitor_qr import get_monitor_marshal_qr_payload
-
-
-from backend.application.monitor_qr import build_marshal_station_options
-
-
-from backend.application.monitor_qr import get_marshal_qr_expires_at
-
 
 # ------------------------------------------------------------
 # Basis
 # ------------------------------------------------------------
-
-from backend.routers.events import read_root
-
-
-from backend.routers.events import health_check
 
 
 # ------------------------------------------------------------
 # Dashboard
 # ------------------------------------------------------------
 
-from backend.routers.events import ui_dashboard_redirect
-
-
-from backend.routers.events import ui_event_dashboard
-
 
 # ------------------------------------------------------------
 # Veranstaltungen
 # ------------------------------------------------------------
-
-from backend.routers.events import ui_events
-
-
-from backend.routers.events import ui_help
-
-
-from backend.routers.events import ui_create_event
-
-
-from backend.routers.events import ui_activate_event
-
-
-from backend.routers.events import ui_edit_event
-
-
-from backend.routers.events import ui_update_event
-
-
-from backend.routers.events import ui_close_event
-
-
-from backend.routers.events import ui_delete_event
 
 
 # ------------------------------------------------------------
 # Teilnehmer je Veranstaltung
 # ------------------------------------------------------------
 
-from backend.routers.participants import ui_participant_list_redirect
-
-
-from backend.routers.participants import ui_new_participant_redirect
-
-
-from backend.routers.participants import ui_edit_participant_redirect
-
-
-from backend.routers.participants import ui_event_participant_list
-
-
-from backend.application.registration_service import require_registration
-
-
-from backend.application.registration_service import validate_registration_email
-
-
-from backend.constants import REGISTRATION_STATUS_LABELS
-
-
-from backend.constants import REGISTRATION_STATUS_ORDER
-
-
-from backend.routers.registration import ui_event_registration_list
-
-
-from backend.routers.registration import ui_event_registration_delete
-
-
-from backend.routers.registration import ui_event_registration_detail
-
-
-from backend.routers.registration import ui_event_registration_approve
-
-
-from backend.routers.registration import ui_event_registration_update
-
-
-from backend.routers.registration import ui_event_registration_reject
-
-
-from backend.routers.registration import ui_event_registration_correction_required
-
-
-from backend.routers.participants import ui_event_new_participant
-
-
-from backend.routers.participants import ui_event_create_participant
-
-
-from backend.routers.participants import ui_create_participant_legacy
-
-
-from backend.routers.participants import ui_event_edit_participant
-
-
-from backend.routers.participants import ui_event_update_participant
-
-
-from backend.routers.participants import ui_update_participant_legacy
-
-
-from backend.routers.participants import ui_event_delete_participant
-
-
-from backend.routers.participants import ui_delete_participant_legacy
-
-
-from backend.routers.drivers import ui_driver_profiles_redirect
-
-
-from backend.routers.drivers import ui_event_driver_profiles
-
-
-from backend.routers.drivers import ui_event_help_redirect
-
-
-from backend.routers.drivers import ui_event_start_approval_redirect
-
-
-from backend.routers.drivers import ui_event_race_redirect
-
-
-from backend.routers.drivers import ui_event_team_results_redirect
-
-
-from backend.routers.drivers import ui_event_driver_database_redirect
-
-
-from backend.routers.drivers import ui_event_edit_driver_profile
-
-
-from backend.routers.drivers import ui_event_update_driver_profile
-
-
-from backend.routers.drivers import ui_event_delete_driver_profile
-
-
-from backend.routers.participants import ui_event_withdraw_participant
-
-
-from backend.routers.participants import ui_withdraw_participant_legacy
-
-
-from backend.routers.participants import ui_event_revoke_withdraw_participant
-
-
-from backend.routers.participants import ui_revoke_withdraw_participant_legacy
-
 
 # ------------------------------------------------------------
 # Startfreigabe je Veranstaltung
 # ------------------------------------------------------------
-
-from backend.routers.release import ui_registration_redirect
-
-
-from backend.routers.release import ui_event_registration_release
-
-
-from backend.routers.release import ui_event_release_registration_group
-
-
-from backend.routers.release import ui_release_registration_group_legacy
-
-
-from backend.routers.release import ui_event_revoke_registration_group
-
-
-from backend.routers.release import ui_revoke_registration_group_legacy
 
 
 # ------------------------------------------------------------
 # Mannschaftswertung
 # ------------------------------------------------------------
 
-from backend.routers.teams import ui_teams_redirect
-
-
-from backend.routers.teams import ui_event_teams
-
-
-from backend.routers.teams import ui_event_create_team
-
-
-from backend.routers.teams import ui_event_delete_team
-
 
 # ------------------------------------------------------------
 # Läufe / Rennbetrieb je Veranstaltung
 # ------------------------------------------------------------
-
-from backend.routers.racing import ui_classes_redirect
-
-
-from backend.routers.racing import ui_event_classes
-
-
-from backend.routers.racing import ui_event_start_class
-
-
-from backend.routers.racing import ui_start_class_legacy
-
-
-from backend.routers.racing import ui_event_class_round_pairings_print
-
-
-from backend.routers.racing import ui_event_all_pairings_print
-
-
-from backend.routers.racing import ui_event_pairings_display
-
-
-from backend.routers.racing import ui_pairings_display_redirect
-
-
-from backend.routers.racing import ui_event_start_semifinal
-
-
-from backend.routers.racing import ui_start_semifinal_legacy
-
-
-from backend.routers.racing import ui_event_start_final
-
-
-from backend.routers.racing import ui_start_final_legacy
 
 
 # ------------------------------------------------------------
 # Monitor
 # ------------------------------------------------------------
 
-from backend.routers.monitor import ui_monitor_output_redirect
-
-
-from backend.routers.monitor import ui_output_monitor_redirect
-
-
-from backend.routers.monitor import ui_event_output_monitor_redirect
-
-
-from backend.routers.monitor import ui_event_monitor_output
-
-
-from backend.routers.monitor import ui_event_update_monitor_output
-
-
-from backend.routers.monitor import ui_event_restart_monitor_browser
-
-
-from backend.routers.monitor import ui_monitor_redirect
-
-
-from backend.routers.monitor import ui_event_monitor
-
-
-from backend.routers.monitor import api_event_monitor
-
 
 # ------------------------------------------------------------
 # Zeitnehmer / Laufdetails je Veranstaltung
 # ------------------------------------------------------------
-
-from backend.routers.timekeeper import ui_timekeeper_class_redirect
-
-
-from backend.routers.timekeeper import ui_event_timekeeper_class
-
-
-from backend.routers.timekeeper import ui_timekeeper_run_redirect
-
-
-from backend.routers.timekeeper import ui_event_timekeeper_run
-
-
-from backend.routers.timekeeper import ui_event_start_run
-
-
-from backend.routers.timekeeper import ui_start_run_legacy
-
-
-from backend.routers.timekeeper import ui_event_reset_run
-
-
-from backend.application.runs import reset_active_run_hardware
-
-
-from backend.routers.timekeeper import ui_event_timekeeper_reset
-
-
-from backend.routers.timekeeper import ui_reset_run_legacy
-
-
-from backend.routers.timekeeper import ui_event_repeat_run
-
-
-from backend.routers.timekeeper import ui_repeat_run_legacy
-
-
-from backend.routers.timekeeper import ui_event_set_false_start
-
-
-from backend.routers.timekeeper import ui_set_false_start_legacy
-
-
-from backend.routers.timekeeper import ui_event_save_run
-
-
-from backend.routers.timekeeper import ui_save_run_legacy
-
-
-from backend.routers.timekeeper import ui_event_confirm_run
-
-
-from backend.routers.timekeeper import ui_confirm_run_legacy
 
 
 # ------------------------------------------------------------
 # API: Fahrerstamm Suche
 # ------------------------------------------------------------
 
-from backend.routers.api import api_search_driver_profiles
-
-
-from backend.routers.api import api_event_driver_profile_registration_exists
-
-
-from backend.routers.api import api_driver_profile_registration_exists_legacy
-
-
-from backend.routers.api import api_event_start_number_exists
-
-
-from backend.routers.api import api_start_number_exists_legacy
-
-
-from backend.routers.api import api_event_registration_open_for_birth_year
-
-
-from backend.routers.api import api_registration_open_for_birth_year_legacy
-
 
 # ------------------------------------------------------------
 # API: Teilnehmer / Paarungen Legacy
 # ------------------------------------------------------------
-
-from backend.routers.api import create_participant
-
-
-from backend.routers.api import list_participants
-
-
-from backend.routers.api import list_participants_by_class
-
-
-from backend.routers.racing import generate_preliminary_pairings
-
-
-from backend.routers.api import list_pairings_by_class
 
 
 # ------------------------------------------------------------
 # System / Konfiguration
 # ------------------------------------------------------------
 
-from backend.constants import LOGO_DEFAULT_SETTINGS
-
-from backend.constants import YOUTH_CARD_DEFAULT_SETTINGS
-
-from backend.constants import CLUB_LOGO_DEFAULT_SETTINGS
-
-from backend.constants import STARTDISPLAY_DEFAULT_SETTINGS
-
-
-from backend.application.settings_service import get_setting
-
-
-from backend.application.settings_service import set_setting
-
 
 from backend.application.settings_service import get_logo_settings
-
-
-from backend.application.logo_runtime import parse_logo_poll_interval_ms
-
-
-from backend.application.logo_runtime import build_empty_logo_status
-
-
-from backend.application.logo_runtime import LogoStatusCache
 
 
 from backend.application.logo_runtime import logo_status_cache
@@ -948,141 +260,13 @@ def stop_logo_status_cache():
 from backend.application.logo_runtime import get_logo_status_payload
 
 
-from backend.application.logo_sync import LOGO_RUN_DB_SYNC_LOCK
-from backend.application.logo_sync import LOGO_RUN_DB_SYNC_STATE
-from backend.application.logo_sync import LOGO_RUN_DB_SYNC_MIN_INTERVAL_SECONDS
-
-
-from backend.application.logo_sync import should_sync_logo_run_times
-
-
-from backend.application.logo_sync import sync_logo_times_for_run
-
-
-from backend.application.logo_runtime import pulse_logo_web_start
-
-
-from backend.application.logo_runtime import pulse_logo_web_reset
-
-
-from backend.application.logo_runtime import pulse_logo_web_start_background
-
-
-from backend.application.logo_runtime import pulse_logo_web_reset_background
-
-
-from backend.application.settings_service import get_app_settings
-
-
-from backend.application.settings_service import get_club_logo_path_from_db
-
-
 # Startdisplay Service Functions
-from backend.application.startdisplay_dispatch import send_start_display_numbers
-
-
-from backend.application.startdisplay_dispatch import send_start_display_for_run
 
 
 from backend.application.files import get_club_logo_path
 
 
-from backend.application.files import get_club_logo_file_path_from_db
-
-
 templates.env.globals["get_club_logo_path"] = get_club_logo_path
-
-
-from backend.application.settings_service import save_logo_settings
-
-
-from backend.application.settings_service import build_logo_status
-
-
-from backend.application.system_status import format_storage_size
-
-
-from backend.application.system_status import get_system_storage_status
-
-
-from backend.application.system_status import read_cpu_times
-
-
-from backend.application.system_status import get_cpu_usage_percent
-
-
-from backend.application.system_status import get_cpu_temperature
-
-
-from backend.application.system_status import get_memory_status
-
-
-from backend.application.system_status import read_text_file
-
-
-from backend.application.system_status import get_ip_command
-
-
-from backend.application.system_status import get_interface_ipv4_address
-
-
-from backend.application.system_status import get_host_ipv4_addresses
-
-
-from backend.application.system_status import get_primary_ipv4_address
-
-
-from backend.application.system_status import list_network_interfaces
-
-
-from backend.application.system_status import is_wireless_interface
-
-
-from backend.application.system_status import get_default_route_interface
-
-
-from backend.application.system_status import get_wifi_signal_strength
-
-
-from backend.application.system_status import get_network_interface_status
-
-
-from backend.application.system_status import get_empty_network_interface_status
-
-
-from backend.application.system_status import choose_network_interface_status
-
-
-from backend.application.system_status import get_network_status
-
-
-from backend.application.system_status import get_system_status
-
-
-from backend.application.system_actions import restart_quad_race_service_delayed
-
-
-from backend.application.system_actions import reboot_system_delayed
-
-
-from backend.application.system_actions import restart_monitor_browser_delayed
-
-from backend.application.files import remove_existing_club_logos
-
-
-from backend.application.files import clear_club_logo_settings
-
-
-from backend.application.files import validate_club_logo_upload
-
-
-from backend.application.files import validate_database_upload
-
-
-from backend.application.files import validate_sqlite_database
-
-
-from backend.application.files import get_database_backup_items
 
 
 @app.get("/api/system/update/safety")
@@ -1115,75 +299,6 @@ def update_action(action: str, request: Request, db: Session = Depends(get_db)):
         if not safety["safe"]:
             raise HTTPException(409, safety["reason"])
     return updater_request(action)
-
-
-from backend.routers.settings import ui_settings
-
-
-from backend.routers.settings import ui_set_system_time
-
-
-from backend.routers.settings import ui_export_database
-
-
-from backend.routers.settings import ui_import_database
-
-
-from backend.routers.settings import ui_upload_club_logo
-
-
-from backend.routers.settings import ui_delete_club_logo
-
-
-from backend.routers.logo import ui_save_logo_connection
-
-
-from backend.routers.settings import ui_save_youth_card_settings
-
-
-from backend.routers.settings import ui_save_marshal_settings
-
-
-from backend.routers.logo import ui_save_logo_mapping
-
-
-from backend.routers.logo import ui_logo_connection_check
-
-
-from backend.routers.logo import api_logo_status
-
-
-from backend.routers.logo import api_timekeeper_run_logo_status
-
-
-from backend.routers.logo import api_logo_test_connection
-
-
-from backend.routers.logo import api_logo_web_start
-
-
-from backend.routers.logo import api_logo_web_reset
-
-
-from backend.routers.logo import ui_logo_web_start
-
-
-from backend.routers.logo import ui_logo_web_reset
-
-
-from backend.routers.logo import ui_logo_reset_status
-
-
-from backend.routers.startdisplay import ui_save_startdisplay_settings
-
-
-from backend.routers.startdisplay import ui_test_startdisplay_connection
-
-
-from backend.routers.settings import ui_restart_system_service
-
-
-from backend.routers.settings import ui_reboot_system
 
 
 # ------------------------------------------------------------
